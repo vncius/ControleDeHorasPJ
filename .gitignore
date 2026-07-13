@@ -1,0 +1,26 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+build/
+
+# Variáveis de ambiente
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Dados reais de negócio (clientes, projetos, horas, faturamento)
+# Mantemos apenas os *.example.json versionados como referência de shape.
+backend/src/data/*.json
+!backend/src/data/*.example.json

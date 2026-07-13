@@ -1,0 +1,15 @@
+[
+  {
+    "id": "44444444-4444-4444-4444-444444444444",
+    "projetoId": "22222222-2222-2222-2222-222222222222",
+    "data": "2026-01-15",
+    "horaInicio": "09:00",
+    "horaFim": "11:30",
+    "totalHHMM": "02:30",
+    "totalDecimal": 2.5,
+    "descricao": "Análise de requisitos - exemplo",
+    "tipo": "Manual",
+    "dataCriacao": "2026-01-15T11:30:00.000Z",
+    "dataAtualizacao": "2026-01-15T11:30:00.000Z"
+  }
+]
