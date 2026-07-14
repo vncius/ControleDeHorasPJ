@@ -15,6 +15,7 @@ const BASE = '/api'
 async function req<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     ...options,
   })
   const data = await res.json()
@@ -28,6 +29,15 @@ const post = <T>(path: string, body: unknown) =>
 const put = <T>(path: string, body: unknown) =>
   req<T>(path, { method: 'PUT', body: JSON.stringify(body) })
 const del = <T>(path: string) => req<T>(path, { method: 'DELETE' })
+
+// ----------------------------------------------------------------
+// Autenticação
+// ----------------------------------------------------------------
+export const authApi = {
+  login: (credential: string) => post<{ email: string; nome?: string }>('/auth/google', { credential }),
+  logout: () => post<{ mensagem: string }>('/auth/logout', {}),
+  me: () => get<{ email: string; nome?: string }>('/auth/me'),
+}
 
 // ----------------------------------------------------------------
 // Dashboard
@@ -113,6 +123,7 @@ export const lancamentosApi = {
     try {
       const res = await fetch('/api/lancamentos/em-andamento', {
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       })
       if (!res.ok) return null
       const data = await res.json()

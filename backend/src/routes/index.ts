@@ -6,9 +6,23 @@ import {
   lancamentosController,
   dashboardController,
   importacaoController,
+  authController,
 } from '../controllers'
+import { requireAuth } from '../middleware/auth'
 
 const router = Router()
+
+// ----------------------------------------------------------------
+// Autenticação (públicas — precisam vir antes do requireAuth)
+// ----------------------------------------------------------------
+router.post('/auth/google', authController.loginGoogle)
+router.post('/auth/logout', authController.logout)
+router.get('/auth/me', requireAuth, authController.me)
+
+// ----------------------------------------------------------------
+// A partir daqui, todas as rotas exigem sessão válida
+// ----------------------------------------------------------------
+router.use(requireAuth)
 
 // ----------------------------------------------------------------
 // Dashboard

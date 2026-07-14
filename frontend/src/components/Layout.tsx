@@ -1,5 +1,6 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import type { Toast } from '../hooks/useToast'
+import { useAuth } from '../contexts/AuthContext'
 
 interface Props {
   toasts: Toast[]
@@ -14,6 +15,13 @@ const NAV = [
 
 export default function Layout({ toasts }: Props) {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { usuario, logout } = useAuth()
+
+  async function handleLogout() {
+    await logout()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
@@ -87,12 +95,41 @@ export default function Layout({ toasts }: Props) {
         <div style={{
           padding: '16px 20px',
           borderTop: '1px solid var(--border)',
-          fontFamily: 'var(--font-mono)',
-          fontSize: 10,
-          color: 'var(--text-muted)',
-          letterSpacing: '0.04em',
         }}>
-          v1.0.0 — MVP
+          {usuario && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+              marginBottom: 10,
+            }}>
+              <span style={{
+                fontSize: 11,
+                color: 'var(--text-secondary)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }} title={usuario.email}>
+                {usuario.email}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="btn btn-ghost btn-sm"
+                style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}
+              >
+                Sair
+              </button>
+            </div>
+          )}
+          <div style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            color: 'var(--text-muted)',
+            letterSpacing: '0.04em',
+          }}>
+            v1.0.0 — MVP
+          </div>
         </div>
       </aside>
 

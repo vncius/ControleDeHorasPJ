@@ -5,6 +5,8 @@ import { escoposService } from '../services/escoposService'
 import { lancamentosService } from '../services/lancamentosService'
 import { dashboardService } from '../services/dashboardService'
 import { importacaoService } from '../services/importacaoService'
+import { authService } from '../services/authService'
+import { assinarSessao, NOME_COOKIE_SESSAO, OPCOES_COOKIE_SESSAO } from '../middleware/auth'
 
 // ----------------------------------------------------------------
 // Helper — wrapper de erros
@@ -169,5 +171,39 @@ export const importacaoController = {
       if (!Array.isArray(linhas)) throw new Error('Campo "linhas" deve ser um array')
       return importacaoService.confirmar(req.params.projetoId, linhas)
     }, 201)
+  },
+}
+
+// ----------------------------------------------------------------
+// AUTENTICAÇÃO
+// ----------------------------------------------------------------
+export const authController = {
+  async loginGoogle(req: Request, res: Response) {
+    const { credential } = req.body
+    if (!credential || typeof credential !== 'string') {
+      res.status(400).json({ erro: 'Campo "credential" obrigatório' })
+      return
+    }
+
+    try {
+      const { email, nome } = await authService.loginComGoogle(credential)
+      const token = assinarSessao({ email })
+      res.cookie(NOME_COOKIE_SESSAO, token, OPCOES_COOKIE_SESSAO)
+      res.json({ email, nome })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro interno'
+      const status = message === 'E-mail não autorizado' ? 403 : 401
+      res.status(status).json({ erro: message })
+    }
+  },
+
+  logout(_req: Request, res: Response) {
+    const { maxAge: _maxAge, ...opcoesLimpeza } = OPCOES_COOKIE_SESSAO
+    res.clearCookie(NOME_COOKIE_SESSAO, opcoesLimpeza)
+    res.json({ mensagem: 'Logout realizado' })
+  },
+
+  me(req: Request, res: Response) {
+    res.json({ email: req.usuario!.email })
   },
 }
