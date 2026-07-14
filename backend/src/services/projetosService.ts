@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid'
 import { projetosRepo, clientesRepo, escoposRepo, lancamentosRepo } from '../repositories'
+import { withTransaction } from '../repositories/mongoClient'
 import {
   Projeto,
   CriarProjetoDTO,
@@ -96,15 +97,17 @@ export const projetosService = {
 
   async excluir(tenantId: string, id: string): Promise<void> {
     await this.buscarPorId(tenantId, id)
-    const escopos = await escoposRepo.findBy((e) => e.tenantId === tenantId && e.projetoId === id)
-    for (const e of escopos) {
-      await escoposRepo.deleteForTenant(e.id, tenantId)
-    }
-    const lancamentos = await lancamentosRepo.findBy((l) => l.tenantId === tenantId && l.projetoId === id)
-    for (const l of lancamentos) {
-      await lancamentosRepo.deleteForTenant(l.id, tenantId)
-    }
-    await projetosRepo.deleteForTenant(id, tenantId)
+    await withTransaction(async (session) => {
+      const escopos = await escoposRepo.findBy((e) => e.tenantId === tenantId && e.projetoId === id, session)
+      for (const e of escopos) {
+        await escoposRepo.deleteForTenant(e.id, tenantId, session)
+      }
+      const lancamentos = await lancamentosRepo.findBy((l) => l.tenantId === tenantId && l.projetoId === id, session)
+      for (const l of lancamentos) {
+        await lancamentosRepo.deleteForTenant(l.id, tenantId, session)
+      }
+      await projetosRepo.deleteForTenant(id, tenantId, session)
+    })
   },
 
   async calcularResumo(tenantId: string, projetoId: string): Promise<ResumoProjeto> {

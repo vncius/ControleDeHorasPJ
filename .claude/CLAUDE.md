@@ -43,7 +43,6 @@ Os dados **reais** de clientes, projetos e faturamento do usuário vivem hoje no
 - Um projeto real (banco Mongo) tem `status: "Pausado"` — valor legado que não existe mais no tipo `StatusProjeto` atual. Não normaliza sozinho porque a chave não é "encerrado"; se for tocar em migração de dados, considerar isso.
 - Sessão sem refresh/rotação: o cookie JWT dura 7 dias fixos, sem renovação automática nem revogação individual.
 - Acesso é controlado por allowlist manual (`ALLOWED_EMAILS` em `backend/.env`) — não há autocadastro aberto nem fluxo de convite; adicionar alguém é editar essa variável.
-- Exclusão em cascata de projeto (`projetosService.excluir`) não é transacional no Mongo — ver README, seção "Limitações conhecidas".
 - `findAll`/`findBy`/`findOneBy` em `mongoRepository.ts` fazem fetch completo da coleção (predicado em JS, não query nativa) — trade-off consciente documentado no topo do arquivo e no README.
 
 ## Estado da refatoração em andamento
@@ -58,6 +57,6 @@ A sequência de 9 melhorias arquiteturais planejadas foi **concluída**:
 6. ✅ Conversão de `repositories`/`services` para `async/await` (preparação para Mongo)
 7. ✅ Login com Google (OAuth), restrito por allowlist de e-mails
 8. ✅ Isolamento multi-tenant (`tenantId` em todas as entidades, checagem centralizada no repository)
-9. ✅ Migração de JSON para MongoDB Atlas (`mongoRepository.ts`/`mongoClient.ts`, banco `horas-pj`)
+9. ✅ Migração de JSON para MongoDB Atlas (`mongoRepository.ts`/`mongoClient.ts`, banco `horas-pj`), incluindo exclusão em cascata de projeto transacional (`withTransaction`)
 
-Não há próximo item planejado nesta sequência. Se for continuar evoluindo a arquitetura, avalie a dívida técnica conhecida acima (cascata não-atômica, fetch completo em `findBy`/`findOneBy`) como candidatos naturais.
+Não há próximo item planejado nesta sequência. Se for continuar evoluindo a arquitetura, avalie a dívida técnica conhecida acima (fetch completo em `findBy`/`findOneBy`) como candidato natural.

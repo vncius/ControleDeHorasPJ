@@ -1,4 +1,4 @@
-import { MongoClient, Db } from 'mongodb'
+import { MongoClient, Db, ClientSession } from 'mongodb'
 
 // ============================================================
 // mongoClient — conexão única com o MongoDB Atlas, reusada por
@@ -6,16 +6,14 @@ import { MongoClient, Db } from 'mongodb'
 // vez na inicialização do servidor (ver server.ts); os repositories
 // usam `getDb()` para acessar a conexão já estabelecida.
 //
-// Limitação conhecida: exclusão em cascata de projeto
-// (`projetosService.excluir`, que apaga escopos/lançamentos/preferências
-// junto com o projeto) NÃO é atômica — não há transação multi-documento
-// envolvida. O cluster M0 do Atlas suporta transações (é um replica set),
-// mas implementá-las exigiria encapsular a lógica de cascata (hoje no
-// service) dentro da camada de repository, o que violaria a regra desta
-// migração de não tocar em `services/`. Fica como item futuro.
+// `withTransaction()` expõe transações multi-documento (o cluster M0
+// do Atlas é um replica set e suporta isso) para os poucos fluxos que
+// precisam de atomicidade entre coleções — hoje só a exclusão em
+// cascata de projeto (`projetosService.excluir`).
 // ============================================================
 
 let db: Db | undefined
+let mongoClient: MongoClient | undefined
 
 export async function conectarMongo(): Promise<Db> {
   const uri = process.env.MONGODB_URI
@@ -35,6 +33,7 @@ export async function conectarMongo(): Promise<Db> {
   await database.command({ ping: 1 })
 
   db = database
+  mongoClient = client
 
   await criarIndices(database)
 
@@ -46,6 +45,30 @@ export function getDb(): Db {
     throw new Error('MongoDB ainda não conectado — chame conectarMongo() antes de usar getDb()')
   }
   return db
+}
+
+// --- transações ---
+
+/**
+ * Executa `fn` dentro de uma transação multi-documento. Use apenas quando
+ * várias escritas em coleções diferentes precisam ser atômicas (ex.:
+ * exclusão em cascata). Para leituras/escritas isoladas de uma única
+ * entidade, não há necessidade de transação.
+ */
+export async function withTransaction<T>(fn: (session: ClientSession) => Promise<T>): Promise<T> {
+  if (!mongoClient) {
+    throw new Error('MongoDB ainda não conectado — chame conectarMongo() antes de usar withTransaction()')
+  }
+  const session = mongoClient.startSession()
+  try {
+    let resultado: T
+    await session.withTransaction(async () => {
+      resultado = await fn(session)
+    })
+    return resultado!
+  } finally {
+    await session.endSession()
+  }
 }
 
 // --- índices ---

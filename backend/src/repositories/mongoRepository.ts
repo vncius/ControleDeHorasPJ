@@ -1,4 +1,4 @@
-import { Collection } from 'mongodb'
+import { Collection, ClientSession } from 'mongodb'
 import { getDb } from './mongoClient'
 
 // ============================================================
@@ -27,6 +27,11 @@ import { getDb } from './mongoClient'
 // Mapeamento id <-> _id: o domínio usa `id: string` (UUID) como
 // identificador em tudo. Para não remapear nenhuma referência existente,
 // usamos o próprio UUID como `_id` do Mongo (string, não ObjectId gerado).
+//
+// `session?: ClientSession` é opcional em findAll/findBy/deleteForTenant
+// especificamente para suportar transações multi-documento (ver
+// mongoClient.ts `withTransaction`), usadas hoje só pela exclusão em
+// cascata de projeto. Sem transação (uso normal), passe undefined.
 // ============================================================
 
 interface ComId {
@@ -60,8 +65,8 @@ export class MongoRepository<T extends ComId> {
 
   // --- leitura genérica (fetch completo — ver comentário no topo) ---
 
-  async findAll(): Promise<T[]> {
-    const docs = await this.collection().find({}).toArray()
+  async findAll(session?: ClientSession): Promise<T[]> {
+    const docs = await this.collection().find({}, { session }).toArray()
     return docs.map((d) => this.paraEntidade(d))
   }
 
@@ -70,8 +75,8 @@ export class MongoRepository<T extends ComId> {
     return doc ? this.paraEntidade(doc) : undefined
   }
 
-  async findBy(predicate: (item: T) => boolean): Promise<T[]> {
-    const all = await this.findAll()
+  async findBy(predicate: (item: T) => boolean, session?: ClientSession): Promise<T[]> {
+    const all = await this.findAll(session)
     return all.filter(predicate)
   }
 
@@ -148,8 +153,8 @@ export class MongoRepository<T extends ComId> {
     return this.update(id, partial)
   }
 
-  async deleteForTenant(id: string, tenantId: string): Promise<boolean> {
-    const resultado = await this.collection().deleteOne({ _id: id, tenantId })
+  async deleteForTenant(id: string, tenantId: string, session?: ClientSession): Promise<boolean> {
+    const resultado = await this.collection().deleteOne({ _id: id, tenantId }, { session })
     return resultado.deletedCount > 0
   }
 
