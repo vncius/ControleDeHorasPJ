@@ -1,4 +1,4 @@
-import fs from 'fs'
+import fs from 'fs/promises'
 import path from 'path'
 
 const DATA_DIR = path.join(__dirname, '..', 'data')
@@ -17,9 +17,9 @@ export class BaseRepository<T extends { id: string }> {
 
   // --- leitura ---
 
-  private readAll(): T[] {
+  private async readAll(): Promise<T[]> {
     try {
-      const raw = fs.readFileSync(this.filePath, 'utf-8')
+      const raw = await fs.readFile(this.filePath, 'utf-8')
       return JSON.parse(raw) as T[]
     } catch {
       return []
@@ -28,37 +28,40 @@ export class BaseRepository<T extends { id: string }> {
 
   // --- escrita ---
 
-  private writeAll(items: T[]): void {
-    fs.writeFileSync(this.filePath, JSON.stringify(items, null, 2), 'utf-8')
+  private async writeAll(items: T[]): Promise<void> {
+    await fs.writeFile(this.filePath, JSON.stringify(items, null, 2), 'utf-8')
   }
 
   // --- CRUD público ---
 
-  findAll(): T[] {
+  async findAll(): Promise<T[]> {
     return this.readAll()
   }
 
-  findById(id: string): T | undefined {
-    return this.readAll().find((item) => item.id === id)
+  async findById(id: string): Promise<T | undefined> {
+    const all = await this.readAll()
+    return all.find((item) => item.id === id)
   }
 
-  findBy(predicate: (item: T) => boolean): T[] {
-    return this.readAll().filter(predicate)
+  async findBy(predicate: (item: T) => boolean): Promise<T[]> {
+    const all = await this.readAll()
+    return all.filter(predicate)
   }
 
-  findOneBy(predicate: (item: T) => boolean): T | undefined {
-    return this.readAll().find(predicate)
+  async findOneBy(predicate: (item: T) => boolean): Promise<T | undefined> {
+    const all = await this.readAll()
+    return all.find(predicate)
   }
 
-  create(item: T): T {
-    const all = this.readAll()
+  async create(item: T): Promise<T> {
+    const all = await this.readAll()
     all.push(item)
-    this.writeAll(all)
+    await this.writeAll(all)
     return item
   }
 
-  update(id: string, partial: Partial<T>): T | null {
-    const all = this.readAll()
+  async update(id: string, partial: Partial<T>): Promise<T | null> {
+    const all = await this.readAll()
     const index = all.findIndex((item) => item.id === id)
     if (index === -1) return null
 
@@ -74,19 +77,19 @@ export class BaseRepository<T extends { id: string }> {
     }
 
     all[index] = merged
-    this.writeAll(all)
+    await this.writeAll(all)
     return all[index]
   }
 
-  delete(id: string): boolean {
-    const all = this.readAll()
+  async delete(id: string): Promise<boolean> {
+    const all = await this.readAll()
     const filtered = all.filter((item) => item.id !== id)
     if (filtered.length === all.length) return false
-    this.writeAll(filtered)
+    await this.writeAll(filtered)
     return true
   }
 
-  exists(id: string): boolean {
-    return !!this.findById(id)
+  async exists(id: string): Promise<boolean> {
+    return !!(await this.findById(id))
   }
 }

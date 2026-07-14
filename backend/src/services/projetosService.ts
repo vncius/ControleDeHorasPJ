@@ -9,8 +9,8 @@ import {
 import { agora, somarHoras, isDataValida } from '../utils/tempo'
 
 export const projetosService = {
-  listar(clienteId?: string): Projeto[] {
-    const todos = projetosRepo.findAll()
+  async listar(clienteId?: string): Promise<Projeto[]> {
+    const todos = await projetosRepo.findAll()
     const filtrados = clienteId ? todos.filter((p) => p.clienteId === clienteId) : todos
     // ordena do mais antigo para o mais novo por dataInicio
     return filtrados.sort((a, b) => {
@@ -20,16 +20,16 @@ export const projetosService = {
     })
   },
 
-  buscarPorId(id: string): Projeto {
-    const projeto = projetosRepo.findById(id)
+  async buscarPorId(id: string): Promise<Projeto> {
+    const projeto = await projetosRepo.findById(id)
     if (!projeto) throw new Error(`Projeto não encontrado: ${id}`)
     return projeto
   },
 
-  criar(dto: CriarProjetoDTO): Projeto {
+  async criar(dto: CriarProjetoDTO): Promise<Projeto> {
     if (!dto.nome?.trim()) throw new Error('Nome do projeto é obrigatório')
     if (!dto.clienteId) throw new Error('Cliente é obrigatório')
-    if (!clientesRepo.exists(dto.clienteId)) throw new Error('Cliente não encontrado')
+    if (!(await clientesRepo.exists(dto.clienteId))) throw new Error('Cliente não encontrado')
     if (dto.horasContratadas !== undefined && dto.horasContratadas <= 0)
       throw new Error('Horas contratadas devem ser maiores que zero')
     if (!dto.dataInicio) throw new Error('Data de início é obrigatória')
@@ -55,10 +55,10 @@ export const projetosService = {
     return projetosRepo.create(projeto)
   },
 
-  atualizar(id: string, dto: AtualizarProjetoDTO): Projeto {
-    const atual = this.buscarPorId(id)
+  async atualizar(id: string, dto: AtualizarProjetoDTO): Promise<Projeto> {
+    const atual = await this.buscarPorId(id)
 
-    if (dto.clienteId && !clientesRepo.exists(dto.clienteId)) {
+    if (dto.clienteId && !(await clientesRepo.exists(dto.clienteId))) {
       throw new Error('Cliente não encontrado')
     }
     if (dto.dataInicio && !isDataValida(dto.dataInicio)) throw new Error('Data de início inválida')
@@ -76,7 +76,7 @@ export const projetosService = {
       horasUpdate.horasContratadas = dto.horasContratadas
     }
 
-    const atualizado = projetosRepo.update(id, {
+    const atualizado = await projetosRepo.update(id, {
       ...(dto.clienteId && { clienteId: dto.clienteId }),
       ...(dto.nome && { nome: dto.nome.trim() }),
       ...(dto.descricao !== undefined && { descricao: dto.descricao?.trim() }),
@@ -93,28 +93,34 @@ export const projetosService = {
     return atualizado
   },
 
-  excluir(id: string): void {
-    this.buscarPorId(id)
-    escoposRepo.findBy((e) => e.projetoId === id).forEach((e) => escoposRepo.delete(e.id))
-    lancamentosRepo.findBy((l) => l.projetoId === id).forEach((l) => lancamentosRepo.delete(l.id))
-    projetosRepo.delete(id)
+  async excluir(id: string): Promise<void> {
+    await this.buscarPorId(id)
+    const escopos = await escoposRepo.findBy((e) => e.projetoId === id)
+    for (const e of escopos) {
+      await escoposRepo.delete(e.id)
+    }
+    const lancamentos = await lancamentosRepo.findBy((l) => l.projetoId === id)
+    for (const l of lancamentos) {
+      await lancamentosRepo.delete(l.id)
+    }
+    await projetosRepo.delete(id)
   },
 
-  calcularResumo(projetoId: string): ResumoProjeto {
-    const projeto = this.buscarPorId(projetoId)
-    const cliente = clientesRepo.findById(projeto.clienteId)
+  async calcularResumo(projetoId: string): Promise<ResumoProjeto> {
+    const projeto = await this.buscarPorId(projetoId)
+    const cliente = await clientesRepo.findById(projeto.clienteId)
     if (!cliente) throw new Error('Cliente do projeto não encontrado')
 
     const horasAbertas = projeto.horasContratadas === undefined || projeto.horasContratadas === null
 
-    const escopos = escoposRepo.findBy(
+    const escopos = await escoposRepo.findBy(
       (e) => e.projetoId === projetoId && e.status === 'Aprovada'
     )
     const horasExtrasAprovadas = escopos.reduce((acc, e) => acc + e.horasAdicionais, 0)
     const horasContratadas = projeto.horasContratadas ?? 0
     const totalDisponivel = horasAbertas ? 0 : horasContratadas + horasExtrasAprovadas
 
-    const lancamentos = lancamentosRepo.findBy((l) => l.projetoId === projetoId)
+    const lancamentos = await lancamentosRepo.findBy((l) => l.projetoId === projetoId)
     const finalizados = lancamentos.filter((l) => l.horaFim !== undefined)
     const emAndamento = lancamentos.some((l) => l.horaFim === undefined)
 

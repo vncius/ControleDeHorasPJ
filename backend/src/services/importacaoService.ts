@@ -163,8 +163,8 @@ export const importacaoService = {
     return parsearLinhas(texto, ano)
   },
 
-  confirmar(projetoId: string, linhas: LinhaImportacao[]): LancamentoHoras[] {
-    if (!projetosRepo.exists(projetoId)) {
+  async confirmar(projetoId: string, linhas: LinhaImportacao[]): Promise<LancamentoHoras[]> {
+    if (!(await projetosRepo.exists(projetoId))) {
       throw new Error('Projeto não encontrado')
     }
 
@@ -194,7 +194,7 @@ export const importacaoService = {
         dataAtualizacao: agr,
       }
 
-      lancamentosRepo.create(lancamento)
+      await lancamentosRepo.create(lancamento)
       criados.push(lancamento)
     }
 

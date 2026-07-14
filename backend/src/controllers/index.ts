@@ -9,9 +9,9 @@ import { importacaoService } from '../services/importacaoService'
 // ----------------------------------------------------------------
 // Helper — wrapper de erros
 // ----------------------------------------------------------------
-function handle(res: Response, fn: () => unknown, status = 200): void {
+async function handle(res: Response, fn: () => Promise<unknown> | unknown, status = 200): Promise<void> {
   try {
-    const data = fn()
+    const data = await fn()
     res.status(status).json(data)
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erro interno'
@@ -36,8 +36,8 @@ export const clientesController = {
     handle(res, () => clientesService.atualizar(req.params.id, req.body))
   },
   excluir(req: Request, res: Response) {
-    handle(res, () => {
-      clientesService.excluir(req.params.id)
+    handle(res, async () => {
+      await clientesService.excluir(req.params.id)
       return { mensagem: 'Cliente excluído com sucesso' }
     })
   },
@@ -63,8 +63,8 @@ export const projetosController = {
     handle(res, () => projetosService.atualizar(req.params.id, req.body))
   },
   excluir(req: Request, res: Response) {
-    handle(res, () => {
-      projetosService.excluir(req.params.id)
+    handle(res, async () => {
+      await projetosService.excluir(req.params.id)
       return { mensagem: 'Projeto excluído com sucesso' }
     })
   },
@@ -88,8 +88,8 @@ export const escoposController = {
     handle(res, () => escoposService.atualizar(req.params.id, req.body))
   },
   excluir(req: Request, res: Response) {
-    handle(res, () => {
-      escoposService.excluir(req.params.id)
+    handle(res, async () => {
+      await escoposService.excluir(req.params.id)
       return { mensagem: 'Escopo excluído com sucesso' }
     })
   },
@@ -109,8 +109,8 @@ export const lancamentosController = {
     handle(res, () => lancamentosService.buscarEmAndamento())
   },
   ultimaDescricao(req: Request, res: Response) {
-    handle(res, () => ({
-      descricao: lancamentosService.obterUltimaDescricao(req.params.projetoId),
+    handle(res, async () => ({
+      descricao: await lancamentosService.obterUltimaDescricao(req.params.projetoId),
     }))
   },
   iniciar(req: Request, res: Response) {
@@ -130,8 +130,8 @@ export const lancamentosController = {
     handle(res, () => lancamentosService.atualizar(req.params.id, req.body))
   },
   excluir(req: Request, res: Response) {
-    handle(res, () => {
-      lancamentosService.excluir(req.params.id)
+    handle(res, async () => {
+      await lancamentosService.excluir(req.params.id)
       return { mensagem: 'Lançamento excluído com sucesso' }
     })
   },
@@ -171,4 +171,3 @@ export const importacaoController = {
     }, 201)
   },
 }
-

@@ -29,12 +29,12 @@ function calcularEAtribuir(
   return { totalHHMM: diff.hhMM, totalDecimal: diff.decimal }
 }
 
-function salvarUltimaDescricao(projetoId: string, descricao: string): void {
-  const pref = preferenciasRepo.findOneBy((p) => p.projetoId === projetoId)
+async function salvarUltimaDescricao(projetoId: string, descricao: string): Promise<void> {
+  const pref = await preferenciasRepo.findOneBy((p) => p.projetoId === projetoId)
   if (pref) {
-    preferenciasRepo.update(pref.id, { ultimaDescricaoLancamento: descricao })
+    await preferenciasRepo.update(pref.id, { ultimaDescricaoLancamento: descricao })
   } else {
-    preferenciasRepo.create({
+    await preferenciasRepo.create({
       id: uuid(),
       projetoId,
       ultimaDescricaoLancamento: descricao,
@@ -47,10 +47,10 @@ function salvarUltimaDescricao(projetoId: string, descricao: string): void {
 // ----------------------------------------------------------------
 
 export const lancamentosService = {
-  listarPorProjeto(projetoId: string): LancamentoHoras[] {
-    const projeto = projetosRepo.findById(projetoId)
-    return lancamentosRepo
-      .findBy((l) => l.projetoId === projetoId)
+  async listarPorProjeto(projetoId: string): Promise<LancamentoHoras[]> {
+    const projeto = await projetosRepo.findById(projetoId)
+    const lancamentos = await lancamentosRepo.findBy((l) => l.projetoId === projetoId)
+    return lancamentos
       .sort((a, b) => {
         const dataDiff = b.data.localeCompare(a.data)
         if (dataDiff !== 0) return dataDiff
@@ -59,33 +59,34 @@ export const lancamentosService = {
       .map((l) => ({ ...l, faturavel: projeto ? lancamentoEhFaturavel(l, projeto) : true }))
   },
 
-  buscarPorId(id: string): LancamentoHoras {
-    const lancamento = lancamentosRepo.findById(id)
+  async buscarPorId(id: string): Promise<LancamentoHoras> {
+    const lancamento = await lancamentosRepo.findById(id)
     if (!lancamento) throw new Error(`Lançamento não encontrado: ${id}`)
     return lancamento
   },
 
-  buscarEmAndamento(): LancamentoHoras | null {
-    return lancamentosRepo.findOneBy((l) => !l.horaFim) ?? null
+  async buscarEmAndamento(): Promise<LancamentoHoras | null> {
+    const lancamento = await lancamentosRepo.findOneBy((l) => !l.horaFim)
+    return lancamento ?? null
   },
 
-  obterUltimaDescricao(projetoId: string): string | undefined {
-    return preferenciasRepo.findOneBy((p) => p.projetoId === projetoId)
-      ?.ultimaDescricaoLancamento
+  async obterUltimaDescricao(projetoId: string): Promise<string | undefined> {
+    const pref = await preferenciasRepo.findOneBy((p) => p.projetoId === projetoId)
+    return pref?.ultimaDescricaoLancamento
   },
 
   // --- Controle de ponto: Iniciar ---
-  iniciarTrabalho(projetoId: string, descricao?: string): LancamentoHoras {
-    if (!projetosRepo.exists(projetoId)) throw new Error('Projeto não encontrado')
+  async iniciarTrabalho(projetoId: string, descricao?: string): Promise<LancamentoHoras> {
+    if (!(await projetosRepo.exists(projetoId))) throw new Error('Projeto não encontrado')
 
-    const emAndamento = this.buscarEmAndamento()
+    const emAndamento = await this.buscarEmAndamento()
     if (emAndamento) {
       throw new Error(
         `Já existe um lançamento em andamento (projeto: ${emAndamento.projetoId}). Finalize-o antes de iniciar outro.`
       )
     }
 
-    const ultimaDesc = this.obterUltimaDescricao(projetoId)
+    const ultimaDesc = await this.obterUltimaDescricao(projetoId)
     const lancamento: LancamentoHoras = {
       id: uuid(),
       projetoId,
@@ -100,8 +101,8 @@ export const lancamentosService = {
   },
 
   // --- Controle de ponto: Finalizar ---
-  finalizarTrabalho(id: string, dto: FinalizarLancamentoDTO): LancamentoHoras {
-    const lancamento = this.buscarPorId(id)
+  async finalizarTrabalho(id: string, dto: FinalizarLancamentoDTO): Promise<LancamentoHoras> {
+    const lancamento = await this.buscarPorId(id)
     if (lancamento.horaFim) throw new Error('Lançamento já foi finalizado')
 
     const horaFim = dto.horaFim ?? horaAtual()
@@ -110,7 +111,7 @@ export const lancamentosService = {
 
     const descricao = dto.descricao ?? lancamento.descricao
 
-    const atualizado = lancamentosRepo.update(id, {
+    const atualizado = await lancamentosRepo.update(id, {
       horaFim,
       totalHHMM: calculo.hhMM,
       totalDecimal: calculo.decimal,
@@ -119,13 +120,13 @@ export const lancamentosService = {
     })
     if (!atualizado) throw new Error('Falha ao finalizar lançamento')
 
-    if (descricao) salvarUltimaDescricao(lancamento.projetoId, descricao)
+    if (descricao) await salvarUltimaDescricao(lancamento.projetoId, descricao)
     return atualizado
   },
 
   // --- Lançamento manual ---
-  criar(dto: CriarLancamentoDTO): LancamentoHoras {
-    if (!projetosRepo.exists(dto.projetoId)) throw new Error('Projeto não encontrado')
+  async criar(dto: CriarLancamentoDTO): Promise<LancamentoHoras> {
+    if (!(await projetosRepo.exists(dto.projetoId))) throw new Error('Projeto não encontrado')
     if (!isDataValida(dto.data)) throw new Error('Data inválida (esperado YYYY-MM-DD)')
     if (!isHoraValida(dto.horaInicio)) throw new Error('Hora início inválida (esperado HH:MM)')
 
@@ -153,14 +154,14 @@ export const lancamentosService = {
       dataAtualizacao: agora(),
     }
 
-    const criado = lancamentosRepo.create(lancamento)
-    if (dto.descricao) salvarUltimaDescricao(dto.projetoId, dto.descricao)
+    const criado = await lancamentosRepo.create(lancamento)
+    if (dto.descricao) await salvarUltimaDescricao(dto.projetoId, dto.descricao)
     return criado
   },
 
   // --- Edição ---
-  atualizar(id: string, dto: AtualizarLancamentoDTO): LancamentoHoras {
-    const lancamento = this.buscarPorId(id)
+  async atualizar(id: string, dto: AtualizarLancamentoDTO): Promise<LancamentoHoras> {
+    const lancamento = await this.buscarPorId(id)
 
     const horaInicio = dto.horaInicio ?? lancamento.horaInicio
     const horaFim = dto.horaFim !== undefined ? dto.horaFim : lancamento.horaFim
@@ -186,22 +187,22 @@ export const lancamentosService = {
       partial.totalDecimal = undefined
     }
 
-    const atualizado = lancamentosRepo.update(id, partial)
+    const atualizado = await lancamentosRepo.update(id, partial)
     if (!atualizado) throw new Error('Falha ao atualizar lançamento')
 
-    if (dto.descricao) salvarUltimaDescricao(lancamento.projetoId, dto.descricao)
+    if (dto.descricao) await salvarUltimaDescricao(lancamento.projetoId, dto.descricao)
     return atualizado
   },
 
   // --- Cancelar (excluir lançamento em andamento ou qualquer um) ---
-  excluir(id: string): void {
-    this.buscarPorId(id)
-    lancamentosRepo.delete(id)
+  async excluir(id: string): Promise<void> {
+    await this.buscarPorId(id)
+    await lancamentosRepo.delete(id)
   },
 
   // --- Duplicar ---
-  duplicar(id: string): LancamentoHoras {
-    const original = this.buscarPorId(id)
+  async duplicar(id: string): Promise<LancamentoHoras> {
+    const original = await this.buscarPorId(id)
     return this.criar({
       projetoId: original.projetoId,
       data: hoje(),
