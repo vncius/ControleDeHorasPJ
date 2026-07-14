@@ -8,6 +8,7 @@ import ControlePonto from '../components/ControlePonto'
 import TabelaLancamentos from '../components/TabelaLancamentos'
 import ModalImportacao from '../components/ModalImportacao'
 import { ProjetoForm, projetoParaForm, formParaPayload } from './Projetos'
+import { STATUS_COR } from '../constants/statusProjeto'
 
 interface Props { toast: ToastFns }
 
@@ -263,16 +264,6 @@ export default function ProjetoDetalhe({ toast }: Props) {
   const lancamentoAberto = lancamentos.find(l => !l.horaFim) ?? null
   const pct = Math.min(resumo.percentualConsumido, 100)
 
-  // badge de status dos novos valores
-  const STATUS_COR: Record<string, { bg: string; color: string }> = {
-    'Aguardando início':  { bg: 'rgba(92,200,255,0.12)',  color: 'var(--info)' },
-    'Em desenvolvimento': { bg: 'rgba(168,255,62,0.12)',  color: 'var(--accent)' },
-    'Com impedimento':    { bg: 'rgba(255,92,122,0.12)',  color: 'var(--danger)' },
-    'Em testes':          { bg: 'rgba(255,209,102,0.12)', color: 'var(--warning)' },
-    'Entregue':           { bg: 'rgba(92,200,255,0.12)',  color: 'var(--info)' },
-    'Finalizado':         { bg: 'rgba(92,200,255,0.12)',  color: 'var(--info)' },
-    'Cancelado':          { bg: 'rgba(255,92,122,0.12)',  color: 'var(--danger)' },
-  }
   const statusCor = STATUS_COR[projeto.status] ?? { bg: 'var(--bg-3)', color: 'var(--text-muted)' }
 
   return (

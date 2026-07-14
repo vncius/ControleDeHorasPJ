@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { dashboardApi, lancamentosApi } from '../services/api'
 import type { DashboardData, ResumoProjeto } from '../types'
 import type { ToastFns } from '../App'
+import { horaAtual } from '../utils/tempo'
 
 function fmt(h: number) { return h.toFixed(1).replace('.', ',') + 'h' }
 function pct(v: number) { return Math.min(v, 100) }
@@ -161,12 +162,9 @@ export default function Dashboard({ toast }: Props) {
 
   async function handleFinalizar() {
     if (!data?.lancamentoEmAndamento) return
-    const now = new Date()
-    const hh = String(now.getHours()).padStart(2, '0')
-    const mm = String(now.getMinutes()).padStart(2, '0')
     setFinalizando(true)
     try {
-      await lancamentosApi.finalizar(data.lancamentoEmAndamento.id, { horaFim: `${hh}:${mm}` })
+      await lancamentosApi.finalizar(data.lancamentoEmAndamento.id, { horaFim: horaAtual() })
       toast.success('Trabalho finalizado!')
       carregar()
     } catch (e: unknown) {
