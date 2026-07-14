@@ -145,6 +145,9 @@ export default function Dashboard({ toast }: Props) {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [finalizando, setFinalizando] = useState(false)
+  const [modalFinalizar, setModalFinalizar] = useState(false)
+  const [horaFim, setHoraFim] = useState('')
+  const [descricaoFinal, setDescricaoFinal] = useState('')
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const nav = useNavigate()
 
@@ -160,12 +163,28 @@ export default function Dashboard({ toast }: Props) {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [])
 
-  async function handleFinalizar() {
+  function abrirModalFinalizar() {
     if (!data?.lancamentoEmAndamento) return
+    setHoraFim(horaAtual())
+    setDescricaoFinal(data.lancamentoEmAndamento.descricao ?? '')
+    setModalFinalizar(true)
+  }
+
+  function fecharModalFinalizar() {
+    setModalFinalizar(false)
+  }
+
+  async function confirmarFinalizar() {
+    if (!data?.lancamentoEmAndamento) return
+    if (!horaFim) { toast.error('Informe a hora de fim'); return }
     setFinalizando(true)
     try {
-      await lancamentosApi.finalizar(data.lancamentoEmAndamento.id, { horaFim: horaAtual() })
+      await lancamentosApi.finalizar(data.lancamentoEmAndamento.id, {
+        horaFim,
+        descricao: descricaoFinal || undefined,
+      })
       toast.success('Trabalho finalizado!')
+      setModalFinalizar(false)
       carregar()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Erro ao finalizar')
@@ -213,9 +232,49 @@ export default function Dashboard({ toast }: Props) {
           </div>
           <div className="flex-center gap-8">
             <button className="btn btn-secondary btn-sm" onClick={() => nav(`/projetos/${data.lancamentoEmAndamento!.projetoId}`)}>Ver projeto</button>
-            <button className="btn btn-primary btn-sm" onClick={handleFinalizar} disabled={finalizando}>
+            <button className="btn btn-primary btn-sm" onClick={abrirModalFinalizar} disabled={finalizando}>
               {finalizando ? '...' : '⏹ Finalizar'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {modalFinalizar && data.lancamentoEmAndamento && (
+        <div className="modal-overlay" onClick={fecharModalFinalizar}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Finalizar trabalho</h2>
+              <button className="btn btn-ghost btn-icon" onClick={fecharModalFinalizar}>✕</button>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16, fontFamily: 'var(--font-mono)' }}>
+              {data.lancamentoEmAndamento.projeto.nome} · {data.lancamentoEmAndamento.cliente.nome}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Hora início</label>
+                  <input className="input input-mono" value={data.lancamentoEmAndamento.horaInicio} disabled />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Hora fim *</label>
+                  <input className="input input-mono" type="time" value={horaFim}
+                    onChange={e => setHoraFim(e.target.value)} autoFocus />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Descrição</label>
+                <textarea className="input" rows={3}
+                  placeholder="O que foi feito neste período?"
+                  value={descricaoFinal}
+                  onChange={e => setDescricaoFinal(e.target.value)} />
+              </div>
+            </div>
+            <div className="form-actions" style={{ marginTop: 24 }}>
+              <button className="btn btn-secondary" onClick={fecharModalFinalizar}>Cancelar</button>
+              <button className="btn btn-primary" onClick={confirmarFinalizar} disabled={finalizando}>
+                {finalizando ? 'Processando...' : '⏹ Finalizar e salvar'}
+              </button>
+            </div>
           </div>
         </div>
       )}
