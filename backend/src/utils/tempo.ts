@@ -88,18 +88,5 @@ export function somarHoras(decimais: (number | undefined)[]): number {
   return decimais.reduce<number>((acc, v) => acc + (v ?? 0), 0)
 }
 
-/**
- * Determina se um lançamento é faturável considerando a data de pagamento do projeto.
- *
- * Regra:
- * - Sem dataPagamento → sempre faturável
- * - Com dataPagamento → faturável apenas se lancamento.data < dataPagamento
- *   (lançamentos do dia do pagamento em diante já não são faturáveis)
- */
-export function lancamentoEhFaturavel(
-  lancamentoData: string,
-  dataPagamento?: string
-): boolean {
-  if (!dataPagamento) return true
-  return lancamentoData < dataPagamento
-}
+// Regra de faturabilidade movida para utils/faturamento.ts (fonte única,
+// considera status do projeto + pago sem dataPagamento + corte por data).

@@ -14,6 +14,7 @@ import {
   isDataValida,
   isHoraValida,
 } from '../utils/tempo'
+import { lancamentoEhFaturavel } from '../utils/faturamento'
 
 // ----------------------------------------------------------------
 // helpers internos
@@ -47,6 +48,7 @@ function salvarUltimaDescricao(projetoId: string, descricao: string): void {
 
 export const lancamentosService = {
   listarPorProjeto(projetoId: string): LancamentoHoras[] {
+    const projeto = projetosRepo.findById(projetoId)
     return lancamentosRepo
       .findBy((l) => l.projetoId === projetoId)
       .sort((a, b) => {
@@ -54,6 +56,7 @@ export const lancamentosService = {
         if (dataDiff !== 0) return dataDiff
         return b.horaInicio.localeCompare(a.horaInicio)
       })
+      .map((l) => ({ ...l, faturavel: projeto ? lancamentoEhFaturavel(l, projeto) : true }))
   },
 
   buscarPorId(id: string): LancamentoHoras {

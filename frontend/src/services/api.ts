@@ -86,7 +86,6 @@ export const escoposApi = {
       status?: StatusEscopo
       dataInicio?: string
       dataFim?: string
-      faturavel?: boolean
       observacoes?: string
     }
   ) => post<AlteracaoEscopo>(`/projetos/${projetoId}/escopos`, body),
@@ -98,7 +97,6 @@ export const escoposApi = {
       status?: StatusEscopo
       dataInicio?: string
       dataFim?: string
-      faturavel?: boolean
       observacoes?: string
     }
   ) => put<AlteracaoEscopo>(`/escopos/${id}`, body),

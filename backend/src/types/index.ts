@@ -46,7 +46,6 @@ export interface AlteracaoEscopo {
   // controle de período próprio
   dataInicio?: string           // YYYY-MM-DD início do escopo
   dataFim?: string              // YYYY-MM-DD fim do escopo
-  faturavel: boolean            // horas deste escopo são faturáveis?
   dataCriacao: string
   observacoes?: string
 }
@@ -66,6 +65,7 @@ export interface LancamentoHoras {
   tipo: TipoLancamento
   dataCriacao: string
   dataAtualizacao: string
+  faturavel?: boolean           // computado na leitura (ver utils/faturamento.ts) — não persistido
 }
 
 export interface PreferenciasProjeto {
@@ -141,7 +141,6 @@ export interface CriarEscopoDTO {
   status?: StatusEscopo
   dataInicio?: string
   dataFim?: string
-  faturavel?: boolean
   observacoes?: string
 }
 
@@ -152,7 +151,6 @@ export interface AtualizarEscopoDTO {
   status?: StatusEscopo
   dataInicio?: string
   dataFim?: string
-  faturavel?: boolean
   observacoes?: string
 }
 

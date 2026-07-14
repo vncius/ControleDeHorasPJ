@@ -41,20 +41,13 @@ function dataHoje(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-// Um lançamento é faturável se não há dataPagamento,
-// ou se a data do lançamento é anterior à data de pagamento.
-function ehFaturavel(dataLancamento: string, dataPagamento?: string): boolean {
-  if (!dataPagamento) return true
-  return dataLancamento < dataPagamento
-}
-
 function exportarCSV(lancamentos: LancamentoEnriquecido[], sufixo = '') {
   const cab = ['Data', 'Cliente', 'Projeto', 'Faturável', 'Descrição', 'Início', 'Fim', 'HH:MM', 'Decimal', 'Tipo', 'Valor (R$)']
   const linhas = lancamentos.map(l => [
     fmtData(l.data),
     l.cliente.nome,
     l.projeto.nome,
-    ehFaturavel(l.data, l.projeto.dataPagamento) ? 'Sim' : 'Não',
+    l.faturavel ? 'Sim' : 'Não',
     `"${l.descricao.replace(/"/g, '""')}"`,
     l.horaInicio,
     l.horaFim ?? '',
@@ -125,11 +118,11 @@ export default function Relatorios() {
   )
 
   const lancamentosFat = useMemo(
-    () => lancamentosBase.filter(l => ehFaturavel(l.data, l.projeto.dataPagamento)),
+    () => lancamentosBase.filter(l => l.faturavel),
     [lancamentosBase]
   )
   const lancamentosNaoFat = useMemo(
-    () => lancamentosBase.filter(l => !ehFaturavel(l.data, l.projeto.dataPagamento)),
+    () => lancamentosBase.filter(l => !l.faturavel),
     [lancamentosBase]
   )
 
@@ -185,7 +178,7 @@ export default function Relatorios() {
         totalHHMM: decimalParaHHMM(decimal),
         qtdLancamentos: (ex?.qtdLancamentos ?? 0) + 1,
         valorTotal: valor,
-        naoFaturavel: !ehFaturavel(l.data, l.projeto.dataPagamento),
+        naoFaturavel: !l.faturavel,
       })
     })
     return Array.from(mapa.values()).sort((a, b) => b.totalDecimal - a.totalDecimal)
@@ -478,7 +471,7 @@ export default function Relatorios() {
                   </thead>
                   <tbody>
                     {lancamentosFiltrados.map(l => {
-                      const faturavel = ehFaturavel(l.data, l.projeto.dataPagamento)
+                      const faturavel = !!l.faturavel
                       const valor = l.projeto.valorHora && l.totalDecimal
                         ? l.totalDecimal * l.projeto.valorHora
                         : null

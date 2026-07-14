@@ -32,7 +32,6 @@ export const escoposService = {
       status: dto.status ?? 'Pendente',
       dataInicio: dto.dataInicio,
       dataFim: dto.dataFim,
-      faturavel: dto.faturavel ?? true,
       dataCriacao: agora(),
       observacoes: dto.observacoes?.trim(),
     }
@@ -51,7 +50,6 @@ export const escoposService = {
       ...(dto.status && { status: dto.status }),
       ...(dto.dataInicio !== undefined && { dataInicio: dto.dataInicio }),
       ...(dto.dataFim !== undefined && { dataFim: dto.dataFim }),
-      ...(dto.faturavel !== undefined && { faturavel: dto.faturavel }),
       ...(dto.observacoes !== undefined && { observacoes: dto.observacoes?.trim() }),
     })
     if (!atualizado) throw new Error('Falha ao atualizar escopo')

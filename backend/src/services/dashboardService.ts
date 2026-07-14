@@ -1,6 +1,7 @@
 import { lancamentosRepo, projetosRepo, clientesRepo } from '../repositories'
 import { DashboardData, Projeto, LancamentoHoras } from '../types'
-import { hoje, somarHoras, lancamentoEhFaturavel } from '../utils/tempo'
+import { hoje, somarHoras } from '../utils/tempo'
+import { STATUS_ENCERRADO, projetoEhFaturavel, lancamentoEhFaturavel } from '../utils/faturamento'
 import { projetosService } from './projetosService'
 
 function dataInicioSemana(): string {
@@ -25,23 +26,11 @@ function horasEmAndamento(horaInicio: string, data: string): number {
   return Math.round((diffMs / 3600000) * 100) / 100
 }
 
-// Status que encerram um projeto — horas não são mais faturáveis
-const STATUS_ENCERRADO = new Set(['Finalizado', 'Cancelado'])
-
-// Um projeto é faturável se não está pago E não está encerrado
-function projetoEhFaturavel(p: Projeto): boolean {
-  return !p.pago && !STATUS_ENCERRADO.has(p.status)
-}
-
-// Um lançamento é faturável se:
-// 1. O projeto não está pago nem encerrado
-// 2. A data do lançamento é anterior à dataPagamento (quando existe)
+// Um lançamento é faturável segundo a regra única de utils/faturamento.ts
 function lancamentoFaturavel(l: LancamentoHoras, projetoMap: Map<string, Projeto>): boolean {
   const projeto = projetoMap.get(l.projetoId)
   if (!projeto) return false
-  if (STATUS_ENCERRADO.has(projeto.status)) return false
-  if (projeto.pago && !projeto.dataPagamento) return false
-  return lancamentoEhFaturavel(l.data, projeto.dataPagamento)
+  return lancamentoEhFaturavel(l, projeto)
 }
 
 export const dashboardService = {

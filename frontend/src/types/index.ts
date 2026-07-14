@@ -41,7 +41,6 @@ export interface AlteracaoEscopo {
   status: StatusEscopo
   dataInicio?: string
   dataFim?: string
-  faturavel: boolean
   dataCriacao: string
   observacoes?: string
 }
@@ -61,6 +60,7 @@ export interface LancamentoHoras {
   tipo: TipoLancamento
   dataCriacao: string
   dataAtualizacao: string
+  faturavel?: boolean // computado pelo backend (utils/faturamento.ts) — não persistido
 }
 
 export interface ResumoProjeto {

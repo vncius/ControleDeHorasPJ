@@ -64,7 +64,6 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
     status: (editando?.status ?? 'Pendente') as StatusEscopo,
     dataInicio: editando?.dataInicio ?? '',
     dataFim: editando?.dataFim ?? '',
-    faturavel: editando?.faturavel ?? true,
     observacoes: editando?.observacoes ?? '',
   })
   const [salvando, setSalvando] = useState(false)
@@ -85,7 +84,6 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
         status: form.status,
         dataInicio: form.dataInicio || undefined,
         dataFim: form.dataFim || undefined,
-        faturavel: form.faturavel,
         observacoes: form.observacoes || undefined,
       }
       if (editando) {
@@ -147,28 +145,6 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
               <input className="input input-mono" type="date" value={form.dataFim}
                 onChange={e => setForm(f => ({ ...f, dataFim: e.target.value }))} />
             </div>
-          </div>
-          {/* Faturável */}
-          <div style={{
-            background: form.faturavel ? 'rgba(168,255,62,0.06)' : 'rgba(92,200,255,0.06)',
-            border: `1px solid ${form.faturavel ? 'rgba(168,255,62,0.2)' : 'rgba(92,200,255,0.2)'}`,
-            borderRadius: 'var(--radius)', padding: '12px 16px',
-          }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-              <input type="checkbox" checked={form.faturavel}
-                onChange={e => setForm(f => ({ ...f, faturavel: e.target.checked }))}
-                style={{ accentColor: 'var(--accent)', width: 16, height: 16 }} />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: form.faturavel ? 'var(--accent)' : 'var(--info)' }}>
-                  {form.faturavel ? 'Horas faturáveis' : 'Horas não faturáveis'}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                  {form.faturavel
-                    ? 'As horas trabalhadas neste escopo serão contadas como faturáveis'
-                    : 'As horas deste escopo não serão contabilizadas como faturáveis'}
-                </div>
-              </div>
-            </label>
           </div>
           <div className="form-group">
             <label className="form-label">Observações</label>
@@ -433,7 +409,6 @@ export default function ProjetoDetalhe({ toast }: Props) {
                       <th style={{ width: 90 }}>Fim</th>
                       <th style={{ width: 90 }}>Horas</th>
                       <th style={{ width: 90 }}>Status</th>
-                      <th style={{ width: 90 }}>Faturável</th>
                       <th style={{ width: 80 }}></th>
                     </tr>
                   </thead>
@@ -450,11 +425,6 @@ export default function ProjetoDetalhe({ toast }: Props) {
                           +{e.horasAdicionais.toFixed(1)}h
                         </td>
                         <td>{badgeEscopo(e.status)}</td>
-                        <td>
-                          {e.faturavel
-                            ? <span className="badge badge-ativo">Sim</span>
-                            : <span className="badge" style={{ background: 'rgba(92,200,255,0.12)', color: 'var(--info)' }}>Não</span>}
-                        </td>
                         <td onClick={ev => ev.stopPropagation()}>
                           <div className="flex-center gap-4">
                             <button className="btn btn-ghost btn-sm btn-icon" onClick={() => { setEscopoEditando(e); setModalEscopo(true) }}>✎</button>
@@ -469,7 +439,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
                       <tr style={{ borderTop: '1px solid var(--border-light)' }}>
                         <td colSpan={3} style={{ padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total aprovado</td>
                         <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent)', fontSize: 13 }}>+{resumo.horasExtrasAprovadas.toFixed(1)}h</td>
-                        <td colSpan={3} />
+                        <td colSpan={2} />
                       </tr>
                     </tfoot>
                   )}
