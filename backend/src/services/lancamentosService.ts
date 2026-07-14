@@ -29,13 +29,14 @@ function calcularEAtribuir(
   return { totalHHMM: diff.hhMM, totalDecimal: diff.decimal }
 }
 
-async function salvarUltimaDescricao(projetoId: string, descricao: string): Promise<void> {
-  const pref = await preferenciasRepo.findOneBy((p) => p.projetoId === projetoId)
+async function salvarUltimaDescricao(tenantId: string, projetoId: string, descricao: string): Promise<void> {
+  const pref = await preferenciasRepo.findOneBy((p) => p.tenantId === tenantId && p.projetoId === projetoId)
   if (pref) {
-    await preferenciasRepo.update(pref.id, { ultimaDescricaoLancamento: descricao })
+    await preferenciasRepo.updateForTenant(pref.id, tenantId, { ultimaDescricaoLancamento: descricao })
   } else {
     await preferenciasRepo.create({
       id: uuid(),
+      tenantId,
       projetoId,
       ultimaDescricaoLancamento: descricao,
     })
@@ -47,9 +48,9 @@ async function salvarUltimaDescricao(projetoId: string, descricao: string): Prom
 // ----------------------------------------------------------------
 
 export const lancamentosService = {
-  async listarPorProjeto(projetoId: string): Promise<LancamentoHoras[]> {
-    const projeto = await projetosRepo.findById(projetoId)
-    const lancamentos = await lancamentosRepo.findBy((l) => l.projetoId === projetoId)
+  async listarPorProjeto(tenantId: string, projetoId: string): Promise<LancamentoHoras[]> {
+    const projeto = await projetosRepo.findByIdAndTenant(projetoId, tenantId)
+    const lancamentos = await lancamentosRepo.findBy((l) => l.tenantId === tenantId && l.projetoId === projetoId)
     return lancamentos
       .sort((a, b) => {
         const dataDiff = b.data.localeCompare(a.data)
@@ -59,36 +60,37 @@ export const lancamentosService = {
       .map((l) => ({ ...l, faturavel: projeto ? lancamentoEhFaturavel(l, projeto) : true }))
   },
 
-  async buscarPorId(id: string): Promise<LancamentoHoras> {
-    const lancamento = await lancamentosRepo.findById(id)
+  async buscarPorId(tenantId: string, id: string): Promise<LancamentoHoras> {
+    const lancamento = await lancamentosRepo.findByIdAndTenant(id, tenantId)
     if (!lancamento) throw new Error(`Lançamento não encontrado: ${id}`)
     return lancamento
   },
 
-  async buscarEmAndamento(): Promise<LancamentoHoras | null> {
-    const lancamento = await lancamentosRepo.findOneBy((l) => !l.horaFim)
+  async buscarEmAndamento(tenantId: string): Promise<LancamentoHoras | null> {
+    const [lancamento] = await lancamentosRepo.findBy((l) => l.tenantId === tenantId && !l.horaFim)
     return lancamento ?? null
   },
 
-  async obterUltimaDescricao(projetoId: string): Promise<string | undefined> {
-    const pref = await preferenciasRepo.findOneBy((p) => p.projetoId === projetoId)
+  async obterUltimaDescricao(tenantId: string, projetoId: string): Promise<string | undefined> {
+    const pref = await preferenciasRepo.findOneBy((p) => p.tenantId === tenantId && p.projetoId === projetoId)
     return pref?.ultimaDescricaoLancamento
   },
 
   // --- Controle de ponto: Iniciar ---
-  async iniciarTrabalho(projetoId: string, descricao?: string): Promise<LancamentoHoras> {
-    if (!(await projetosRepo.exists(projetoId))) throw new Error('Projeto não encontrado')
+  async iniciarTrabalho(tenantId: string, projetoId: string, descricao?: string): Promise<LancamentoHoras> {
+    if (!(await projetosRepo.existsForTenant(projetoId, tenantId))) throw new Error('Projeto não encontrado')
 
-    const emAndamento = await this.buscarEmAndamento()
+    const emAndamento = await this.buscarEmAndamento(tenantId)
     if (emAndamento) {
       throw new Error(
         `Já existe um lançamento em andamento (projeto: ${emAndamento.projetoId}). Finalize-o antes de iniciar outro.`
       )
     }
 
-    const ultimaDesc = await this.obterUltimaDescricao(projetoId)
+    const ultimaDesc = await this.obterUltimaDescricao(tenantId, projetoId)
     const lancamento: LancamentoHoras = {
       id: uuid(),
+      tenantId,
       projetoId,
       data: hoje(),
       horaInicio: horaAtual(),
@@ -101,8 +103,8 @@ export const lancamentosService = {
   },
 
   // --- Controle de ponto: Finalizar ---
-  async finalizarTrabalho(id: string, dto: FinalizarLancamentoDTO): Promise<LancamentoHoras> {
-    const lancamento = await this.buscarPorId(id)
+  async finalizarTrabalho(tenantId: string, id: string, dto: FinalizarLancamentoDTO): Promise<LancamentoHoras> {
+    const lancamento = await this.buscarPorId(tenantId, id)
     if (lancamento.horaFim) throw new Error('Lançamento já foi finalizado')
 
     const horaFim = dto.horaFim ?? horaAtual()
@@ -111,7 +113,7 @@ export const lancamentosService = {
 
     const descricao = dto.descricao ?? lancamento.descricao
 
-    const atualizado = await lancamentosRepo.update(id, {
+    const atualizado = await lancamentosRepo.updateForTenant(id, tenantId, {
       horaFim,
       totalHHMM: calculo.hhMM,
       totalDecimal: calculo.decimal,
@@ -120,13 +122,13 @@ export const lancamentosService = {
     })
     if (!atualizado) throw new Error('Falha ao finalizar lançamento')
 
-    if (descricao) await salvarUltimaDescricao(lancamento.projetoId, descricao)
+    if (descricao) await salvarUltimaDescricao(tenantId, lancamento.projetoId, descricao)
     return atualizado
   },
 
   // --- Lançamento manual ---
-  async criar(dto: CriarLancamentoDTO): Promise<LancamentoHoras> {
-    if (!(await projetosRepo.exists(dto.projetoId))) throw new Error('Projeto não encontrado')
+  async criar(tenantId: string, dto: CriarLancamentoDTO): Promise<LancamentoHoras> {
+    if (!(await projetosRepo.existsForTenant(dto.projetoId, tenantId))) throw new Error('Projeto não encontrado')
     if (!isDataValida(dto.data)) throw new Error('Data inválida (esperado YYYY-MM-DD)')
     if (!isHoraValida(dto.horaInicio)) throw new Error('Hora início inválida (esperado HH:MM)')
 
@@ -143,6 +145,7 @@ export const lancamentosService = {
 
     const lancamento: LancamentoHoras = {
       id: uuid(),
+      tenantId,
       projetoId: dto.projetoId,
       escopoId: dto.escopoId,
       data: dto.data,
@@ -155,13 +158,13 @@ export const lancamentosService = {
     }
 
     const criado = await lancamentosRepo.create(lancamento)
-    if (dto.descricao) await salvarUltimaDescricao(dto.projetoId, dto.descricao)
+    if (dto.descricao) await salvarUltimaDescricao(tenantId, dto.projetoId, dto.descricao)
     return criado
   },
 
   // --- Edição ---
-  async atualizar(id: string, dto: AtualizarLancamentoDTO): Promise<LancamentoHoras> {
-    const lancamento = await this.buscarPorId(id)
+  async atualizar(tenantId: string, id: string, dto: AtualizarLancamentoDTO): Promise<LancamentoHoras> {
+    const lancamento = await this.buscarPorId(tenantId, id)
 
     const horaInicio = dto.horaInicio ?? lancamento.horaInicio
     const horaFim = dto.horaFim !== undefined ? dto.horaFim : lancamento.horaFim
@@ -187,23 +190,23 @@ export const lancamentosService = {
       partial.totalDecimal = undefined
     }
 
-    const atualizado = await lancamentosRepo.update(id, partial)
+    const atualizado = await lancamentosRepo.updateForTenant(id, tenantId, partial)
     if (!atualizado) throw new Error('Falha ao atualizar lançamento')
 
-    if (dto.descricao) await salvarUltimaDescricao(lancamento.projetoId, dto.descricao)
+    if (dto.descricao) await salvarUltimaDescricao(tenantId, lancamento.projetoId, dto.descricao)
     return atualizado
   },
 
   // --- Cancelar (excluir lançamento em andamento ou qualquer um) ---
-  async excluir(id: string): Promise<void> {
-    await this.buscarPorId(id)
-    await lancamentosRepo.delete(id)
+  async excluir(tenantId: string, id: string): Promise<void> {
+    await this.buscarPorId(tenantId, id)
+    await lancamentosRepo.deleteForTenant(id, tenantId)
   },
 
   // --- Duplicar ---
-  async duplicar(id: string): Promise<LancamentoHoras> {
-    const original = await this.buscarPorId(id)
-    return this.criar({
+  async duplicar(tenantId: string, id: string): Promise<LancamentoHoras> {
+    const original = await this.buscarPorId(tenantId, id)
+    return this.criar(tenantId, {
       projetoId: original.projetoId,
       data: hoje(),
       horaInicio: original.horaInicio,

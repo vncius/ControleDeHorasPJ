@@ -1,6 +1,7 @@
 [
   {
     "id": "11111111-1111-1111-1111-111111111111",
+    "tenantId": "exemplo@dominio.com",
     "nome": "Empresa Exemplo Ltda",
     "observacoes": "Cliente fictício de exemplo",
     "dataCriacao": "2026-01-10T09:00:00.000Z"

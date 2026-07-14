@@ -34,13 +34,13 @@ function lancamentoFaturavel(l: LancamentoHoras, projetoMap: Map<string, Projeto
 }
 
 export const dashboardService = {
-  async obter(): Promise<DashboardData> {
+  async obter(tenantId: string): Promise<DashboardData> {
     const dataHoje = hoje()
     const inicioSemana = dataInicioSemana()
     const inicioMes = dataInicioMes()
 
-    const todosLancamentos = await lancamentosRepo.findAll()
-    const todosProjetos = await projetosRepo.findAll()
+    const todosLancamentos = await lancamentosRepo.findAllByTenant(tenantId)
+    const todosProjetos = await projetosRepo.findAllByTenant(tenantId)
 
     const projetoMap = new Map(todosProjetos.map(p => [p.id, p]))
 
@@ -51,7 +51,7 @@ export const dashboardService = {
     const idsAtivos = new Set(projetosAtivos.map(p => p.id))
 
     // lançamento em aberto
-    const emAndamento = await lancamentosRepo.findOneBy((l) => !l.horaFim)
+    const [emAndamento] = await lancamentosRepo.findBy((l) => l.tenantId === tenantId && !l.horaFim)
     const horasAberto = emAndamento ? horasEmAndamento(emAndamento.horaInicio, emAndamento.data) : 0
     const abertoFaturavel = emAndamento
       ? lancamentoFaturavel(emAndamento, projetoMap)
@@ -87,8 +87,8 @@ export const dashboardService = {
     // lançamento em andamento enriquecido
     let lancamentoEmAndamento: DashboardData['lancamentoEmAndamento'] = null
     if (emAndamento) {
-      const projeto = await projetosRepo.findById(emAndamento.projetoId)
-      const cliente = projeto ? await clientesRepo.findById(projeto.clienteId) : undefined
+      const projeto = await projetosRepo.findByIdAndTenant(emAndamento.projetoId, tenantId)
+      const cliente = projeto ? await clientesRepo.findByIdAndTenant(projeto.clienteId, tenantId) : undefined
       if (projeto && cliente) lancamentoEmAndamento = { ...emAndamento, projeto, cliente }
     }
 
@@ -98,8 +98,8 @@ export const dashboardService = {
     const projFaturaveis  = projetosAtivos.filter(p => projetoEhFaturavel(p))
     const projNaoFaturaveis = projetosAtivos.filter(p => !projetoEhFaturavel(p))
 
-    const resumosProjetos       = await Promise.all(projFaturaveis.map(p => projetosService.calcularResumo(p.id)))
-    const resumosProjetosPagos  = await Promise.all(projNaoFaturaveis.map(p => projetosService.calcularResumo(p.id)))
+    const resumosProjetos       = await Promise.all(projFaturaveis.map(p => projetosService.calcularResumo(tenantId, p.id)))
+    const resumosProjetosPagos  = await Promise.all(projNaoFaturaveis.map(p => projetosService.calcularResumo(tenantId, p.id)))
 
     const projetosProximosLimite = resumosProjetos.filter(
       r => !r.horasAbertas && r.percentualConsumido >= 80

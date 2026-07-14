@@ -26,20 +26,20 @@ async function handle(res: Response, fn: () => Promise<unknown> | unknown, statu
 // ----------------------------------------------------------------
 export const clientesController = {
   listar(req: Request, res: Response) {
-    handle(res, () => clientesService.listar())
+    handle(res, () => clientesService.listar(req.usuario!.email))
   },
   buscar(req: Request, res: Response) {
-    handle(res, () => clientesService.buscarPorId(req.params.id))
+    handle(res, () => clientesService.buscarPorId(req.usuario!.email, req.params.id))
   },
   criar(req: Request, res: Response) {
-    handle(res, () => clientesService.criar(req.body), 201)
+    handle(res, () => clientesService.criar(req.usuario!.email, req.body), 201)
   },
   atualizar(req: Request, res: Response) {
-    handle(res, () => clientesService.atualizar(req.params.id, req.body))
+    handle(res, () => clientesService.atualizar(req.usuario!.email, req.params.id, req.body))
   },
   excluir(req: Request, res: Response) {
     handle(res, async () => {
-      await clientesService.excluir(req.params.id)
+      await clientesService.excluir(req.usuario!.email, req.params.id)
       return { mensagem: 'Cliente excluído com sucesso' }
     })
   },
@@ -50,23 +50,23 @@ export const clientesController = {
 // ----------------------------------------------------------------
 export const projetosController = {
   listar(req: Request, res: Response) {
-    handle(res, () => projetosService.listar(req.query.clienteId as string | undefined))
+    handle(res, () => projetosService.listar(req.usuario!.email, req.query.clienteId as string | undefined))
   },
   buscar(req: Request, res: Response) {
-    handle(res, () => projetosService.buscarPorId(req.params.id))
+    handle(res, () => projetosService.buscarPorId(req.usuario!.email, req.params.id))
   },
   resumo(req: Request, res: Response) {
-    handle(res, () => projetosService.calcularResumo(req.params.id))
+    handle(res, () => projetosService.calcularResumo(req.usuario!.email, req.params.id))
   },
   criar(req: Request, res: Response) {
-    handle(res, () => projetosService.criar(req.body), 201)
+    handle(res, () => projetosService.criar(req.usuario!.email, req.body), 201)
   },
   atualizar(req: Request, res: Response) {
-    handle(res, () => projetosService.atualizar(req.params.id, req.body))
+    handle(res, () => projetosService.atualizar(req.usuario!.email, req.params.id, req.body))
   },
   excluir(req: Request, res: Response) {
     handle(res, async () => {
-      await projetosService.excluir(req.params.id)
+      await projetosService.excluir(req.usuario!.email, req.params.id)
       return { mensagem: 'Projeto excluído com sucesso' }
     })
   },
@@ -77,21 +77,21 @@ export const projetosController = {
 // ----------------------------------------------------------------
 export const escoposController = {
   listarPorProjeto(req: Request, res: Response) {
-    handle(res, () => escoposService.listarPorProjeto(req.params.projetoId))
+    handle(res, () => escoposService.listarPorProjeto(req.usuario!.email, req.params.projetoId))
   },
   criar(req: Request, res: Response) {
     handle(
       res,
-      () => escoposService.criar({ ...req.body, projetoId: req.params.projetoId }),
+      () => escoposService.criar(req.usuario!.email, { ...req.body, projetoId: req.params.projetoId }),
       201
     )
   },
   atualizar(req: Request, res: Response) {
-    handle(res, () => escoposService.atualizar(req.params.id, req.body))
+    handle(res, () => escoposService.atualizar(req.usuario!.email, req.params.id, req.body))
   },
   excluir(req: Request, res: Response) {
     handle(res, async () => {
-      await escoposService.excluir(req.params.id)
+      await escoposService.excluir(req.usuario!.email, req.params.id)
       return { mensagem: 'Escopo excluído com sucesso' }
     })
   },
@@ -102,43 +102,43 @@ export const escoposController = {
 // ----------------------------------------------------------------
 export const lancamentosController = {
   listarPorProjeto(req: Request, res: Response) {
-    handle(res, () => lancamentosService.listarPorProjeto(req.params.projetoId))
+    handle(res, () => lancamentosService.listarPorProjeto(req.usuario!.email, req.params.projetoId))
   },
   buscar(req: Request, res: Response) {
-    handle(res, () => lancamentosService.buscarPorId(req.params.id))
+    handle(res, () => lancamentosService.buscarPorId(req.usuario!.email, req.params.id))
   },
   emAndamento(req: Request, res: Response) {
-    handle(res, () => lancamentosService.buscarEmAndamento())
+    handle(res, () => lancamentosService.buscarEmAndamento(req.usuario!.email))
   },
   ultimaDescricao(req: Request, res: Response) {
     handle(res, async () => ({
-      descricao: await lancamentosService.obterUltimaDescricao(req.params.projetoId),
+      descricao: await lancamentosService.obterUltimaDescricao(req.usuario!.email, req.params.projetoId),
     }))
   },
   iniciar(req: Request, res: Response) {
     handle(
       res,
-      () => lancamentosService.iniciarTrabalho(req.params.projetoId, req.body.descricao),
+      () => lancamentosService.iniciarTrabalho(req.usuario!.email, req.params.projetoId, req.body.descricao),
       201
     )
   },
   finalizar(req: Request, res: Response) {
-    handle(res, () => lancamentosService.finalizarTrabalho(req.params.id, req.body))
+    handle(res, () => lancamentosService.finalizarTrabalho(req.usuario!.email, req.params.id, req.body))
   },
   criar(req: Request, res: Response) {
-    handle(res, () => lancamentosService.criar(req.body), 201)
+    handle(res, () => lancamentosService.criar(req.usuario!.email, req.body), 201)
   },
   atualizar(req: Request, res: Response) {
-    handle(res, () => lancamentosService.atualizar(req.params.id, req.body))
+    handle(res, () => lancamentosService.atualizar(req.usuario!.email, req.params.id, req.body))
   },
   excluir(req: Request, res: Response) {
     handle(res, async () => {
-      await lancamentosService.excluir(req.params.id)
+      await lancamentosService.excluir(req.usuario!.email, req.params.id)
       return { mensagem: 'Lançamento excluído com sucesso' }
     })
   },
   duplicar(req: Request, res: Response) {
-    handle(res, () => lancamentosService.duplicar(req.params.id), 201)
+    handle(res, () => lancamentosService.duplicar(req.usuario!.email, req.params.id), 201)
   },
 }
 
@@ -147,7 +147,7 @@ export const lancamentosController = {
 // ----------------------------------------------------------------
 export const dashboardController = {
   obter(req: Request, res: Response) {
-    handle(res, () => dashboardService.obter())
+    handle(res, () => dashboardService.obter(req.usuario!.email))
   },
 }
 
@@ -169,7 +169,7 @@ export const importacaoController = {
     handle(res, () => {
       const { linhas } = req.body
       if (!Array.isArray(linhas)) throw new Error('Campo "linhas" deve ser um array')
-      return importacaoService.confirmar(req.params.projetoId, linhas)
+      return importacaoService.confirmar(req.usuario!.email, req.params.projetoId, linhas)
     }, 201)
   },
 }

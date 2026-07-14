@@ -301,7 +301,7 @@ Total disponível:     257h
 ```
 
 ### Lançamentos — Controle de Ponto
-- Apenas **um lançamento em andamento por vez em todo o sistema** (não por projeto — ver nota em "Limitações conhecidas")
+- Apenas **um lançamento em andamento por vez por usuário (tenant)** — não por projeto, mas cada usuário tem seu próprio controle independente dos demais
 - Ao iniciar com outro lançamento já aberto em **outro projeto**: o sistema abre um modal de finalização → ao confirmar, encerra o anterior e inicia o novo automaticamente
 - `horaFim` não pode ser anterior a `horaInicio`
 - Total HH:MM e decimal calculados automaticamente pelo backend
@@ -377,19 +377,27 @@ percentual = totalTrabalhado / totalDisponivel * 100
 - **`baseRepository.update`** deleta explicitamente chaves com valor `undefined` no partial, para permitir remoção de campos opcionais (equivalente a um `$unset` do MongoDB)
 - **`pago: false`** é o valor padrão para novos projetos
 - O frontend envia `horasContratadas: null` (não `undefined`) para sinalizar remoção do campo — ver `Omit<Partial<Projeto>, 'horasContratadas'> & { horasContratadas?: number | null }` em `frontend/src/services/api.ts`
-- Sem autenticação — sistema single-user local (ver limitações abaixo)
-- Sem variáveis de ambiente obrigatórias para rodar localmente
+- Autenticação via Google OAuth + sessão própria (JWT em cookie httpOnly); acesso restrito por allowlist de e-mails (`ALLOWED_EMAILS`)
+- Isolamento multi-tenant por e-mail: cada usuário aprovado enxerga só os próprios dados (`tenantId` em toda entidade — ver seção seguinte)
+- Sem variáveis de ambiente obrigatórias além das de autenticação (ver `.env.example`)
+
+## Autenticação e multi-tenant
+
+- Login com Google (Google Identity Services) — o backend valida o ID token via `google-auth-library` e só aceita e-mails presentes em `ALLOWED_EMAILS` (lista separada por vírgula, em `backend/.env`).
+- Após o login, o backend emite sua própria sessão (JWT assinado, cookie `sessao` httpOnly) — o token do Google não é reutilizado nas chamadas seguintes.
+- Cada e-mail aprovado é um **tenant** isolado (`tenantId` = o próprio e-mail). Todas as entidades (`Cliente`, `Projeto`, `AlteracaoEscopo`, `LancamentoHoras`, `PreferenciasProjeto`) carregam esse campo, e toda leitura/escrita é filtrada por ele — a checagem de posse é centralizada em `baseRepository.ts` (`findAllByTenant`/`findByIdAndTenant`/`updateForTenant`/`deleteForTenant`/`existsForTenant`), nunca reimplementada manualmente nos services.
+- Não existe conceito de "organização"/equipe — é um tenant por e-mail. Um novo e-mail aprovado começa com workspace vazio; os dados existentes antes desta mudança pertencem a `v.vieira.go@gmail.com`.
+- Para aprovar um novo usuário: adicione o e-mail em `ALLOWED_EMAILS` (`backend/.env`) — não precisa de nenhuma outra configuração, o tenant é criado implicitamente no primeiro uso.
 
 ## Limitações conhecidas / roadmap
 
-- **Sem autenticação e sem multi-tenant**: todos os dados são globais a um único usuário. Login (Google) e isolamento por tenant estão planejados.
-- **Persistência em JSON**: sem transação e sem lock de escrita — adequado para uso single-user, não para concorrência real. Migração para MongoDB está planejada; a camada `repositories/` foi desenhada para isolar essa troca.
-- **"Um lançamento em andamento por vez" é global**, não por usuário — depende da introdução de autenticação/multi-tenant para deixar de ser uma limitação.
-- **CORS fixo** para `http://localhost:5173` em `backend/src/server.ts` — precisa virar configurável antes de qualquer deploy.
+- **Persistência em JSON**: sem transação e sem lock de escrita — adequado para poucos usuários simultâneos, não para concorrência real em escala. Migração para MongoDB está planejada; a camada `repositories/` foi desenhada para isolar essa troca.
+- **CORS** configurável via `CORS_ORIGIN` (padrão `http://localhost:5173`) — ainda assume um único domínio de frontend; revisar antes de qualquer deploy com múltiplos ambientes.
+- **Sem refresh/rotação de sessão**: o cookie de sessão dura 7 dias fixos; não há renovação automática nem revogação individual de sessões.
 
 ## Migração para MongoDB
 
-Para migrar, substitua `backend/src/repositories/baseRepository.ts` e ajuste a interface pública para assíncrona (hoje é síncrona — `findAll(): T[]`, não `Promise<T[]>` — isso exige tocar todos os services e controllers para `async/await`, idealmente como um passo isolado antes da troca de banco):
+A interface pública já é assíncrona (`Promise`-based) e já inclui os métodos com checagem de tenant — a troca de banco deve substituir só `backend/src/repositories/baseRepository.ts`, mantendo a mesma interface:
 
 ```typescript
 findAll(): Promise<T[]>
@@ -400,4 +408,13 @@ create(item: T): Promise<T>
 update(id: string, partial: Partial<T>): Promise<T | null>
 delete(id: string): Promise<boolean>
 exists(id: string): Promise<boolean>
+
+// convenções com checagem de tenant — usadas por todos os services
+findAllByTenant(tenantId: string): Promise<T[]>
+findByIdAndTenant(id: string, tenantId: string): Promise<T | undefined>
+updateForTenant(id: string, tenantId: string, partial: Partial<T>): Promise<T | null>
+deleteForTenant(id: string, tenantId: string): Promise<boolean>
+existsForTenant(id: string, tenantId: string): Promise<boolean>
 ```
+
+Ao migrar, crie índices compostos começando por `tenantId` (ex.: `{tenantId: 1, projetoId: 1}` em `lancamentosHoras`, `{tenantId: 1}` único onde fizer sentido) — toda consulta relevante já filtra por tenant primeiro.

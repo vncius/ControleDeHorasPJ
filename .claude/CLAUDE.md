@@ -20,12 +20,14 @@ npm run build      # build de produção real (já pegou bugs que o dev server n
 - Nomes de entidades e campos são em **português** (`Cliente`, `Projeto`, `AlteracaoEscopo`/"escopo", `LancamentoHoras`, `pago`, `faturavel`, `horasAbertas`, `dataPagamento`) — não traduza para inglês.
 - Datas de projeto/lançamento: string `YYYY-MM-DD`. Datas de auditoria (`dataCriacao` etc.): ISO 8601 completo. Horas: string `HH:MM`.
 - `horasContratadas` ausente = "horas abertas" (projeto sem limite contratado) — é um estado de negócio válido, não um bug.
+- `tenantId` (= e-mail do usuário autenticado) existe em toda entidade persistida. Nunca aceite `tenantId` vindo do corpo da requisição/query string — sempre de `req.usuario.email` (preenchido pelo `requireAuth`).
 
 ## Onde estão as regras de negócio (não duplicar)
 
 - **Faturabilidade** (projeto e lançamento): `backend/src/utils/faturamento.ts` é a única fonte. O campo `faturavel` em `LancamentoHoras` é computado por `lancamentosService.listarPorProjeto` e devolvido pela API — o frontend consome esse campo (`Relatorios.tsx`), nunca reimplementa a regra.
 - **Cálculos de tempo** (hora atual, tempo decorrido, soma de horas): `backend/src/utils/tempo.ts` e, no frontend, `frontend/src/utils/tempo.ts`. São dois arquivos (backend/frontend não compartilham runtime), mas dentro de cada lado é a única implementação.
 - **Cores/labels de status de projeto**: `frontend/src/constants/statusProjeto.ts`.
+- **Checagem de posse por tenant**: centralizada em `backend/src/repositories/baseRepository.ts` (`findAllByTenant`, `findByIdAndTenant`, `updateForTenant`, `deleteForTenant`, `existsForTenant`). Nunca reimplemente `item.tenantId === tenantId` manualmente num service — use esses métodos, inclusive para validar referências entre entidades (ex.: `clienteId` de um `Projeto` precisa existir *no mesmo tenant*, não só existir).
 - Antes de adicionar uma regra de cálculo/validação nova, verifique se ela já existe em um desses arquivos.
 
 ## Dados sensíveis
@@ -38,9 +40,8 @@ npm run build      # build de produção real (já pegou bugs que o dev server n
 ## Dívida técnica conhecida
 
 - Um projeto real (`projetos.json`) tem `status: "Pausado"` — valor legado que não existe mais no tipo `StatusProjeto` atual. Não normaliza sozinho porque a chave não é "encerrado"; se for tocar em migração de dados, considerar isso.
-- A camada `repositories/` é **síncrona** (`findAll(): T[]`). Antes da migração para MongoDB, ela precisa virar `Promise`-based — ver plano de refatoração abaixo.
-- CORS fixo para `http://localhost:5173` em `backend/src/server.ts` — não é configurável ainda.
-- "Um lançamento em andamento por vez" é uma regra **global**, não por usuário — só deixa de ser problema depois do multi-tenant.
+- Sessão sem refresh/rotação: o cookie JWT dura 7 dias fixos, sem renovação automática nem revogação individual.
+- Acesso é controlado por allowlist manual (`ALLOWED_EMAILS` em `backend/.env`) — não há autocadastro aberto nem fluxo de convite; adicionar alguém é editar essa variável.
 
 ## Estado da refatoração em andamento
 
@@ -50,10 +51,10 @@ Este projeto está passando por uma sequência de melhorias arquiteturais (rodad
 2. ✅ Correção dos erros de build TypeScript
 3. ✅ Unificação da regra de "faturável" + remoção do campo morto `AlteracaoEscopo.faturavel`
 4. ✅ Remoção de duplicação de `STATUS_COR` e helpers de hora no frontend
-5. ✅ Esta consolidação de documentação + este arquivo
-6. ⬜ Conversão de `repositories`/`services` para `async/await` (preparação para Mongo)
-7. ⬜ Login com Google (OAuth)
-8. ⬜ Isolamento multi-tenant (`tenantId` em todas as entidades)
+5. ✅ Consolidação de documentação + este arquivo
+6. ✅ Conversão de `repositories`/`services` para `async/await` (preparação para Mongo)
+7. ✅ Login com Google (OAuth), restrito por allowlist de e-mails
+8. ✅ Isolamento multi-tenant (`tenantId` em todas as entidades, checagem centralizada em `baseRepository.ts`)
 9. ⬜ Migração de JSON para MongoDB
 
-Se for continuar esse trabalho, comece pelo próximo item não marcado — os anteriores já mudaram comportamento (ex.: a regra de faturável não é mais a mesma do README antigo).
+Se for continuar esse trabalho, comece pelo próximo item não marcado — os anteriores já mudaram comportamento (ex.: a regra de faturável não é mais a mesma do README antigo, e todo dado agora é filtrado por `tenantId`).

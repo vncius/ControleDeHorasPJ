@@ -8,7 +8,7 @@ const DATA_DIR = path.join(__dirname, '..', 'data')
 // Troque apenas esta camada quando migrar para MongoDB.
 // ============================================================
 
-export class BaseRepository<T extends { id: string }> {
+export class BaseRepository<T extends { id: string; tenantId: string }> {
   private filePath: string
 
   constructor(fileName: string) {
@@ -91,5 +91,34 @@ export class BaseRepository<T extends { id: string }> {
 
   async exists(id: string): Promise<boolean> {
     return !!(await this.findById(id))
+  }
+
+  // --- Conveniências com checagem de tenant centralizada ---
+  // Nunca reimplemente a checagem de posse (item.tenantId === tenantId) manualmente
+  // nos services — sempre use os métodos abaixo.
+
+  async findAllByTenant(tenantId: string): Promise<T[]> {
+    return this.findBy((item) => item.tenantId === tenantId)
+  }
+
+  async findByIdAndTenant(id: string, tenantId: string): Promise<T | undefined> {
+    const item = await this.findById(id)
+    return item && item.tenantId === tenantId ? item : undefined
+  }
+
+  async updateForTenant(id: string, tenantId: string, partial: Partial<T>): Promise<T | null> {
+    const item = await this.findByIdAndTenant(id, tenantId)
+    if (!item) return null
+    return this.update(id, partial)
+  }
+
+  async deleteForTenant(id: string, tenantId: string): Promise<boolean> {
+    const item = await this.findByIdAndTenant(id, tenantId)
+    if (!item) return false
+    return this.delete(id)
+  }
+
+  async existsForTenant(id: string, tenantId: string): Promise<boolean> {
+    return !!(await this.findByIdAndTenant(id, tenantId))
   }
 }

@@ -4,6 +4,7 @@
 
 export interface Cliente {
   id: string
+  tenantId: string
   nome: string
   observacoes?: string
   dataCriacao: string
@@ -20,6 +21,7 @@ export type StatusProjeto =
 
 export interface Projeto {
   id: string
+  tenantId: string
   clienteId: string
   nome: string
   descricao?: string
@@ -38,6 +40,7 @@ export type StatusEscopo = 'Pendente' | 'Aprovada' | 'Cancelada'
 
 export interface AlteracaoEscopo {
   id: string
+  tenantId: string
   projetoId: string
   titulo: string
   descricaoDetalhada?: string
@@ -54,6 +57,7 @@ export type TipoLancamento = 'Automatico' | 'Manual' | 'Ajuste' | 'Importado'
 
 export interface LancamentoHoras {
   id: string
+  tenantId: string
   projetoId: string
   escopoId?: string             // associação opcional a alteração de escopo
   data: string                  // YYYY-MM-DD
@@ -70,6 +74,7 @@ export interface LancamentoHoras {
 
 export interface PreferenciasProjeto {
   id: string
+  tenantId: string
   projetoId: string
   ultimaDescricaoLancamento?: string
 }

@@ -4,23 +4,24 @@ import { Cliente, CriarClienteDTO, AtualizarClienteDTO } from '../types'
 import { agora } from '../utils/tempo'
 
 export const clientesService = {
-  async listar(): Promise<Cliente[]> {
-    const clientes = await clientesRepo.findAll()
+  async listar(tenantId: string): Promise<Cliente[]> {
+    const clientes = await clientesRepo.findAllByTenant(tenantId)
     return clientes.sort(
       (a, b) => new Date(b.dataCriacao).getTime() - new Date(a.dataCriacao).getTime()
     )
   },
 
-  async buscarPorId(id: string): Promise<Cliente> {
-    const cliente = await clientesRepo.findById(id)
+  async buscarPorId(tenantId: string, id: string): Promise<Cliente> {
+    const cliente = await clientesRepo.findByIdAndTenant(id, tenantId)
     if (!cliente) throw new Error(`Cliente não encontrado: ${id}`)
     return cliente
   },
 
-  async criar(dto: CriarClienteDTO): Promise<Cliente> {
+  async criar(tenantId: string, dto: CriarClienteDTO): Promise<Cliente> {
     if (!dto.nome?.trim()) throw new Error('Nome do cliente é obrigatório')
     const cliente: Cliente = {
       id: uuid(),
+      tenantId,
       nome: dto.nome.trim(),
       observacoes: dto.observacoes?.trim(),
       dataCriacao: agora(),
@@ -28,9 +29,9 @@ export const clientesService = {
     return clientesRepo.create(cliente)
   },
 
-  async atualizar(id: string, dto: AtualizarClienteDTO): Promise<Cliente> {
-    await this.buscarPorId(id) // valida existência
-    const atualizado = await clientesRepo.update(id, {
+  async atualizar(tenantId: string, id: string, dto: AtualizarClienteDTO): Promise<Cliente> {
+    await this.buscarPorId(tenantId, id) // valida existência e posse
+    const atualizado = await clientesRepo.updateForTenant(id, tenantId, {
       ...(dto.nome && { nome: dto.nome.trim() }),
       ...(dto.observacoes !== undefined && { observacoes: dto.observacoes?.trim() }),
     })
@@ -38,17 +39,17 @@ export const clientesService = {
     return atualizado
   },
 
-  async excluir(id: string): Promise<void> {
-    await this.buscarPorId(id) // valida existência
+  async excluir(tenantId: string, id: string): Promise<void> {
+    await this.buscarPorId(tenantId, id) // valida existência e posse
 
     // Verificar se há projetos vinculados
-    const projetos = await projetosRepo.findBy((p) => p.clienteId === id)
+    const projetos = await projetosRepo.findBy((p) => p.tenantId === tenantId && p.clienteId === id)
     if (projetos.length > 0) {
       throw new Error(
         `Não é possível excluir: cliente possui ${projetos.length} projeto(s) vinculado(s)`
       )
     }
 
-    await clientesRepo.delete(id)
+    await clientesRepo.deleteForTenant(id, tenantId)
   },
 }

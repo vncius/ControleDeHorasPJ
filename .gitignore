@@ -27,3 +27,6 @@ Thumbs.db
 # Mantemos apenas os *.example.json versionados como referência de shape.
 backend/src/data/*.json
 !backend/src/data/*.example.json
+
+# Backup pontual gerado pela migração de tenantId (nunca deve ser commitado)
+backend/src/data/backup-pre-tenant/

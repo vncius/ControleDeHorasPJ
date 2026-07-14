@@ -4,26 +4,27 @@ import { AlteracaoEscopo, CriarEscopoDTO, AtualizarEscopoDTO } from '../types'
 import { agora } from '../utils/tempo'
 
 export const escoposService = {
-  async listarPorProjeto(projetoId: string): Promise<AlteracaoEscopo[]> {
-    const escopos = await escoposRepo.findBy((e) => e.projetoId === projetoId)
+  async listarPorProjeto(tenantId: string, projetoId: string): Promise<AlteracaoEscopo[]> {
+    const escopos = await escoposRepo.findBy((e) => e.tenantId === tenantId && e.projetoId === projetoId)
     return escopos.sort((a, b) => new Date(b.dataCriacao).getTime() - new Date(a.dataCriacao).getTime())
   },
 
-  async buscarPorId(id: string): Promise<AlteracaoEscopo> {
-    const escopo = await escoposRepo.findById(id)
+  async buscarPorId(tenantId: string, id: string): Promise<AlteracaoEscopo> {
+    const escopo = await escoposRepo.findByIdAndTenant(id, tenantId)
     if (!escopo) throw new Error(`Alteração de escopo não encontrada: ${id}`)
     return escopo
   },
 
-  async criar(dto: CriarEscopoDTO): Promise<AlteracaoEscopo> {
+  async criar(tenantId: string, dto: CriarEscopoDTO): Promise<AlteracaoEscopo> {
     if (!dto.titulo?.trim()) throw new Error('Título é obrigatório')
-    if (!(await projetosRepo.exists(dto.projetoId))) throw new Error('Projeto não encontrado')
+    if (!(await projetosRepo.existsForTenant(dto.projetoId, tenantId))) throw new Error('Projeto não encontrado')
     if (dto.horasAdicionais <= 0) throw new Error('Horas adicionais devem ser maiores que zero')
     if (dto.dataInicio && dto.dataFim && dto.dataFim < dto.dataInicio)
       throw new Error('Data fim não pode ser anterior à data início do escopo')
 
     const escopo: AlteracaoEscopo = {
       id: uuid(),
+      tenantId,
       projetoId: dto.projetoId,
       titulo: dto.titulo.trim(),
       descricaoDetalhada: dto.descricaoDetalhada?.trim(),
@@ -37,12 +38,12 @@ export const escoposService = {
     return escoposRepo.create(escopo)
   },
 
-  async atualizar(id: string, dto: AtualizarEscopoDTO): Promise<AlteracaoEscopo> {
-    await this.buscarPorId(id)
+  async atualizar(tenantId: string, id: string, dto: AtualizarEscopoDTO): Promise<AlteracaoEscopo> {
+    await this.buscarPorId(tenantId, id)
     if (dto.dataInicio && dto.dataFim && dto.dataFim < dto.dataInicio)
       throw new Error('Data fim não pode ser anterior à data início do escopo')
 
-    const atualizado = await escoposRepo.update(id, {
+    const atualizado = await escoposRepo.updateForTenant(id, tenantId, {
       ...(dto.titulo && { titulo: dto.titulo.trim() }),
       ...(dto.descricaoDetalhada !== undefined && { descricaoDetalhada: dto.descricaoDetalhada?.trim() }),
       ...(dto.horasAdicionais !== undefined && { horasAdicionais: dto.horasAdicionais }),
@@ -55,8 +56,8 @@ export const escoposService = {
     return atualizado
   },
 
-  async excluir(id: string): Promise<void> {
-    await this.buscarPorId(id)
-    await escoposRepo.delete(id)
+  async excluir(tenantId: string, id: string): Promise<void> {
+    await this.buscarPorId(tenantId, id)
+    await escoposRepo.deleteForTenant(id, tenantId)
   },
 }
