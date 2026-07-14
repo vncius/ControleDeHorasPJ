@@ -1,4 +1,4 @@
-import { BaseRepository } from './baseRepository'
+import { MongoRepository } from './mongoRepository'
 import {
   Cliente,
   Projeto,
@@ -7,15 +7,15 @@ import {
   PreferenciasProjeto,
 } from '../types'
 
-// Cada repository é apenas uma instância tipada do base.
+// Cada repository é apenas uma instância tipada do Mongo repository.
 // Adicione métodos específicos aqui se necessário no futuro.
 
-export const clientesRepo = new BaseRepository<Cliente>('clientes.json')
+export const clientesRepo = new MongoRepository<Cliente>('clientes')
 
-export const projetosRepo = new BaseRepository<Projeto>('projetos.json')
+export const projetosRepo = new MongoRepository<Projeto>('projetos')
 
-export const escoposRepo = new BaseRepository<AlteracaoEscopo>('alteracoesEscopo.json')
+export const escoposRepo = new MongoRepository<AlteracaoEscopo>('alteracoesEscopo')
 
-export const lancamentosRepo = new BaseRepository<LancamentoHoras>('lancamentosHoras.json')
+export const lancamentosRepo = new MongoRepository<LancamentoHoras>('lancamentosHoras')
 
-export const preferenciasRepo = new BaseRepository<PreferenciasProjeto>('preferenciasProjeto.json')
+export const preferenciasRepo = new MongoRepository<PreferenciasProjeto>('preferenciasProjeto')

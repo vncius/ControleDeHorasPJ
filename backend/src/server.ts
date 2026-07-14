@@ -3,6 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import routes from './routes'
+import { conectarMongo } from './repositories/mongoClient'
 
 const app = express()
 const PORT = process.env.PORT ?? 3001
@@ -27,10 +28,19 @@ app.get('/health', (_req, res) => {
 // ----------------------------------------------------------------
 // Start
 // ----------------------------------------------------------------
-app.listen(PORT, () => {
-  console.log(`\n✅ Backend rodando em http://localhost:${PORT}`)
-  console.log(`   API disponível em http://localhost:${PORT}/api`)
-  console.log(`   Health check: http://localhost:${PORT}/health\n`)
+async function iniciar() {
+  await conectarMongo()
+
+  app.listen(PORT, () => {
+    console.log(`\n✅ Backend rodando em http://localhost:${PORT}`)
+    console.log(`   API disponível em http://localhost:${PORT}/api`)
+    console.log(`   Health check: http://localhost:${PORT}/health\n`)
+  })
+}
+
+iniciar().catch((err) => {
+  console.error('Falha ao conectar no MongoDB:', err)
+  process.exit(1)
 })
 
 export default app

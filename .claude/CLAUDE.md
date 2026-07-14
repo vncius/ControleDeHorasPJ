@@ -27,25 +27,28 @@ npm run build      # build de produção real (já pegou bugs que o dev server n
 - **Faturabilidade** (projeto e lançamento): `backend/src/utils/faturamento.ts` é a única fonte. O campo `faturavel` em `LancamentoHoras` é computado por `lancamentosService.listarPorProjeto` e devolvido pela API — o frontend consome esse campo (`Relatorios.tsx`), nunca reimplementa a regra.
 - **Cálculos de tempo** (hora atual, tempo decorrido, soma de horas): `backend/src/utils/tempo.ts` e, no frontend, `frontend/src/utils/tempo.ts`. São dois arquivos (backend/frontend não compartilham runtime), mas dentro de cada lado é a única implementação.
 - **Cores/labels de status de projeto**: `frontend/src/constants/statusProjeto.ts`.
-- **Checagem de posse por tenant**: centralizada em `backend/src/repositories/baseRepository.ts` (`findAllByTenant`, `findByIdAndTenant`, `updateForTenant`, `deleteForTenant`, `existsForTenant`). Nunca reimplemente `item.tenantId === tenantId` manualmente num service — use esses métodos, inclusive para validar referências entre entidades (ex.: `clienteId` de um `Projeto` precisa existir *no mesmo tenant*, não só existir).
+- **Checagem de posse por tenant**: centralizada em `backend/src/repositories/mongoRepository.ts` (`findAllByTenant`, `findByIdAndTenant`, `updateForTenant`, `deleteForTenant`, `existsForTenant`). Nunca reimplemente `item.tenantId === tenantId` manualmente num service — use esses métodos, inclusive para validar referências entre entidades (ex.: `clienteId` de um `Projeto` precisa existir *no mesmo tenant*, não só existir).
 - Antes de adicionar uma regra de cálculo/validação nova, verifique se ela já existe em um desses arquivos.
 
 ## Dados sensíveis
 
-`backend/src/data/*.json` (sem sufixo `.example`) contêm dados **reais** de clientes, projetos e faturamento do usuário — são ignorados pelo git (ver `.gitignore`). Nunca:
-- reproduza o conteúdo desses arquivos em respostas, commits ou documentação;
-- remova o `.gitignore` que os protege;
-- use-os como fonte de exemplo em docs (use os `*.example.json` para isso).
+Os dados **reais** de clientes, projetos e faturamento do usuário vivem hoje no **MongoDB Atlas** (banco `horas-pj`, connection string em `backend/.env`, gitignored). `backend/src/data/*.json` (sem sufixo `.example`) deixaram de ser lidos/escritos pela aplicação e viram **backup histórico** do estado anterior à migração — continuam no disco e ignorados pelo git (ver `.gitignore`). Nunca:
+- reproduza o conteúdo real desses dados (JSON ou Mongo) em respostas, commits ou documentação;
+- remova o `.gitignore` que protege `backend/.env` e `backend/src/data/*.json`;
+- use os JSON reais como fonte de exemplo em docs (use os `*.example.json` para isso);
+- commit a `MONGODB_URI` real fora de `backend/.env`.
 
 ## Dívida técnica conhecida
 
-- Um projeto real (`projetos.json`) tem `status: "Pausado"` — valor legado que não existe mais no tipo `StatusProjeto` atual. Não normaliza sozinho porque a chave não é "encerrado"; se for tocar em migração de dados, considerar isso.
+- Um projeto real (banco Mongo) tem `status: "Pausado"` — valor legado que não existe mais no tipo `StatusProjeto` atual. Não normaliza sozinho porque a chave não é "encerrado"; se for tocar em migração de dados, considerar isso.
 - Sessão sem refresh/rotação: o cookie JWT dura 7 dias fixos, sem renovação automática nem revogação individual.
 - Acesso é controlado por allowlist manual (`ALLOWED_EMAILS` em `backend/.env`) — não há autocadastro aberto nem fluxo de convite; adicionar alguém é editar essa variável.
+- Exclusão em cascata de projeto (`projetosService.excluir`) não é transacional no Mongo — ver README, seção "Limitações conhecidas".
+- `findAll`/`findBy`/`findOneBy` em `mongoRepository.ts` fazem fetch completo da coleção (predicado em JS, não query nativa) — trade-off consciente documentado no topo do arquivo e no README.
 
 ## Estado da refatoração em andamento
 
-Este projeto está passando por uma sequência de melhorias arquiteturais (rodadas uma por vez, cada uma commitada e aprovada antes da próxima):
+A sequência de 9 melhorias arquiteturais planejadas foi **concluída**:
 
 1. ✅ `.gitignore` + dados de exemplo
 2. ✅ Correção dos erros de build TypeScript
@@ -54,7 +57,7 @@ Este projeto está passando por uma sequência de melhorias arquiteturais (rodad
 5. ✅ Consolidação de documentação + este arquivo
 6. ✅ Conversão de `repositories`/`services` para `async/await` (preparação para Mongo)
 7. ✅ Login com Google (OAuth), restrito por allowlist de e-mails
-8. ✅ Isolamento multi-tenant (`tenantId` em todas as entidades, checagem centralizada em `baseRepository.ts`)
-9. ⬜ Migração de JSON para MongoDB
+8. ✅ Isolamento multi-tenant (`tenantId` em todas as entidades, checagem centralizada no repository)
+9. ✅ Migração de JSON para MongoDB Atlas (`mongoRepository.ts`/`mongoClient.ts`, banco `horas-pj`)
 
-Se for continuar esse trabalho, comece pelo próximo item não marcado — os anteriores já mudaram comportamento (ex.: a regra de faturável não é mais a mesma do README antigo, e todo dado agora é filtrado por `tenantId`).
+Não há próximo item planejado nesta sequência. Se for continuar evoluindo a arquitetura, avalie a dívida técnica conhecida acima (cascata não-atômica, fetch completo em `findBy`/`findOneBy`) como candidatos naturais.

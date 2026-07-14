@@ -9,8 +9,8 @@ Sistema web fullstack para controle de horas trabalhadas como PJ/freelancer. Sub
 ### Backend
 - **Node.js** com **Express**
 - **TypeScript**
-- Persistência em **arquivos JSON locais** (`backend/src/data/`), simulando coleções de um banco de documentos
-- Camada de repositório (`baseRepository.ts`) isolando o acesso a disco — pensada para facilitar uma futura migração para MongoDB
+- Persistência em **MongoDB Atlas** (driver nativo `mongodb`, sem ODM) — banco `horas-pj`
+- Camada de repositório (`mongoRepository.ts`) isolando o acesso ao banco; conexão única gerenciada por `mongoClient.ts`
 
 ### Frontend
 - **React 18** com **TypeScript**
@@ -27,10 +27,10 @@ Browser (React/Vite :5173)
         ↓ HTTP fetch /api/*
 Express API (Node.js :3001)
         ↓
-  Controllers → Services → Repositories → JSON files
+  Controllers → Services → Repositories → MongoDB Atlas (banco `horas-pj`)
 ```
 
-**Regra de ouro:** o frontend nunca acessa os arquivos JSON diretamente. Toda comunicação passa pela API REST. A camada `Repository` é a única que toca os arquivos JSON.
+**Regra de ouro:** o frontend nunca acessa o banco diretamente. Toda comunicação passa pela API REST. A camada `Repository` é a única que toca o MongoDB.
 
 ---
 
@@ -45,7 +45,8 @@ ControleDeHorasPJ/
 │       ├── utils/tempo.ts               ← cálculos HH:MM, decimal, validações de data/hora
 │       ├── utils/faturamento.ts         ← fonte única da regra de "faturável" (projeto e lançamento)
 │       ├── repositories/
-│       │   ├── baseRepository.ts        ← CRUD genérico sobre JSON
+│       │   ├── mongoClient.ts           ← conexão única com o MongoDB Atlas + índices
+│       │   ├── mongoRepository.ts       ← CRUD genérico sobre MongoDB
 │       │   └── index.ts
 │       ├── services/
 │       │   ├── clientesService.ts
@@ -57,11 +58,11 @@ ControleDeHorasPJ/
 │       ├── controllers/index.ts
 │       ├── routes/index.ts
 │       └── data/
-│           ├── clientes.json            ← dados reais, ignorado pelo git
-│           ├── projetos.json            ← dados reais, ignorado pelo git
-│           ├── alteracoesEscopo.json    ← dados reais, ignorado pelo git
-│           ├── lancamentosHoras.json    ← dados reais, ignorado pelo git
-│           ├── preferenciasProjeto.json ← dados reais, ignorado pelo git
+│           ├── clientes.json            ← backup histórico, não lido pela aplicação
+│           ├── projetos.json            ← backup histórico, não lido pela aplicação
+│           ├── alteracoesEscopo.json    ← backup histórico, não lido pela aplicação
+│           ├── lancamentosHoras.json    ← backup histórico, não lido pela aplicação
+│           ├── preferenciasProjeto.json ← backup histórico, não lido pela aplicação
 │           └── *.example.json           ← versões fictícias versionadas (referência de shape)
 │
 └── frontend/
@@ -110,11 +111,17 @@ npm run dev
 
 ### Variáveis de ambiente
 
-Nenhuma é obrigatória para rodar localmente. A única reconhecida hoje:
-
 | Variável | Onde | Padrão | Uso |
 |---|---|---|---|
 | `PORT` | backend | `3001` | Porta do servidor Express |
+| `MONGODB_URI` | backend | — (obrigatória) | Connection string do MongoDB Atlas |
+| `MONGODB_DB_NAME` | backend | `horas-pj` | Nome do banco usado dentro do cluster |
+| `GOOGLE_CLIENT_ID` | backend | — (obrigatória) | Client ID do OAuth do Google |
+| `JWT_SECRET` | backend | — (obrigatória) | Segredo para assinar o cookie de sessão |
+| `ALLOWED_EMAILS` | backend | — (obrigatória) | Lista de e-mails (separados por vírgula) autorizados a logar |
+| `CORS_ORIGIN` | backend | `http://localhost:5173` | Origem permitida pelo CORS |
+
+Ver `backend/.env.example` para o formato completo. Sem `MONGODB_URI` válida, o servidor não sobe — a conexão é estabelecida antes de `app.listen`.
 
 ### Build de produção
 
@@ -129,7 +136,7 @@ Rode `npx tsc --noEmit` em cada pacote antes de considerar uma tarefa concluída
 
 ## Dados de exemplo vs. dados reais
 
-Os arquivos em `backend/src/data/*.json` (sem sufixo `.example`) guardam dados reais de clientes, projetos e faturamento e **não são versionados** (ver `.gitignore`). Ao clonar o repositório do zero, o backend inicia com dados vazios — os arquivos `*.example.json` existem apenas como referência do formato, não são lidos automaticamente pela aplicação.
+Os dados reais de clientes, projetos e faturamento vivem hoje no **MongoDB Atlas** (banco `horas-pj`). Os arquivos em `backend/src/data/*.json` (sem sufixo `.example`) são um **backup histórico** do estado anterior à migração — não são lidos nem escritos pela aplicação, apenas mantidos em disco como registro/fallback manual. Continuam **não versionados** (ver `.gitignore`). Os arquivos `*.example.json` existem apenas como referência do formato de cada entidade.
 
 ---
 
@@ -374,7 +381,7 @@ percentual = totalTrabalhado / totalDisponivel * 100
 - **Datas de projeto/lançamento:** string `YYYY-MM-DD`
 - **Horas:** string `HH:MM`
 - **`horasContratadas` ausente no JSON** = projeto em horas abertas (`undefined` não é serializado pelo `JSON.stringify`)
-- **`baseRepository.update`** deleta explicitamente chaves com valor `undefined` no partial, para permitir remoção de campos opcionais (equivalente a um `$unset` do MongoDB)
+- **`mongoRepository.update`** traduz chaves com valor `undefined` no partial para `$unset`, permitindo remoção de campos opcionais (ex.: `horasContratadas: null` do frontend vira `undefined` no service e some do documento)
 - **`pago: false`** é o valor padrão para novos projetos
 - O frontend envia `horasContratadas: null` (não `undefined`) para sinalizar remoção do campo — ver `Omit<Partial<Projeto>, 'horasContratadas'> & { horasContratadas?: number | null }` em `frontend/src/services/api.ts`
 - Autenticação via Google OAuth + sessão própria (JWT em cookie httpOnly); acesso restrito por allowlist de e-mails (`ALLOWED_EMAILS`)
@@ -391,13 +398,18 @@ percentual = totalTrabalhado / totalDisponivel * 100
 
 ## Limitações conhecidas / roadmap
 
-- **Persistência em JSON**: sem transação e sem lock de escrita — adequado para poucos usuários simultâneos, não para concorrência real em escala. Migração para MongoDB está planejada; a camada `repositories/` foi desenhada para isolar essa troca.
+- **Exclusão em cascata não é atômica**: `projetosService.excluir` apaga escopos, lançamentos e preferências junto com o projeto via chamadas sequenciais ao repository, sem transação multi-documento. O cluster Atlas (M0) suporta transações, mas implementá-las exigiria mover a lógica de cascata do service para o repository — não fez parte da migração para Mongo. Uma falha no meio da sequência pode deixar registros órfãos.
+- **`findAll`/`findBy`/`findOneBy` fazem fetch completo da coleção**: como recebem predicados em JavaScript arbitrário (não traduzíveis para query nativa do Mongo), esses três métodos genéricos do `mongoRepository.ts` buscam todos os documentos e filtram em memória — mesmo comportamento de quando a persistência era em JSON. Os métodos "ByTenant"/"ForTenant" (caminho mais usado pelos services) já são queries nativas com índice. Call sites que hoje combinam `findBy`/`findOneBy` com predicado composto (`dashboardService`, `clientesService.excluir`, `projetosService.excluir`, `salvarUltimaDescricao` em `lancamentosService`) continuam fazendo fetch completo — otimizar para query nativa fica para um item futuro caso a escala justifique.
 - **CORS** configurável via `CORS_ORIGIN` (padrão `http://localhost:5173`) — ainda assume um único domínio de frontend; revisar antes de qualquer deploy com múltiplos ambientes.
 - **Sem refresh/rotação de sessão**: o cookie de sessão dura 7 dias fixos; não há renovação automática nem revogação individual de sessões.
 
-## Migração para MongoDB
+## Persistência (MongoDB Atlas)
 
-A interface pública já é assíncrona (`Promise`-based) e já inclui os métodos com checagem de tenant — a troca de banco deve substituir só `backend/src/repositories/baseRepository.ts`, mantendo a mesma interface:
+Os dados vivem em um cluster MongoDB Atlas (M0), banco `horas-pj`, uma coleção por entidade (`clientes`, `projetos`, `alteracoesEscopo`, `lancamentosHoras`, `preferenciasProjeto`). A conexão é única por processo (`backend/src/repositories/mongoClient.ts`, chamada uma vez em `server.ts` antes de `app.listen`) e os índices por `tenantId` são criados de forma idempotente na subida do servidor.
+
+O domínio usa `id: string` (UUID) como identificador em todas as entidades e referências; o Mongo usa esse mesmo UUID como `_id` (não é gerado `ObjectId`), então nenhuma referência entre entidades precisou ser remapeada. A camada `mongoRepository.ts` converte `_id` ↔ `id` na borda, e o resto da aplicação nunca vê `_id`.
+
+A interface pública do repository é a mesma desde a conversão para `async/await`:
 
 ```typescript
 findAll(): Promise<T[]>
@@ -416,5 +428,3 @@ updateForTenant(id: string, tenantId: string, partial: Partial<T>): Promise<T | 
 deleteForTenant(id: string, tenantId: string): Promise<boolean>
 existsForTenant(id: string, tenantId: string): Promise<boolean>
 ```
-
-Ao migrar, crie índices compostos começando por `tenantId` (ex.: `{tenantId: 1, projetoId: 1}` em `lancamentosHoras`, `{tenantId: 1}` único onde fizer sentido) — toda consulta relevante já filtra por tenant primeiro.
