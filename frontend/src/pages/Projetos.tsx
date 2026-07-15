@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
 import { projetosApi, clientesApi, lancamentosApi } from '../services/api'
-import type { Projeto, Cliente, StatusProjeto, LancamentoHoras } from '../types'
+import type { Projeto, Cliente, StatusProjeto } from '../types'
 import type { ToastFns } from '../App'
 import { STATUS_COR } from '../constants/statusProjeto'
 import { hojeLocal } from '../utils/tempo'
@@ -277,17 +277,14 @@ function ProjetosList({ toast }: Props) {
 
   async function carregar() {
     try {
-      const [ps, cs] = await Promise.all([projetosApi.listar(), clientesApi.listar()])
+      const [ps, cs, todosLancamentos] = await Promise.all([
+        projetosApi.listar(), clientesApi.listar(), lancamentosApi.listarTudo(),
+      ])
       setProjetos(ps)
       setClientes(cs)
-      // carrega horas por projeto em paralelo
-      const resultados = await Promise.all(ps.map(p => lancamentosApi.listarPorProjeto(p.id)))
       const mapa = new Map<string, number>()
-      resultados.forEach((lista, i) => {
-        const total = (lista as LancamentoHoras[])
-          .filter(l => l.horaFim)
-          .reduce((acc, l) => acc + (l.totalDecimal ?? 0), 0)
-        mapa.set(ps[i].id, Math.round(total * 100) / 100)
+      todosLancamentos.filter(l => l.horaFim).forEach(l => {
+        mapa.set(l.projetoId, Math.round(((mapa.get(l.projetoId) ?? 0) + (l.totalDecimal ?? 0)) * 100) / 100)
       })
       setHorasPorProjeto(mapa)
     } catch {

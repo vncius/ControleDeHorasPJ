@@ -86,16 +86,17 @@ export default function Relatorios() {
   useEffect(() => {
     async function carregar() {
       try {
-        const [cs, ps] = await Promise.all([clientesApi.listar(), projetosApi.listar()])
+        const [cs, ps, todos] = await Promise.all([clientesApi.listar(), projetosApi.listar(), lancamentosApi.listarTudo()])
         setClientes(cs)
         setProjetos(ps)
-        const resultados = await Promise.all(ps.map(p => lancamentosApi.listarPorProjeto(p.id)))
+        const projetoMap = new Map(ps.map(p => [p.id, p]))
+        const clienteMap = new Map(cs.map(c => [c.id, c]))
         const enriquecidos: LancamentoEnriquecido[] = []
-        resultados.forEach((lista, i) => {
-          const projeto = ps[i]
-          const cliente = cs.find(c => c.id === projeto.clienteId)
-          if (!cliente) return
-          lista.filter(l => l.horaFim).forEach(l => enriquecidos.push({ ...l, projeto, cliente }))
+        todos.filter(l => l.horaFim).forEach(l => {
+          const projeto = projetoMap.get(l.projetoId)
+          const cliente = projeto && clienteMap.get(projeto.clienteId)
+          if (!projeto || !cliente) return
+          enriquecidos.push({ ...l, projeto, cliente })
         })
         enriquecidos.sort((a, b) => b.data.localeCompare(a.data) || b.horaInicio.localeCompare(a.horaInicio))
         setTodosLancamentos(enriquecidos)

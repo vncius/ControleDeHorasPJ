@@ -119,6 +119,7 @@ export const escoposApi = {
 export const lancamentosApi = {
   listarPorProjeto: (projetoId: string) =>
     get<LancamentoHoras[]>(`/projetos/${projetoId}/lancamentos`),
+  listarTudo: () => get<LancamentoHoras[]>('/lancamentos'),
   emAndamento: async (): Promise<LancamentoHoras | null> => {
     try {
       const res = await fetch('/api/lancamentos/em-andamento', {

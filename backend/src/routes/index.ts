@@ -65,6 +65,7 @@ router.delete('/escopos/:id', escoposController.excluir.bind(escoposController))
 // ----------------------------------------------------------------
 // Lançamentos
 // ----------------------------------------------------------------
+router.get('/lancamentos', lancamentosController.listarPorTenant.bind(lancamentosController))
 router.get('/lancamentos/em-andamento', lancamentosController.emAndamento.bind(lancamentosController))
 router.get(
   '/projetos/:projetoId/lancamentos',
