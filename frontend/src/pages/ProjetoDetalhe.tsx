@@ -10,6 +10,8 @@ import TabelaLancamentos from '../components/TabelaLancamentos'
 import ModalImportacao from '../components/ModalImportacao'
 import { ProjetoForm, projetoParaForm, formParaPayload } from './Projetos'
 import { STATUS_COR } from '../constants/statusProjeto'
+import { calcularDecorridoDecimal } from '../utils/tempo'
+import { useAgoraTick } from '../hooks/useAgoraTick'
 
 interface Props { toast: ToastFns }
 
@@ -269,6 +271,11 @@ export default function ProjetoDetalhe({ toast }: Props) {
     }
   }
 
+  // ao-vivo: totalTrabalhado do resumo só conta lançamentos finalizados — o
+  // hook precisa ser chamado incondicionalmente, antes dos early returns
+  const lancamentoAberto = lancamentos.find(l => !l.horaFim) ?? null
+  useAgoraTick(!!lancamentoAberto)
+
   if (loading) return (
     <div className="loading-screen"><div className="spinner" /><span>{t('detalhe.carregando')}</span></div>
   )
@@ -283,8 +290,19 @@ export default function ProjetoDetalhe({ toast }: Props) {
   )
 
   const { projeto, cliente } = resumo
-  const lancamentoAberto = lancamentos.find(l => !l.horaFim) ?? null
-  const pct = Math.min(resumo.percentualConsumido, 100)
+
+  // regra única: exibido = finalizados (resumo) + decorrido do lançamento aberto
+  const decorridoAoVivo = lancamentoAberto ? calcularDecorridoDecimal(lancamentoAberto.horaInicio, lancamentoAberto.data) : 0
+  const totalTrabalhado = Math.round((resumo.totalTrabalhado + decorridoAoVivo) * 100) / 100
+  const saldo = resumo.horasAbertas ? 0 : Math.round((resumo.totalDisponivel - totalTrabalhado) * 100) / 100
+  const percentualConsumido = resumo.horasAbertas
+    ? 0
+    : resumo.totalDisponivel > 0
+      ? Math.round((totalTrabalhado / resumo.totalDisponivel) * 10000) / 100
+      : 0
+  const valorTrabalhado = projeto.valorHora != null ? Math.round(totalTrabalhado * projeto.valorHora * 100) / 100 : undefined
+
+  const pct = Math.min(percentualConsumido, 100)
 
   const statusCor = STATUS_COR[projeto.status] ?? { bg: 'var(--bg-3)', color: 'var(--text-muted)' }
 
@@ -328,14 +346,14 @@ export default function ProjetoDetalhe({ toast }: Props) {
         <div style={{ marginBottom: 28 }}>
           <div className="flex-between" style={{ marginBottom: 8 }}>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              {t('detalhe.trabalhadasDe', { trabalhado: resumo.totalTrabalhado.toFixed(1), disponivel: resumo.totalDisponivel.toFixed(1) })}
+              {t('detalhe.trabalhadasDe', { trabalhado: totalTrabalhado.toFixed(1), disponivel: resumo.totalDisponivel.toFixed(1) })}
             </span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: resumo.percentualConsumido >= 100 ? 'var(--danger)' : resumo.percentualConsumido >= 80 ? 'var(--warning)' : 'var(--accent)' }}>
-              {resumo.percentualConsumido.toFixed(1)}%
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: percentualConsumido >= 100 ? 'var(--danger)' : percentualConsumido >= 80 ? 'var(--warning)' : 'var(--accent)' }}>
+              {percentualConsumido.toFixed(1)}%
             </span>
           </div>
           <div className="progress-bar" style={{ height: 6 }}>
-            <div className={`progress-fill ${progressClass(resumo.percentualConsumido)}`} style={{ width: `${pct}%` }} />
+            <div className={`progress-fill ${progressClass(percentualConsumido)}`} style={{ width: `${pct}%` }} />
           </div>
         </div>
       )}
@@ -344,14 +362,14 @@ export default function ProjetoDetalhe({ toast }: Props) {
       {resumo.horasAbertas ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 32 }}>
           <MetricCard label={t('detalhe.cardHorasContratadas')} value={t('detalhe.emAbertoValor')} sub={t('detalhe.semLimite')} />
-          <MetricCard label={t('detalhe.cardTrabalhadas')} value={`${resumo.totalTrabalhado.toFixed(1)}h`} sub={t('detalhe.lancFinalizados')} destaque />
+          <MetricCard label={t('detalhe.cardTrabalhadas')} value={`${totalTrabalhado.toFixed(1)}h`} sub={t('detalhe.lancFinalizados')} destaque />
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 32 }}>
           <MetricCard label={t('detalhe.cardContratadas')} value={`${resumo.horasContratadas.toFixed(0)}h`} sub={t('detalhe.horasBase')} />
           <MetricCard label={t('detalhe.cardExtras')} value={`+${resumo.horasExtrasAprovadas.toFixed(1)}h`} sub={t('detalhe.escoposAprovados')} />
-          <MetricCard label={t('detalhe.cardTrabalhadas')} value={`${resumo.totalTrabalhado.toFixed(1)}h`} sub={t('detalhe.lancFinalizados')} destaque />
-          <MetricCard label={t('detalhe.cardSaldo')} value={`${resumo.saldo >= 0 ? '+' : ''}${resumo.saldo.toFixed(1)}h`} sub={resumo.saldo < 0 ? t('detalhe.horasExcedidas') : t('detalhe.horasDisponiveis')} />
+          <MetricCard label={t('detalhe.cardTrabalhadas')} value={`${totalTrabalhado.toFixed(1)}h`} sub={t('detalhe.lancFinalizados')} destaque />
+          <MetricCard label={t('detalhe.cardSaldo')} value={`${saldo >= 0 ? '+' : ''}${saldo.toFixed(1)}h`} sub={saldo < 0 ? t('detalhe.horasExcedidas') : t('detalhe.horasDisponiveis')} />
         </div>
       )}
 
@@ -360,7 +378,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${resumo.horasAbertas ? 2 : 3}, 1fr)`, gap: 14, marginBottom: 32 }}>
           <MetricCard label={t('detalhe.cardValorHora')} value={fmtReais(projeto.valorHora)} sub={t('detalhe.porHora')} />
           {!resumo.horasAbertas && <MetricCard label={t('detalhe.receitaPrevista')} value={fmtReais(resumo.valorEstimado)} sub={t('detalhe.receitaPrevistaSub')} />}
-          <MetricCard label={t('detalhe.receitaExecutada')} value={fmtReais(resumo.valorTrabalhado)} sub={t('detalhe.receitaExecutadaSub')} destaque />
+          <MetricCard label={t('detalhe.receitaExecutada')} value={fmtReais(valorTrabalhado)} sub={t('detalhe.receitaExecutadaSub')} destaque />
         </div>
       )}
 

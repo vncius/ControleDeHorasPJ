@@ -16,15 +16,23 @@ export function hojeLocal(): string {
   return dataLocalISO(new Date())
 }
 
-export function calcularDecorrido(horaInicio: string, data?: string): string {
+function decorridoMs(horaInicio: string, data?: string): number {
   const [h, m] = horaInicio.split(':').map(Number)
   // ancorado na data de início quando conhecida — um ponto iniciado ontem
   // à noite (virada de meia-noite) continua contando corretamente
   const inicio = data ? new Date(data + 'T00:00:00') : new Date()
   inicio.setHours(h, m, 0, 0)
-  const diff = Math.max(0, Date.now() - inicio.getTime())
-  const totalMin = Math.floor(diff / 60000)
+  return Math.max(0, Date.now() - inicio.getTime())
+}
+
+export function calcularDecorrido(horaInicio: string, data?: string): string {
+  const totalMin = Math.floor(decorridoMs(horaInicio, data) / 60000)
   const hh = Math.floor(totalMin / 60)
   const mm = totalMin % 60
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+}
+
+/** Decorrido em horas decimais (ex.: 1h30 → 1.5) — usado para somar ao vivo aos totais. */
+export function calcularDecorridoDecimal(horaInicio: string, data?: string): number {
+  return decorridoMs(horaInicio, data) / 3600000
 }

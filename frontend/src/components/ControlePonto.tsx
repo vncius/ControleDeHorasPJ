@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { lancamentosApi } from '../services/api'
 import type { LancamentoHoras } from '../types'
 import type { ToastFns } from '../App'
 import { horaAtual, calcularDecorrido } from '../utils/tempo'
+import { useAgoraTick } from '../hooks/useAgoraTick'
+import { useTituloDecorrido } from '../hooks/useTituloDecorrido'
 
 interface Props {
   projetoId: string
@@ -27,19 +29,9 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
   // se true: ao finalizar, inicia automaticamente o projetoId atual
   const [iniciarAposFechar, setIniciarAposFechar] = useState(false)
 
-  // timer — re-render a cada minuto
-  const [, setTick] = useState(0)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  useEffect(() => {
-    if (!lancamentoAberto) {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-      return
-    }
-    setTick(t => t + 1)
-    intervalRef.current = setInterval(() => setTick(t => t + 1), 60000)
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [lancamentoAberto?.id])
+  // timer — re-render a cada segundo enquanto houver lançamento aberto
+  useAgoraTick(!!lancamentoAberto)
+  useTituloDecorrido(lancamentoAberto?.horaInicio, lancamentoAberto?.data)
 
   function abrirModal(lancamento: LancamentoHoras, comTroca: boolean) {
     setLancamentoParaFinalizar(lancamento)

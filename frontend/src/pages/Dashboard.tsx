@@ -4,7 +4,31 @@ import { useTranslation } from 'react-i18next'
 import { dashboardApi, lancamentosApi } from '../services/api'
 import type { DashboardData, ResumoProjeto } from '../types'
 import type { ToastFns } from '../App'
-import { horaAtual } from '../utils/tempo'
+import { horaAtual, calcularDecorrido, calcularDecorridoDecimal } from '../utils/tempo'
+import { useAgoraTick } from '../hooks/useAgoraTick'
+import { useTituloDecorrido } from '../hooks/useTituloDecorrido'
+
+// Mirror de backend/src/utils/faturamento.ts::lancamentoEhFaturavel — fonte
+// única da regra é o backend; esta cópia só decide em qual bucket (fat./pago)
+// somar o tempo ao vivo entre um fetch e outro. O próximo fetch reconcilia.
+function emAndamentoEhFaturavel(l: NonNullable<DashboardData['lancamentoEmAndamento']>): boolean {
+  const p = l.projeto
+  if (p.status === 'Finalizado' || p.status === 'Cancelado') return false
+  if (p.pago && !p.dataPagamento) return false
+  if (!p.dataPagamento) return true
+  return l.data < p.dataPagamento
+}
+
+// regra única: exibido = finalizados (resumo) + decorrido do lançamento aberto
+function aplicarDecorridoAoResumo(r: ResumoProjeto, decorrido: number): ResumoProjeto {
+  const totalTrabalhado = Math.round((r.totalTrabalhado + decorrido) * 100) / 100
+  const saldo = r.horasAbertas ? 0 : Math.round((r.totalDisponivel - totalTrabalhado) * 100) / 100
+  const percentualConsumido = r.horasAbertas
+    ? 0
+    : r.totalDisponivel > 0 ? Math.round((totalTrabalhado / r.totalDisponivel) * 10000) / 100 : 0
+  const valorTrabalhado = r.projeto.valorHora != null ? Math.round(totalTrabalhado * r.projeto.valorHora * 100) / 100 : undefined
+  return { ...r, totalTrabalhado, saldo, percentualConsumido, valorTrabalhado }
+}
 
 function fmt(h: number) { return h.toFixed(1).replace('.', ',') + 'h' }
 function pct(v: number) { return Math.min(v, 100) }
@@ -153,10 +177,15 @@ export default function Dashboard({ toast }: Props) {
   const [horaFim, setHoraFim] = useState('')
   const [descricaoFinal, setDescricaoFinal] = useState('')
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const fetchedAtRef = useRef<number | null>(null)
   const nav = useNavigate()
 
   async function carregar(silencioso = false) {
-    try { setData(await dashboardApi.obter()) }
+    try {
+      const d = await dashboardApi.obter()
+      setData(d)
+      fetchedAtRef.current = Date.now()
+    }
     catch { if (!silencioso) toast.error(t('dashboard.erroCarregar')) }
     finally { setLoading(false) }
   }
@@ -166,6 +195,10 @@ export default function Dashboard({ toast }: Props) {
     intervalRef.current = setInterval(() => carregar(true), 60000)
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [])
+
+  // tempo real: hooks chamados incondicionalmente, antes dos early returns
+  useAgoraTick(!!data?.lancamentoEmAndamento)
+  useTituloDecorrido(data?.lancamentoEmAndamento?.horaInicio, data?.lancamentoEmAndamento?.data)
 
   function abrirModalFinalizar() {
     if (!data?.lancamentoEmAndamento) return
@@ -198,8 +231,33 @@ export default function Dashboard({ toast }: Props) {
   if (loading) return <div className="loading-screen"><div className="spinner" /><span>{t('comum.carregando')}</span></div>
   if (!data) return null
 
-  const temProjetosPagos = data.resumosProjetosPagos.length > 0
-  const temHorasPagas = data.horasHojePago > 0 || data.horasSemanaPago > 0 || data.horasMesPago > 0
+  const emAndamento = data.lancamentoEmAndamento
+  // delta desde o último fetch: os totais Hoje/Semana/Mês já vieram do backend
+  // com o decorrido de então embutido, então somamos só o que passou depois
+  const deltaDesdeFetch = emAndamento && fetchedAtRef.current
+    ? Math.max(0, (Date.now() - fetchedAtRef.current) / 3600000)
+    : 0
+  const emAndamentoFat = emAndamento ? emAndamentoEhFaturavel(emAndamento) : false
+  // cards de projeto não têm o aberto embutido em nenhum momento — soma o decorrido inteiro
+  const decorridoAoVivo = emAndamento ? calcularDecorridoDecimal(emAndamento.horaInicio, emAndamento.data) : 0
+
+  const horasHoje = data.horasHoje + (emAndamentoFat ? deltaDesdeFetch : 0)
+  const horasSemana = data.horasSemana + (emAndamentoFat ? deltaDesdeFetch : 0)
+  const horasMes = data.horasMes + (emAndamentoFat ? deltaDesdeFetch : 0)
+  const horasHojePago = data.horasHojePago + (emAndamento && !emAndamentoFat ? deltaDesdeFetch : 0)
+  const horasSemanaPago = data.horasSemanaPago + (emAndamento && !emAndamentoFat ? deltaDesdeFetch : 0)
+  const horasMesPago = data.horasMesPago + (emAndamento && !emAndamentoFat ? deltaDesdeFetch : 0)
+
+  function comDecorridoAoVivo(lista: ResumoProjeto[]): ResumoProjeto[] {
+    if (!emAndamento) return lista
+    return lista.map(r => r.projeto.id === emAndamento.projetoId ? aplicarDecorridoAoResumo(r, decorridoAoVivo) : r)
+  }
+  const resumosProjetos = comDecorridoAoVivo(data.resumosProjetos)
+  const resumosProjetosPagos = comDecorridoAoVivo(data.resumosProjetosPagos)
+  const projetosProximosLimite = comDecorridoAoVivo(data.projetosProximosLimite)
+
+  const temProjetosPagos = resumosProjetosPagos.length > 0
+  const temHorasPagas = horasHojePago > 0 || horasSemanaPago > 0 || horasMesPago > 0
 
   return (
     <div style={{ animation: 'slideUp 0.25s ease' }}>
@@ -212,7 +270,7 @@ export default function Dashboard({ toast }: Props) {
       </div>
 
       {/* Lançamento em andamento */}
-      {data.lancamentoEmAndamento && (
+      {emAndamento && (
         <div style={{
           background: 'var(--accent-dim)', border: '1px solid rgba(168,255,62,0.3)',
           borderRadius: 'var(--radius-lg)', padding: '16px 20px', marginBottom: 28,
@@ -223,19 +281,20 @@ export default function Dashboard({ toast }: Props) {
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>{t('dashboard.trabalhoEmAndamento')}</div>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
-                {data.lancamentoEmAndamento.projeto.nome} · {data.lancamentoEmAndamento.cliente.nome}
-                &nbsp;· {t('dashboard.iniciadoAs', { hora: data.lancamentoEmAndamento.horaInicio })}
-                {data.lancamentoEmAndamento.projeto.pago && (
+                {emAndamento.projeto.nome} · {emAndamento.cliente.nome}
+                &nbsp;· {t('dashboard.iniciadoAs', { hora: emAndamento.horaInicio })}
+                &nbsp;·&nbsp;<span style={{ color: 'var(--accent)' }}>{t('ponto.decorrido', { tempo: calcularDecorrido(emAndamento.horaInicio, emAndamento.data) })}</span>
+                {emAndamento.projeto.pago && (
                   <span style={{ marginLeft: 8, color: 'var(--info)' }}>{t('dashboard.tagPago')}</span>
                 )}
               </div>
-              {data.lancamentoEmAndamento.descricao && (
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{data.lancamentoEmAndamento.descricao}</div>
+              {emAndamento.descricao && (
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{emAndamento.descricao}</div>
               )}
             </div>
           </div>
           <div className="flex-center gap-8">
-            <button className="btn btn-secondary btn-sm" onClick={() => nav(`/projetos/${data.lancamentoEmAndamento!.projetoId}`)}>{t('dashboard.verProjeto')}</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => nav(`/projetos/${emAndamento.projetoId}`)}>{t('dashboard.verProjeto')}</button>
             <button className="btn btn-primary btn-sm" onClick={abrirModalFinalizar} disabled={finalizando}>
               {finalizando ? '...' : t('dashboard.finalizar')}
             </button>
@@ -243,7 +302,7 @@ export default function Dashboard({ toast }: Props) {
         </div>
       )}
 
-      {modalFinalizar && data.lancamentoEmAndamento && (
+      {modalFinalizar && emAndamento && (
         <div className="modal-overlay" onClick={fecharModalFinalizar}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
@@ -251,13 +310,13 @@ export default function Dashboard({ toast }: Props) {
               <button className="btn btn-ghost btn-icon" onClick={fecharModalFinalizar}>✕</button>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16, fontFamily: 'var(--font-mono)' }}>
-              {data.lancamentoEmAndamento.projeto.nome} · {data.lancamentoEmAndamento.cliente.nome}
+              {emAndamento.projeto.nome} · {emAndamento.cliente.nome}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">{t('comum.horaInicio')}</label>
-                  <input className="input input-mono" value={data.lancamentoEmAndamento.horaInicio} disabled />
+                  <input className="input input-mono" value={emAndamento.horaInicio} disabled />
                 </div>
                 <div className="form-group">
                   <label className="form-label">{t('comum.horaFim')} *</label>
@@ -290,10 +349,10 @@ export default function Dashboard({ toast }: Props) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: temHorasPagas ? 24 : 32 }}>
           {[
-            { label: t('dashboard.hoje'), value: fmt(data.horasHoje), sub: data.lancamentoEmAndamento && !data.lancamentoEmAndamento.projeto.pago ? t('dashboard.incluiTempoAberto') : t('dashboard.horasFinalizadas') },
-            { label: t('dashboard.semana'), value: fmt(data.horasSemana), sub: t('dashboard.subFaturaveis') },
-            { label: t('dashboard.mes'), value: fmt(data.horasMes), sub: t('dashboard.subFaturaveis') },
-            { label: t('dashboard.projetos'), value: data.resumosProjetos.length, sub: t('dashboard.faturaveisAtivos') },
+            { label: t('dashboard.hoje'), value: fmt(horasHoje), sub: emAndamentoFat ? t('dashboard.incluiTempoAberto') : t('dashboard.horasFinalizadas') },
+            { label: t('dashboard.semana'), value: fmt(horasSemana), sub: t('dashboard.subFaturaveis') },
+            { label: t('dashboard.mes'), value: fmt(horasMes), sub: t('dashboard.subFaturaveis') },
+            { label: t('dashboard.projetos'), value: resumosProjetos.length, sub: t('dashboard.faturaveisAtivos') },
           ].map(m => (
             <div key={m.label} className="card" style={{ padding: '20px 24px' }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{m.label}</div>
@@ -312,10 +371,10 @@ export default function Dashboard({ toast }: Props) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
             {[
-              { label: t('dashboard.hoje'), value: fmt(data.horasHojePago), sub: t('dashboard.subProjetoPago') },
-              { label: t('dashboard.semana'), value: fmt(data.horasSemanaPago), sub: t('dashboard.subProjetoPago') },
-              { label: t('dashboard.mes'), value: fmt(data.horasMesPago), sub: t('dashboard.subProjetoPago') },
-              { label: t('dashboard.projetos'), value: data.resumosProjetosPagos.length, sub: t('dashboard.pagosEmAndamento') },
+              { label: t('dashboard.hoje'), value: fmt(horasHojePago), sub: t('dashboard.subProjetoPago') },
+              { label: t('dashboard.semana'), value: fmt(horasSemanaPago), sub: t('dashboard.subProjetoPago') },
+              { label: t('dashboard.mes'), value: fmt(horasMesPago), sub: t('dashboard.subProjetoPago') },
+              { label: t('dashboard.projetos'), value: resumosProjetosPagos.length, sub: t('dashboard.pagosEmAndamento') },
             ].map(m => (
               <div key={m.label} className="card" style={{ padding: '20px 24px', borderColor: 'var(--info-bg)' }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{m.label}</div>
@@ -332,7 +391,7 @@ export default function Dashboard({ toast }: Props) {
         {/* Faturáveis */}
         <SecaoProjetos
           titulo={t('dashboard.projetosFaturaveis')}
-          projetos={data.resumosProjetos}
+          projetos={resumosProjetos}
           cor="var(--text-secondary)"
           nav={nav}
         />
@@ -340,13 +399,13 @@ export default function Dashboard({ toast }: Props) {
         {/* Direita: Alertas OU Pagos */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {/* Alertas */}
-          {data.projetosProximosLimite.length > 0 && (
+          {projetosProximosLimite.length > 0 && (
             <div>
               <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 {t('dashboard.atencaoLimite')}
               </h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {data.projetosProximosLimite.map(r => (
+                {projetosProximosLimite.map(r => (
                   <div
                     key={r.projeto.id}
                     className="card"
