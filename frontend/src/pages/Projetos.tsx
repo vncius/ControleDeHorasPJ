@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
-import { projetosApi, clientesApi, lancamentosApi } from '../services/api'
+import { projetosApi, clientesApi, lancamentosApi, escoposApi } from '../services/api'
 import type { Projeto, Cliente, StatusProjeto } from '../types'
 import type { ToastFns } from '../App'
 import { STATUS_COR } from '../constants/statusProjeto'
@@ -253,6 +253,7 @@ function ProjetosList({ toast }: Props) {
   const [projetos, setProjetos] = useState<Projeto[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [horasPorProjeto, setHorasPorProjeto] = useState<Map<string, number>>(new Map())
+  const [extrasPorProjeto, setExtrasPorProjeto] = useState<Map<string, number>>(new Map())
   const [loading, setLoading] = useState(true)
   const STATUS_PADRAO: StatusProjeto[] = [
     'Aguardando início',
@@ -277,8 +278,8 @@ function ProjetosList({ toast }: Props) {
 
   async function carregar() {
     try {
-      const [ps, cs, todosLancamentos] = await Promise.all([
-        projetosApi.listar(), clientesApi.listar(), lancamentosApi.listarTudo(),
+      const [ps, cs, todosLancamentos, todosEscopos] = await Promise.all([
+        projetosApi.listar(), clientesApi.listar(), lancamentosApi.listarTudo(), escoposApi.listarTudo(),
       ])
       setProjetos(ps)
       setClientes(cs)
@@ -287,6 +288,11 @@ function ProjetosList({ toast }: Props) {
         mapa.set(l.projetoId, Math.round(((mapa.get(l.projetoId) ?? 0) + (l.totalDecimal ?? 0)) * 100) / 100)
       })
       setHorasPorProjeto(mapa)
+      const extras = new Map<string, number>()
+      todosEscopos.filter(e => e.status === 'Aprovada').forEach(e => {
+        extras.set(e.projetoId, (extras.get(e.projetoId) ?? 0) + e.horasAdicionais)
+      })
+      setExtrasPorProjeto(extras)
     } catch {
       toast.error(t('projetos.erroCarregar'))
     } finally {
@@ -562,9 +568,16 @@ function ProjetosList({ toast }: Props) {
                       {p.dataInicio ? new Date(p.dataInicio + 'T00:00:00').toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
                     </td>
                     <td className="td-mono">
-                      {p.horasContratadas != null
-                        ? `${p.horasContratadas.toFixed(0)}h`
-                        : <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{t('projetos.aberto')}</span>}
+                      {p.horasContratadas != null ? (
+                        <>
+                          {p.horasContratadas.toFixed(0)}h
+                          {(extrasPorProjeto.get(p.id) ?? 0) > 0 && (
+                            <span style={{ color: 'var(--accent)', fontWeight: 600 }}> +{extrasPorProjeto.get(p.id)!.toFixed(0)}h</span>
+                          )}
+                        </>
+                      ) : (
+                        <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{t('projetos.aberto')}</span>
+                      )}
                     </td>
                     <td className="td-mono" style={{ color: 'var(--accent)', fontWeight: 600 }}>
                       {(horasPorProjeto.get(p.id) ?? 0).toFixed(1)}h

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { projetosApi, clientesApi, escoposApi, lancamentosApi } from '../services/api'
 import type { ResumoProjeto, AlteracaoEscopo, LancamentoHoras, StatusEscopo, Cliente } from '../types'
@@ -193,6 +193,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
   const fmtDataBR = useFmtDataBR()
   const { id } = useParams<{ id: string }>()
   const nav = useNavigate()
+  const location = useLocation()
 
   const [resumo, setResumo] = useState<ResumoProjeto | null>(null)
   const [clientes, setClientes] = useState<Cliente[]>([])
@@ -235,6 +236,20 @@ export default function ProjetoDetalhe({ toast }: Props) {
   }, [id])
 
   useEffect(() => { carregar() }, [carregar])
+
+  // CTA do Dashboard ("Registrar alteração de escopo") navega pra cá pedindo
+  // pra já abrir a aba de escopos com o modal de criação — limpa o state
+  // depois pra não reabrir num F5 ou numa navegação de volta.
+  useEffect(() => {
+    const state = location.state as { abrirEscopo?: boolean } | null
+    if (state?.abrirEscopo) {
+      setAbaAtiva('escopos')
+      setEscopoEditando(null)
+      setModalEscopo(true)
+      nav(location.pathname, { replace: true, state: {} })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state])
 
   function abrirEditarProjeto() {
     if (!resumo) return
@@ -302,6 +317,15 @@ export default function ProjetoDetalhe({ toast }: Props) {
       : 0
   const valorTrabalhado = projeto.valorHora != null ? Math.round(totalTrabalhado * projeto.valorHora * 100) / 100 : undefined
 
+  // consumo por escopo — mesma regra "finalizados + decorrido do aberto" aplicada por escopoId
+  const trabalhadasPorEscopo = new Map<string, number>()
+  lancamentos.filter(l => l.horaFim && l.escopoId).forEach(l => {
+    trabalhadasPorEscopo.set(l.escopoId!, (trabalhadasPorEscopo.get(l.escopoId!) ?? 0) + (l.totalDecimal ?? 0))
+  })
+  if (lancamentoAberto?.escopoId) {
+    trabalhadasPorEscopo.set(lancamentoAberto.escopoId, (trabalhadasPorEscopo.get(lancamentoAberto.escopoId) ?? 0) + decorridoAoVivo)
+  }
+
   const pct = Math.min(percentualConsumido, 100)
 
   const statusCor = STATUS_COR[projeto.status] ?? { bg: 'var(--bg-3)', color: 'var(--text-muted)' }
@@ -329,6 +353,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
             <ControlePonto
               projetoId={projeto.id}
               lancamentoAberto={lancamentoAberto}
+              escopos={escopos}
               toast={toast}
               onAtualizar={carregar}
             />
@@ -439,12 +464,16 @@ export default function ProjetoDetalhe({ toast }: Props) {
                       <th className="hide-mobile" style={{ width: 90 }}>{t('comum.inicio')}</th>
                       <th className="hide-mobile" style={{ width: 90 }}>{t('comum.fim')}</th>
                       <th style={{ width: 90 }}>{t('escopo.colHoras')}</th>
+                      <th className="hide-mobile" style={{ width: 120 }}>{t('escopo.colTrabalhadas')}</th>
                       <th style={{ width: 90 }}>{t('comum.status')}</th>
                       <th style={{ width: 80 }}></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {escopos.map(e => (
+                    {escopos.map(e => {
+                      const trabalhadas = trabalhadasPorEscopo.get(e.id) ?? 0
+                      const pctEscopo = e.horasAdicionais > 0 ? Math.min((trabalhadas / e.horasAdicionais) * 100, 100) : 0
+                      return (
                       <tr key={e.id} onClick={() => { setEscopoEditando(e); setModalEscopo(true) }}>
                         <td style={{ fontWeight: 500 }}>
                           {e.titulo}
@@ -455,6 +484,18 @@ export default function ProjetoDetalhe({ toast }: Props) {
                         <td className="td-mono" style={{ color: e.status === 'Aprovada' ? 'var(--accent)' : 'var(--text-muted)', fontWeight: e.status === 'Aprovada' ? 600 : 400 }}>
                           +{e.horasAdicionais.toFixed(1)}h
                         </td>
+                        <td className="hide-mobile">
+                          {e.status === 'Aprovada' ? (
+                            <div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginBottom: 3 }}>
+                                {trabalhadas.toFixed(1)}h / {e.horasAdicionais.toFixed(1)}h
+                              </div>
+                              <div className="progress-bar" style={{ height: 4 }}>
+                                <div className={`progress-fill ${progressClass(pctEscopo)}`} style={{ width: `${pctEscopo}%` }} />
+                              </div>
+                            </div>
+                          ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                        </td>
                         <td><BadgeEscopo status={e.status} /></td>
                         <td onClick={ev => ev.stopPropagation()}>
                           <div className="flex-center gap-4">
@@ -463,7 +504,8 @@ export default function ProjetoDetalhe({ toast }: Props) {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                   {escopos.some(e => e.status === 'Aprovada') && (
                     <tfoot>
@@ -471,6 +513,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
                         <td style={{ padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('escopo.totalAprovado')}</td>
                         <td className="hide-mobile" colSpan={2} />
                         <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent)', fontSize: 13 }}>+{resumo.horasExtrasAprovadas.toFixed(1)}h</td>
+                        <td className="hide-mobile" />
                         <td colSpan={2} />
                       </tr>
                     </tfoot>

@@ -1,11 +1,12 @@
 import { useEffect, useState, useMemo } from 'react'
-import { clientesApi, projetosApi, lancamentosApi } from '../services/api'
+import { clientesApi, projetosApi, lancamentosApi, escoposApi } from '../services/api'
 import { dataLocalISO, hojeLocal } from '../utils/tempo'
 import type { Cliente, Projeto, LancamentoHoras } from '../types'
 
 interface LancamentoEnriquecido extends LancamentoHoras {
   projeto: Projeto
   cliente: Cliente
+  escopoTitulo?: string
 }
 
 interface AgrupamentoRow {
@@ -43,11 +44,12 @@ function dataHoje(): string {
 }
 
 function exportarCSV(lancamentos: LancamentoEnriquecido[], sufixo = '') {
-  const cab = ['Data', 'Cliente', 'Projeto', 'Faturável', 'Descrição', 'Início', 'Fim', 'HH:MM', 'Decimal', 'Tipo', 'Valor (R$)']
+  const cab = ['Data', 'Cliente', 'Projeto', 'Escopo', 'Faturável', 'Descrição', 'Início', 'Fim', 'HH:MM', 'Decimal', 'Tipo', 'Valor (R$)']
   const linhas = lancamentos.map(l => [
     fmtData(l.data),
     l.cliente.nome,
     l.projeto.nome,
+    l.escopoTitulo ?? '',
     l.faturavel ? 'Sim' : 'Não',
     `"${l.descricao.replace(/"/g, '""')}"`,
     l.horaInicio,
@@ -80,23 +82,26 @@ export default function Relatorios() {
   const [dataFim, setDataFim] = useState(dataHoje())
   const [filtroCliente, setFiltroCliente] = useState('')
   const [filtroProjeto, setFiltroProjeto] = useState('')
-  const [agrupamento, setAgrupamento] = useState<'cliente' | 'projeto' | 'dia'>('projeto')
+  const [agrupamento, setAgrupamento] = useState<'cliente' | 'projeto' | 'escopo' | 'dia'>('projeto')
   const [visualizacao, setVisualizacao] = useState<VisualizacaoFaturavel>('todos')
 
   useEffect(() => {
     async function carregar() {
       try {
-        const [cs, ps, todos] = await Promise.all([clientesApi.listar(), projetosApi.listar(), lancamentosApi.listarTudo()])
+        const [cs, ps, todos, escopos] = await Promise.all([
+          clientesApi.listar(), projetosApi.listar(), lancamentosApi.listarTudo(), escoposApi.listarTudo(),
+        ])
         setClientes(cs)
         setProjetos(ps)
         const projetoMap = new Map(ps.map(p => [p.id, p]))
         const clienteMap = new Map(cs.map(c => [c.id, c]))
+        const escopoMap = new Map(escopos.map(e => [e.id, e.titulo]))
         const enriquecidos: LancamentoEnriquecido[] = []
         todos.filter(l => l.horaFim).forEach(l => {
           const projeto = projetoMap.get(l.projetoId)
           const cliente = projeto && clienteMap.get(projeto.clienteId)
           if (!projeto || !cliente) return
-          enriquecidos.push({ ...l, projeto, cliente })
+          enriquecidos.push({ ...l, projeto, cliente, escopoTitulo: l.escopoId ? escopoMap.get(l.escopoId) : undefined })
         })
         enriquecidos.sort((a, b) => b.data.localeCompare(a.data) || b.horaInicio.localeCompare(a.horaInicio))
         setTodosLancamentos(enriquecidos)
@@ -168,6 +173,7 @@ export default function Relatorios() {
       let key = '', label = ''
       if (agrupamento === 'cliente') { key = l.cliente.id; label = l.cliente.nome }
       else if (agrupamento === 'projeto') { key = l.projeto.id; label = `${l.projeto.nome} · ${l.cliente.nome}` }
+      else if (agrupamento === 'escopo') { key = l.escopoId ?? '__sem_escopo__'; label = l.escopoTitulo ?? 'Sem escopo' }
       else { key = l.data; label = fmtData(l.data) }
       const ex = mapa.get(key)
       const decimal = (ex?.totalDecimal ?? 0) + (l.totalDecimal ?? 0)
@@ -270,7 +276,7 @@ export default function Relatorios() {
           </div>
           <div className="flex-center gap-8">
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Agrupar por:</span>
-            {(['cliente', 'projeto', 'dia'] as const).map(op => (
+            {(['cliente', 'projeto', 'escopo', 'dia'] as const).map(op => (
               <button key={op} className="btn btn-ghost btn-sm"
                 style={{ fontSize: 12, color: agrupamento === op ? 'var(--accent)' : 'var(--text-muted)', background: agrupamento === op ? 'var(--accent-dim)' : 'transparent' }}
                 onClick={() => setAgrupamento(op)}>
@@ -396,7 +402,7 @@ export default function Relatorios() {
                 <table>
                   <thead>
                     <tr>
-                      <th>{agrupamento === 'dia' ? 'Data' : agrupamento === 'cliente' ? 'Cliente' : 'Projeto'}</th>
+                      <th>{agrupamento === 'dia' ? 'Data' : agrupamento === 'cliente' ? 'Cliente' : agrupamento === 'escopo' ? 'Escopo' : 'Projeto'}</th>
                       {visualizacao === 'todos' && <th className="hide-mobile" style={{ width: 90 }}>Faturável</th>}
                       <th className="hide-mobile" style={{ width: 100 }}>Lançamentos</th>
                       <th style={{ width: 100 }}>HH:MM</th>
@@ -467,6 +473,7 @@ export default function Relatorios() {
                       <th style={{ width: 150 }}>Projeto</th>
                       {visualizacao === 'todos' && <th className="hide-mobile" style={{ width: 80 }}>Faturável</th>}
                       <th>Descrição</th>
+                      <th className="hide-mobile" style={{ width: 110 }}>Escopo</th>
                       <th className="hide-mobile" style={{ width: 68 }}>Início</th>
                       <th className="hide-mobile" style={{ width: 68 }}>Fim</th>
                       <th style={{ width: 76 }}>HH:MM</th>
@@ -500,6 +507,7 @@ export default function Relatorios() {
                             </td>
                           )}
                           <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{l.descricao || '—'}</td>
+                          <td className="hide-mobile" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{l.escopoTitulo ?? '—'}</td>
                           <td className="td-mono hide-mobile">{l.horaInicio}</td>
                           <td className="td-mono hide-mobile">{l.horaFim ?? '—'}</td>
                           <td className="td-mono" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{l.totalHHMM ?? '—'}</td>

@@ -87,6 +87,7 @@ export const projetosApi = {
 export const escoposApi = {
   listar: (projetoId: string) =>
     get<AlteracaoEscopo[]>(`/projetos/${projetoId}/escopos`),
+  listarTudo: () => get<AlteracaoEscopo[]>('/escopos'),
   criar: (
     projetoId: string,
     body: {
@@ -137,7 +138,7 @@ export const lancamentosApi = {
     get<{ descricao?: string }>(`/projetos/${projetoId}/ultima-descricao`),
   iniciar: (projetoId: string, descricao?: string) =>
     post<LancamentoHoras>(`/projetos/${projetoId}/iniciar`, { descricao }),
-  finalizar: (id: string, body: { horaFim: string; descricao?: string }) =>
+  finalizar: (id: string, body: { horaFim: string; descricao?: string; escopoId?: string | null }) =>
     post<LancamentoHoras>(`/lancamentos/${id}/finalizar`, body),
   criar: (body: {
     projetoId: string

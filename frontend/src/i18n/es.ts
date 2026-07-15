@@ -122,6 +122,8 @@ export default {
     horasEmAberto: '∞ horas abiertas',
     horasTrabalhadas: '{{horas}}h trabajadas',
     ateEmAndamento: 'en curso',
+    escopoPendente: 'Alcance pendiente de aprobación',
+    registrarEscopo: '+ Registrar cambio de alcance',
   },
   clientes: {
     titulo: 'Clientes',
@@ -240,6 +242,7 @@ export default {
     adicionarPrimeiro: 'Añadir primer alcance',
     colTitulo: 'Título',
     colHoras: 'Horas',
+    colTrabalhadas: 'Trabajadas',
     totalAprovado: 'Total aprobado',
     confirmarExclusao: '¿Eliminar alcance "{{titulo}}"?',
     excluido: '¡Alcance eliminado!',

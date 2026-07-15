@@ -178,7 +178,7 @@ export interface AtualizarLancamentoDTO {
   tipo?: TipoLancamento
 }
 
-export interface FinalizarLancamentoDTO { horaFim: string; descricao?: string }
+export interface FinalizarLancamentoDTO { horaFim: string; descricao?: string; escopoId?: string | null }
 
 // ============================================================
 // TIPOS DE RESPOSTA
@@ -198,6 +198,7 @@ export interface ResumoProjeto {
   valorEstimado?: number
   valorTrabalhado?: number
   emAndamento: boolean
+  temEscopoPendente: boolean       // há alteração de escopo aguardando aprovação
 }
 
 export interface DashboardData {

@@ -62,7 +62,12 @@ function CardProjeto({ r, pago, onClick }: { r: ResumoProjeto; pago?: boolean; o
     >
       <div className="flex-between" style={{ marginBottom: 6 }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>{r.projeto.nome}</div>
+          <div className="flex-center gap-6">
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{r.projeto.nome}</div>
+            {r.temEscopoPendente && (
+              <span className="badge badge-pendente" title={t('dashboard.escopoPendente')}>⊕</span>
+            )}
+          </div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{r.cliente.nome}</div>
         </div>
         {!r.horasAbertas && !pago && (
@@ -425,6 +430,13 @@ export default function Dashboard({ toast }: Props) {
                       {t('dashboard.horasDe', { trabalhado: r.totalTrabalhado.toFixed(1), disponivel: r.totalDisponivel.toFixed(1) })}
                       {r.saldo < 0 && <span style={{ color: 'var(--danger)' }}> · {t('dashboard.horasExcedidas', { horas: Math.abs(r.saldo).toFixed(1) })}</span>}
                     </div>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      style={{ marginTop: 10 }}
+                      onClick={ev => { ev.stopPropagation(); nav(`/projetos/${r.projeto.id}`, { state: { abrirEscopo: true } }) }}
+                    >
+                      {t('dashboard.registrarEscopo')}
+                    </button>
                   </div>
                 ))}
               </div>

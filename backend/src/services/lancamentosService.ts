@@ -138,6 +138,7 @@ export const lancamentosService = {
       totalHHMM: calculo.hhMM,
       totalDecimal: calculo.decimal,
       descricao,
+      ...(dto.escopoId !== undefined && { escopoId: dto.escopoId ?? undefined }),
       dataAtualizacao: agora(),
     })
     if (!atualizado) throw new Error('Falha ao finalizar lançamento')

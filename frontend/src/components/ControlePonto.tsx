@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { lancamentosApi } from '../services/api'
-import type { LancamentoHoras } from '../types'
+import type { AlteracaoEscopo, LancamentoHoras } from '../types'
 import type { ToastFns } from '../App'
 import { horaAtual, calcularDecorrido } from '../utils/tempo'
 import { useAgoraTick } from '../hooks/useAgoraTick'
@@ -10,11 +10,12 @@ import { useTituloDecorrido } from '../hooks/useTituloDecorrido'
 interface Props {
   projetoId: string
   lancamentoAberto: LancamentoHoras | null  // lançamento deste projeto
+  escopos: AlteracaoEscopo[]
   toast: ToastFns
   onAtualizar: () => void
 }
 
-export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAtualizar }: Props) {
+export default function ControlePonto({ projetoId, lancamentoAberto, escopos, toast, onAtualizar }: Props) {
   const { t } = useTranslation()
   const [carregando, setCarregando] = useState(false)
 
@@ -22,6 +23,8 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
   const [modalFinalizar, setModalFinalizar] = useState(false)
   const [horaFim, setHoraFim] = useState('')
   const [descricaoFinal, setDescricaoFinal] = useState('')
+  const [escopoIdFinal, setEscopoIdFinal] = useState('')
+  const escoposAprovados = escopos.filter(e => e.status === 'Aprovada')
 
   // lançamento que será finalizado no modal — pode ser deste projeto ou de outro
   const [lancamentoParaFinalizar, setLancamentoParaFinalizar] = useState<LancamentoHoras | null>(null)
@@ -37,6 +40,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
     setLancamentoParaFinalizar(lancamento)
     setHoraFim(horaAtual())
     setDescricaoFinal(lancamento.descricao ?? '')
+    setEscopoIdFinal(lancamento.escopoId ?? '')
     setIniciarAposFechar(comTroca)
     setModalFinalizar(true)
   }
@@ -79,6 +83,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
       await lancamentosApi.finalizar(lancamentoParaFinalizar.id, {
         horaFim,
         descricao: descricaoFinal || undefined,
+        escopoId: escopoIdFinal || null,
       })
 
       if (iniciarAposFechar) {
@@ -162,6 +167,17 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
                 onChange={e => setHoraFim(e.target.value)} autoFocus />
             </div>
           </div>
+          {escoposAprovados.length > 0 && (
+            <div className="form-group">
+              <label className="form-label">{t('lanc.associarEscopo')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('comum.opcional')}</span></label>
+              <select className="input" value={escopoIdFinal} onChange={e => setEscopoIdFinal(e.target.value)}>
+                <option value="">{t('lanc.escopoPrincipal')}</option>
+                {escoposAprovados.map(e => (
+                  <option key={e.id} value={e.id}>{e.titulo} (+{e.horasAdicionais.toFixed(1)}h)</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="form-group">
             <label className="form-label">{t('comum.descricao')}</label>
             <textarea className="input" rows={3}

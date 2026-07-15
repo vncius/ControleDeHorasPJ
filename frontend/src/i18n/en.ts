@@ -122,6 +122,8 @@ export default {
     horasEmAberto: '∞ open hours',
     horasTrabalhadas: '{{horas}}h worked',
     ateEmAndamento: 'in progress',
+    escopoPendente: 'Scope change pending approval',
+    registrarEscopo: '+ Register scope change',
   },
   clientes: {
     titulo: 'Clients',
@@ -240,6 +242,7 @@ export default {
     adicionarPrimeiro: 'Add first scope',
     colTitulo: 'Title',
     colHoras: 'Hours',
+    colTrabalhadas: 'Worked',
     totalAprovado: 'Approved total',
     confirmarExclusao: 'Delete scope "{{titulo}}"?',
     excluido: 'Scope deleted!',

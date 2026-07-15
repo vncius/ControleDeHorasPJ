@@ -123,6 +123,8 @@ export default {
     horasEmAberto: '∞ horas em aberto',
     horasTrabalhadas: '{{horas}}h trabalhadas',
     ateEmAndamento: 'em andamento',
+    escopoPendente: 'Escopo pendente de aprovação',
+    registrarEscopo: '+ Registrar alteração de escopo',
   },
   clientes: {
     titulo: 'Clientes',
@@ -241,6 +243,7 @@ export default {
     adicionarPrimeiro: 'Adicionar primeiro escopo',
     colTitulo: 'Título',
     colHoras: 'Horas',
+    colTrabalhadas: 'Trabalhadas',
     totalAprovado: 'Total aprovado',
     confirmarExclusao: 'Excluir escopo "{{titulo}}"?',
     excluido: 'Escopo excluído!',

@@ -79,6 +79,9 @@ export const escoposController = {
   listarPorProjeto(req: Request, res: Response) {
     handle(res, () => escoposService.listarPorProjeto(req.usuario!.email, req.params.projetoId))
   },
+  listarPorTenant(req: Request, res: Response) {
+    handle(res, () => escoposService.listarPorTenant(req.usuario!.email))
+  },
   criar(req: Request, res: Response) {
     handle(
       res,

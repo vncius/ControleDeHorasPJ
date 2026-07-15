@@ -51,6 +51,7 @@ router.delete('/projetos/:id', projetosController.excluir.bind(projetosControlle
 // ----------------------------------------------------------------
 // Escopos (por projeto)
 // ----------------------------------------------------------------
+router.get('/escopos', escoposController.listarPorTenant.bind(escoposController))
 router.get(
   '/projetos/:projetoId/escopos',
   escoposController.listarPorProjeto.bind(escoposController)

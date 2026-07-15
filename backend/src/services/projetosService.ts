@@ -117,10 +117,11 @@ export const projetosService = {
 
     const horasAbertas = projeto.horasContratadas === undefined || projeto.horasContratadas === null
 
-    const escopos = await escoposRepo.findBy(
-      (e) => e.tenantId === tenantId && e.projetoId === projetoId && e.status === 'Aprovada'
-    )
-    const horasExtrasAprovadas = escopos.reduce((acc, e) => acc + e.horasAdicionais, 0)
+    const escopos = await escoposRepo.findBy((e) => e.tenantId === tenantId && e.projetoId === projetoId)
+    const horasExtrasAprovadas = escopos
+      .filter((e) => e.status === 'Aprovada')
+      .reduce((acc, e) => acc + e.horasAdicionais, 0)
+    const temEscopoPendente = escopos.some((e) => e.status === 'Pendente')
     const horasContratadas = projeto.horasContratadas ?? 0
     const totalDisponivel = horasAbertas ? 0 : horasContratadas + horasExtrasAprovadas
 
@@ -162,6 +163,7 @@ export const projetosService = {
       valorEstimado,
       valorTrabalhado,
       emAndamento,
+      temEscopoPendente,
     }
   },
 }
