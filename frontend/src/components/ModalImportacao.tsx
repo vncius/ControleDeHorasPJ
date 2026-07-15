@@ -34,8 +34,8 @@ function useStatusLabel() {
 }
 
 function statusBg(s: StatusLinhaImportacao) {
-  if (s === 'erro') return 'rgba(255,92,122,0.06)'
-  if (s === 'aviso') return 'rgba(255,209,102,0.06)'
+  if (s === 'erro') return 'color-mix(in srgb, var(--danger) 6%, transparent)'
+  if (s === 'aviso') return 'color-mix(in srgb, var(--warning) 6%, transparent)'
   return 'transparent'
 }
 
@@ -230,8 +230,8 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
             {erros.length > 0 && (
               <div style={{
                 fontSize: 12, color: 'var(--warning)',
-                background: 'rgba(255,209,102,0.06)',
-                border: '1px solid rgba(255,209,102,0.2)',
+                background: 'color-mix(in srgb, var(--warning) 6%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--warning) 20%, transparent)',
                 borderRadius: 'var(--radius)', padding: '10px 14px',
                 marginBottom: 16,
               }}>

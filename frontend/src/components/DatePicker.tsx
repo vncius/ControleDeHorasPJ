@@ -106,7 +106,7 @@ export default function DatePicker({ value, onChange, placeholder, opcional }: P
                       borderRadius: 6,
                       border: ehHoje && !selecionado ? '1px solid var(--border-light)' : '1px solid transparent',
                       background: selecionado ? 'var(--accent)' : 'transparent',
-                      color: selecionado ? '#07070d' : doMes ? 'var(--text-primary)' : 'var(--text-muted)',
+                      color: selecionado ? 'var(--accent-contrast)' : doMes ? 'var(--text-primary)' : 'var(--text-muted)',
                       fontWeight: selecionado ? 700 : 400,
                       cursor: 'pointer',
                       opacity: doMes ? 1 : 0.4,

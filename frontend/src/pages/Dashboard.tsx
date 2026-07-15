@@ -51,11 +51,11 @@ function CardProjeto({ r, pago, onClick }: { r: ResumoProjeto; pago?: boolean; o
         cursor: 'pointer',
         transition: 'border-color 0.15s',
         padding: '16px 20px',
-        borderColor: pago ? 'rgba(92,200,255,0.2)' : 'var(--border)',
+        borderColor: pago ? 'color-mix(in srgb, var(--info) 20%, transparent)' : 'var(--border)',
       }}
       onClick={onClick}
-      onMouseEnter={e => (e.currentTarget.style.borderColor = pago ? 'rgba(92,200,255,0.4)' : 'var(--border-light)')}
-      onMouseLeave={e => (e.currentTarget.style.borderColor = pago ? 'rgba(92,200,255,0.2)' : 'var(--border)')}
+      onMouseEnter={e => (e.currentTarget.style.borderColor = pago ? 'color-mix(in srgb, var(--info) 40%, transparent)' : 'var(--border-light)')}
+      onMouseLeave={e => (e.currentTarget.style.borderColor = pago ? 'color-mix(in srgb, var(--info) 20%, transparent)' : 'var(--border)')}
     >
       <div className="flex-between" style={{ marginBottom: 6 }}>
         <div>
@@ -274,7 +274,7 @@ export default function Dashboard({ toast }: Props) {
       {/* Lançamento em andamento */}
       {emAndamento && (
         <div style={{
-          background: 'var(--accent-dim)', border: '1px solid rgba(168,255,62,0.3)',
+          background: 'var(--accent-dim)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
           borderRadius: 'var(--radius-lg)', padding: '16px 20px', marginBottom: 28,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
         }}>
@@ -411,7 +411,7 @@ export default function Dashboard({ toast }: Props) {
                   <div
                     key={r.projeto.id}
                     className="card"
-                    style={{ cursor: 'pointer', borderColor: r.percentualConsumido >= 100 ? 'rgba(255,92,122,0.4)' : 'rgba(255,209,102,0.3)', padding: '16px 20px' }}
+                    style={{ cursor: 'pointer', borderColor: r.percentualConsumido >= 100 ? 'color-mix(in srgb, var(--danger) 40%, transparent)' : 'color-mix(in srgb, var(--warning) 30%, transparent)', padding: '16px 20px' }}
                     onClick={() => nav(`/projetos/${r.projeto.id}`)}
                   >
                     <div className="flex-between" style={{ marginBottom: 8 }}>

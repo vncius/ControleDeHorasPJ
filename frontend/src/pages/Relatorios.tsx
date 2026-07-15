@@ -299,7 +299,7 @@ export default function Relatorios() {
           {/* Cards resumo faturável x não faturável */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 24 }}>
             {/* Faturável */}
-            <div style={{ background: 'var(--bg-2)', border: '1px solid rgba(168,255,62,0.2)', borderRadius: 'var(--radius-lg)', padding: 20 }}>
+            <div style={{ background: 'var(--bg-2)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', borderRadius: 'var(--radius-lg)', padding: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
                 Faturável
               </div>
@@ -321,7 +321,7 @@ export default function Relatorios() {
             </div>
 
             {/* Não faturável */}
-            <div style={{ background: 'var(--bg-2)', border: '1px solid rgba(92,200,255,0.2)', borderRadius: 'var(--radius-lg)', padding: 20 }}>
+            <div style={{ background: 'var(--bg-2)', border: '1px solid color-mix(in srgb, var(--info) 20%, transparent)', borderRadius: 'var(--radius-lg)', padding: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--info)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
                 Não faturável (projetos pagos)
               </div>
@@ -493,7 +493,7 @@ export default function Relatorios() {
                           <td style={{ fontSize: 12, fontWeight: 500 }}>
                             {l.projeto.nome}
                             {!faturavel && (
-                              <span style={{ marginLeft: 6, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--info)', background: 'rgba(92,200,255,0.1)', padding: '1px 5px', borderRadius: 3 }}>
+                              <span style={{ marginLeft: 6, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--info)', background: 'color-mix(in srgb, var(--info) 10%, transparent)', padding: '1px 5px', borderRadius: 3 }}>
                                 pago
                               </span>
                             )}

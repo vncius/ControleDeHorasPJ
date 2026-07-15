@@ -170,7 +170,7 @@ export function ProjetoForm({
 
           {/* Pago */}
           <div style={{
-            background: form.pago ? 'rgba(92,200,255,0.06)' : 'var(--bg-3)',
+            background: form.pago ? 'color-mix(in srgb, var(--info) 6%, transparent)' : 'var(--bg-3)',
             border: `1px solid ${form.pago ? 'var(--info-bg)' : 'var(--border)'}`,
             borderRadius: 'var(--radius)', padding: '12px 16px',
           }}>
