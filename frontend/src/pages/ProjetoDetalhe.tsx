@@ -8,10 +8,13 @@ import type { ToastFns } from '../App'
 import ControlePonto from '../components/ControlePonto'
 import TabelaLancamentos from '../components/TabelaLancamentos'
 import ModalImportacao from '../components/ModalImportacao'
+import ConfirmModal from '../components/ConfirmModal'
 import { ProjetoForm, projetoParaForm, formParaPayload } from './Projetos'
 import { STATUS_COR } from '../constants/statusProjeto'
 import { calcularDecorridoDecimal } from '../utils/tempo'
 import { useAgoraTick } from '../hooks/useAgoraTick'
+import { useFormatarData } from '../contexts/PreferenciasContext'
+import DatePicker from '../components/DatePicker'
 
 interface Props { toast: ToastFns }
 
@@ -40,11 +43,6 @@ function progressClass(pct: number) {
 function useFmtReais() {
   const { i18n } = useTranslation()
   return (v?: number) => v == null ? '—' : v.toLocaleString(i18n.language, { style: 'currency', currency: 'BRL' })
-}
-
-function useFmtDataBR() {
-  const { i18n } = useTranslation()
-  return (iso?: string) => !iso ? '—' : new Date(iso + 'T00:00:00').toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 function BadgeEscopo({ status }: { status: StatusEscopo }) {
@@ -159,13 +157,13 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">{t('comum.dataInicio')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('comum.opcional')}</span></label>
-              <input className="input input-mono" type="date" value={form.dataInicio}
-                onChange={e => setForm(f => ({ ...f, dataInicio: e.target.value }))} />
+              <DatePicker value={form.dataInicio} opcional
+                onChange={v => setForm(f => ({ ...f, dataInicio: v }))} />
             </div>
             <div className="form-group">
               <label className="form-label">{t('comum.dataFim')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('comum.opcional')}</span></label>
-              <input className="input input-mono" type="date" value={form.dataFim}
-                onChange={e => setForm(f => ({ ...f, dataFim: e.target.value }))} />
+              <DatePicker value={form.dataFim} opcional
+                onChange={v => setForm(f => ({ ...f, dataFim: v }))} />
             </div>
           </div>
           <div className="form-group">
@@ -190,7 +188,7 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
 export default function ProjetoDetalhe({ toast }: Props) {
   const { t } = useTranslation()
   const fmtReais = useFmtReais()
-  const fmtDataBR = useFmtDataBR()
+  const { formatarData: fmtDataBR } = useFormatarData()
   const { id } = useParams<{ id: string }>()
   const nav = useNavigate()
   const location = useLocation()
@@ -207,6 +205,10 @@ export default function ProjetoDetalhe({ toast }: Props) {
   const [salvandoProjeto, setSalvandoProjeto] = useState(false)
   const [escopoEditando, setEscopoEditando] = useState<AlteracaoEscopo | null>(null)
   const [abaAtiva, setAbaAtiva] = useState<'lancamentos' | 'escopos'>('lancamentos')
+  const [confirmarExcluirEscopo, setConfirmarExcluirEscopo] = useState<AlteracaoEscopo | null>(null)
+  const [excluindoEscopo, setExcluindoEscopo] = useState(false)
+  const [confirmarExcluirProjeto, setConfirmarExcluirProjeto] = useState(false)
+  const [excluindoProjeto, setExcluindoProjeto] = useState(false)
 
   const atualizarFormProjeto: Dispatch<SetStateAction<ReturnType<typeof projetoParaForm>>> = (value) => {
     setFormProjeto((prev) => {
@@ -275,14 +277,31 @@ export default function ProjetoDetalhe({ toast }: Props) {
     }
   }
 
-  async function excluirEscopo(e: AlteracaoEscopo) {
-    if (!confirm(t('escopo.confirmarExclusao', { titulo: e.titulo }))) return
+  async function confirmarExclusaoEscopo() {
+    if (!confirmarExcluirEscopo) return
+    setExcluindoEscopo(true)
     try {
-      await escoposApi.excluir(e.id)
+      await escoposApi.excluir(confirmarExcluirEscopo.id)
       toast.success(t('escopo.excluido'))
+      setConfirmarExcluirEscopo(null)
       carregar()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : t('comum.erroExcluir'))
+    } finally {
+      setExcluindoEscopo(false)
+    }
+  }
+
+  async function confirmarExclusaoProjeto() {
+    if (!resumo) return
+    setExcluindoProjeto(true)
+    try {
+      await projetosApi.excluir(resumo.projeto.id)
+      toast.success(t('projetos.excluido'))
+      nav('/projetos')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t('comum.erroExcluir'))
+      setExcluindoProjeto(false)
     }
   }
 
@@ -350,6 +369,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
             </span>
             <button className="btn btn-secondary btn-sm" onClick={abrirEditarProjeto}>{t('detalhe.editar')}</button>
             <button className="btn btn-secondary btn-sm" onClick={() => setModalImportacao(true)}>{t('detalhe.importar')}</button>
+            <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setConfirmarExcluirProjeto(true)}>{t('comum.excluir')}</button>
             <ControlePonto
               projetoId={projeto.id}
               lancamentoAberto={lancamentoAberto}
@@ -500,7 +520,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
                         <td onClick={ev => ev.stopPropagation()}>
                           <div className="flex-center gap-4">
                             <button className="btn btn-ghost btn-sm btn-icon" onClick={() => { setEscopoEditando(e); setModalEscopo(true) }}>✎</button>
-                            <button className="btn btn-ghost btn-sm btn-icon" style={{ color: 'var(--danger)' }} onClick={() => excluirEscopo(e)}>✕</button>
+                            <button className="btn btn-ghost btn-sm btn-icon" style={{ color: 'var(--danger)' }} onClick={() => setConfirmarExcluirEscopo(e)}>✕</button>
                           </div>
                         </td>
                       </tr>
@@ -545,6 +565,28 @@ export default function ProjetoDetalhe({ toast }: Props) {
           onSalvar={salvarProjeto}
           onFechar={() => setModalEditarProjeto(false)}
           titulo="Editar projeto"
+        />
+      )}
+      {confirmarExcluirEscopo && (
+        <ConfirmModal
+          titulo={t('escopo.excluirTitulo')}
+          mensagem={t('escopo.confirmarExclusao', { titulo: confirmarExcluirEscopo.titulo })}
+          confirmarLabel={t('comum.excluir')}
+          perigo
+          confirmando={excluindoEscopo}
+          onConfirmar={confirmarExclusaoEscopo}
+          onFechar={() => setConfirmarExcluirEscopo(null)}
+        />
+      )}
+      {confirmarExcluirProjeto && resumo && (
+        <ConfirmModal
+          titulo={t('projetos.excluirTitulo')}
+          mensagem={t('projetos.confirmarExclusaoSimples', { nome: resumo.projeto.nome })}
+          confirmarLabel={t('projetos.excluirTudo')}
+          perigo
+          confirmando={excluindoProjeto}
+          onConfirmar={confirmarExclusaoProjeto}
+          onFechar={() => setConfirmarExcluirProjeto(false)}
         />
       )}
     </div>

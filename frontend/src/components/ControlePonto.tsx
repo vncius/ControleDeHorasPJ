@@ -6,6 +6,7 @@ import type { ToastFns } from '../App'
 import { horaAtual, calcularDecorrido } from '../utils/tempo'
 import { useAgoraTick } from '../hooks/useAgoraTick'
 import { useTituloDecorrido } from '../hooks/useTituloDecorrido'
+import ConfirmModal from './ConfirmModal'
 
 interface Props {
   projetoId: string
@@ -31,6 +32,8 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
 
   // se true: ao finalizar, inicia automaticamente o projetoId atual
   const [iniciarAposFechar, setIniciarAposFechar] = useState(false)
+
+  const [confirmarCancelar, setConfirmarCancelar] = useState(false)
 
   // timer — re-render a cada segundo enquanto houver lançamento aberto
   useAgoraTick(!!lancamentoAberto)
@@ -104,11 +107,11 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
 
   async function cancelar() {
     if (!lancamentoAberto) return
-    if (!confirm(t('ponto.confirmarCancelar'))) return
     setCarregando(true)
     try {
       await lancamentosApi.excluir(lancamentoAberto.id)
       toast.success(t('ponto.cancelado'))
+      setConfirmarCancelar(false)
       onAtualizar()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('ponto.erroCancelar'))
@@ -232,7 +235,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
             </div>
           </div>
           <div className="flex-center gap-8">
-            <button className="btn btn-ghost btn-sm" onClick={cancelar} disabled={carregando}
+            <button className="btn btn-ghost btn-sm" onClick={() => setConfirmarCancelar(true)} disabled={carregando}
               style={{ color: 'var(--danger)' }}>
               {t('ponto.cancelarBtn')}
             </button>
@@ -243,6 +246,17 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
           </div>
         </div>
         {modalJSX}
+        {confirmarCancelar && (
+          <ConfirmModal
+            titulo={t('ponto.cancelarBtn')}
+            mensagem={t('ponto.confirmarCancelar')}
+            confirmarLabel={t('comum.confirmar')}
+            perigo
+            confirmando={carregando}
+            onConfirmar={cancelar}
+            onFechar={() => setConfirmarCancelar(false)}
+          />
+        )}
       </>
     )
   }

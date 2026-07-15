@@ -7,6 +7,7 @@ import type { ToastFns } from '../App'
 import { horaAtual, calcularDecorrido, calcularDecorridoDecimal } from '../utils/tempo'
 import { useAgoraTick } from '../hooks/useAgoraTick'
 import { useTituloDecorrido } from '../hooks/useTituloDecorrido'
+import { useFormatarData } from '../contexts/PreferenciasContext'
 
 // Mirror de backend/src/utils/faturamento.ts::lancamentoEhFaturavel — fonte
 // única da regra é o backend; esta cópia só decide em qual bucket (fat./pago)
@@ -37,16 +38,12 @@ function progressClass(p: number) {
   if (p >= 75) return 'progress-warning'
   return 'progress-ok'
 }
-function fmtData(iso?: string) {
-  if (!iso) return '—'
-  return new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-
 interface Props { toast: ToastFns }
 
 // ── Card de projeto reutilizável ─────────────────────────────────
 function CardProjeto({ r, pago, onClick }: { r: ResumoProjeto; pago?: boolean; onClick: () => void }) {
   const { t } = useTranslation()
+  const { formatarData: fmtData } = useFormatarData()
   return (
     <div
       className="card"

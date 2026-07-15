@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { importacaoApi } from '../services/api'
+import { useFormatarData } from '../contexts/PreferenciasContext'
 import type { LinhaImportacao, StatusLinhaImportacao } from '../types'
 import type { ToastFns } from '../App'
 
@@ -39,7 +40,8 @@ function statusBg(s: StatusLinhaImportacao) {
 }
 
 export default function ModalImportacao({ projetoId, toast, onImportado, onFechar }: Props) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
+  const { formatarData } = useFormatarData()
   const statusLabel = useStatusLabel()
   const [etapa, setEtapa] = useState<Etapa>('colar')
   const [texto, setTexto] = useState('')
@@ -197,7 +199,7 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
                       <td style={{ padding: '7px 10px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{l.indice}</td>
                       <td style={{ padding: '7px 10px', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
                         {l.data
-                          ? new Date(l.data + 'T00:00:00').toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: 'numeric' })
+                          ? formatarData(l.data)
                           : <span style={{ color: 'var(--danger)' }}>—</span>}
                       </td>
                       <td style={{ padding: '7px 10px', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

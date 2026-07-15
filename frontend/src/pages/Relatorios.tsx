@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from 'react'
 import { clientesApi, projetosApi, lancamentosApi, escoposApi } from '../services/api'
 import { dataLocalISO, hojeLocal } from '../utils/tempo'
+import { useFormatarData } from '../contexts/PreferenciasContext'
+import DatePicker from '../components/DatePicker'
 import type { Cliente, Projeto, LancamentoHoras } from '../types'
 
 interface LancamentoEnriquecido extends LancamentoHoras {
@@ -28,10 +30,6 @@ function fmtReais(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function fmtData(iso: string) {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR')
-}
-
 function dataInicioMes(mesesAtras: number): string {
   const d = new Date()
   d.setMonth(d.getMonth() - mesesAtras)
@@ -46,7 +44,7 @@ function dataHoje(): string {
 function exportarCSV(lancamentos: LancamentoEnriquecido[], sufixo = '') {
   const cab = ['Data', 'Cliente', 'Projeto', 'Escopo', 'Faturável', 'Descrição', 'Início', 'Fim', 'HH:MM', 'Decimal', 'Tipo', 'Valor (R$)']
   const linhas = lancamentos.map(l => [
-    fmtData(l.data),
+    l.data,
     l.cliente.nome,
     l.projeto.nome,
     l.escopoTitulo ?? '',
@@ -74,6 +72,7 @@ function exportarCSV(lancamentos: LancamentoEnriquecido[], sufixo = '') {
 type VisualizacaoFaturavel = 'todos' | 'faturavel' | 'nao_faturavel'
 
 export default function Relatorios() {
+  const { formatarData: fmtData } = useFormatarData()
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [projetos, setProjetos] = useState<Projeto[]>([])
   const [todosLancamentos, setTodosLancamentos] = useState<LancamentoEnriquecido[]>([])
@@ -190,7 +189,7 @@ export default function Relatorios() {
       })
     })
     return Array.from(mapa.values()).sort((a, b) => b.totalDecimal - a.totalDecimal)
-  }, [lancamentosFiltrados, agrupamento])
+  }, [lancamentosFiltrados, agrupamento, fmtData])
 
   function limparFiltros() {
     setDataInicio(dataInicioMes(1))
@@ -231,11 +230,11 @@ export default function Relatorios() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 16 }}>
           <div className="form-group">
             <label className="form-label">Data início</label>
-            <input className="input input-mono" type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
+            <DatePicker value={dataInicio} onChange={setDataInicio} />
           </div>
           <div className="form-group">
             <label className="form-label">Data fim</label>
-            <input className="input input-mono" type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} />
+            <DatePicker value={dataFim} onChange={setDataFim} />
           </div>
           <div className="form-group">
             <label className="form-label">Cliente</label>

@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
-import { useTranslation, Trans } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 import { projetosApi, clientesApi, lancamentosApi, escoposApi } from '../services/api'
 import type { Projeto, Cliente, StatusProjeto } from '../types'
 import type { ToastFns } from '../App'
 import { STATUS_COR } from '../constants/statusProjeto'
 import { hojeLocal } from '../utils/tempo'
+import { useFormatarData } from '../contexts/PreferenciasContext'
+import DatePicker from '../components/DatePicker'
+import InputMoeda from '../components/InputMoeda'
 import ProjetoDetalhe from './ProjetoDetalhe'
 
 interface Props { toast: ToastFns }
@@ -141,21 +144,21 @@ export function ProjetoForm({
             </div>
             <div className="form-group">
               <label className="form-label">{t('formProjeto.valorHoraLabel')}</label>
-              <input className="input input-mono" type="number" placeholder={t('formProjeto.valorHoraPlaceholder')} value={form.valorHora}
-                onChange={e => setForm(f => ({ ...f, valorHora: e.target.value }))} min="0" step="0.01" />
+              <InputMoeda value={form.valorHora}
+                onChange={v => setForm(f => ({ ...f, valorHora: v }))} />
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">{t('formProjeto.dataInicioLabel')}</label>
-              <input className="input input-mono" type="date" value={form.dataInicio}
-                onChange={e => setForm(f => ({ ...f, dataInicio: e.target.value }))} />
+              <DatePicker value={form.dataInicio}
+                onChange={v => setForm(f => ({ ...f, dataInicio: v }))} />
             </div>
             <div className="form-group">
               <label className="form-label">{t('formProjeto.dataFimLabel')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('comum.opcional')}</span></label>
-              <input className="input input-mono" type="date" value={form.dataFim}
-                onChange={e => setForm(f => ({ ...f, dataFim: e.target.value }))} />
+              <DatePicker value={form.dataFim} opcional
+                onChange={v => setForm(f => ({ ...f, dataFim: v }))} />
             </div>
           </div>
 
@@ -187,8 +190,8 @@ export function ProjetoForm({
             {form.pago && (
               <div className="form-group">
                 <label className="form-label">{t('formProjeto.dataPagamentoLabel')}</label>
-                <input className="input input-mono" type="date" value={form.dataPagamento}
-                  onChange={e => setForm(f => ({ ...f, dataPagamento: e.target.value }))} />
+                <DatePicker value={form.dataPagamento}
+                  onChange={v => setForm(f => ({ ...f, dataPagamento: v }))} />
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
                   {t('formProjeto.dataPagamentoAjuda')}
                 </div>
@@ -249,7 +252,8 @@ export function formParaPayload(form: FormState, paraAtualizar = false) {
 type ColOrdem = 'cliente' | 'nome' | 'status' | 'dataInicio' | 'horasContratadas' | 'horas' | 'valorHora'
 
 function ProjetosList({ toast }: Props) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
+  const { formatarDataCurta } = useFormatarData()
   const [projetos, setProjetos] = useState<Projeto[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [horasPorProjeto, setHorasPorProjeto] = useState<Map<string, number>>(new Map())
@@ -269,11 +273,9 @@ function ProjetosList({ toast }: Props) {
   const [busca, setBusca] = useState('')
   const [colOrdem, setColOrdem] = useState<ColOrdem>('cliente')
   const [ordemAsc, setOrdemAsc] = useState(true)
-  const [modal, setModal] = useState<'novo' | 'editar' | null>(null)
-  const [editando, setEditando] = useState<Projeto | null>(null)
+  const [modalNovo, setModalNovo] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [salvando, setSalvando] = useState(false)
-  const [confirmarExcluir, setConfirmarExcluir] = useState<Projeto | null>(null)
   const nav = useNavigate()
 
   async function carregar() {
@@ -321,14 +323,8 @@ function ProjetosList({ toast }: Props) {
 
   const nomeCliente = (id: string) => clientes.find(c => c.id === id)?.nome ?? '—'
 
-  function abrirNovo() { setForm(EMPTY_FORM); setEditando(null); setModal('novo') }
-  function abrirEditar(p: Projeto, e: React.MouseEvent) {
-    e.stopPropagation()
-    setForm(projetoParaForm(p))
-    setEditando(p)
-    setModal('editar')
-  }
-  function fechar() { setModal(null); setEditando(null); setForm(EMPTY_FORM) }
+  function abrirNovo() { setForm(EMPTY_FORM); setModalNovo(true) }
+  function fechar() { setModalNovo(false); setForm(EMPTY_FORM) }
 
   async function salvar() {
     if (!form.nome.trim()) { toast.error(t('projetos.nomeObrigatorio')); return }
@@ -340,28 +336,12 @@ function ProjetosList({ toast }: Props) {
     }
     setSalvando(true)
     try {
-      if (modal === 'novo') {
-        await projetosApi.criar(formParaPayload(form) as Parameters<typeof projetosApi.criar>[0])
-        toast.success(t('projetos.criado'))
-      } else if (editando) {
-        await projetosApi.atualizar(editando.id, formParaPayload(form, true))
-        toast.success(t('projetos.atualizado'))
-      }
+      await projetosApi.criar(formParaPayload(form) as Parameters<typeof projetosApi.criar>[0])
+      toast.success(t('projetos.criado'))
       fechar(); carregar()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('comum.erroSalvar'))
     } finally { setSalvando(false) }
-  }
-
-  async function excluir(p: Projeto) {
-    try {
-      await projetosApi.excluir(p.id)
-      toast.success(t('projetos.excluido'))
-      setConfirmarExcluir(null); carregar()
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('comum.erroExcluir'))
-      setConfirmarExcluir(null)
-    }
   }
 
   const filtrados = projetos
@@ -552,7 +532,6 @@ function ProjetosList({ toast }: Props) {
                   <Th col="horas" label={t('projetos.colHLancadas')} width={100} />
                   <Th col="valorHora" label={t('projetos.colValorHora')} width={90} className="hide-mobile" />
                   <th className="hide-mobile" style={{ width: 60 }}>{t('comum.pago')}</th>
-                  <th style={{ width: 90 }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -565,7 +544,7 @@ function ProjetosList({ toast }: Props) {
                     <td className="hide-mobile" style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{nomeCliente(p.clienteId)}</td>
                     <td className="hide-mobile"><BadgeStatus status={p.status} /></td>
                     <td className="td-mono hide-mobile">
-                      {p.dataInicio ? new Date(p.dataInicio + 'T00:00:00').toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
+                      {formatarDataCurta(p.dataInicio)}
                     </td>
                     <td className="td-mono">
                       {p.horasContratadas != null ? (
@@ -590,14 +569,6 @@ function ProjetosList({ toast }: Props) {
                         ? <span className="badge" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>{t('projetos.badgePago')}</span>
                         : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
                     </td>
-                    <td onClick={e => e.stopPropagation()}>
-                      <div className="flex-center gap-4">
-                        <button className="btn btn-ghost btn-sm btn-icon" title={t('comum.editar')} onClick={e => abrirEditar(p, e)}>✎</button>
-                        <button className="btn btn-ghost btn-sm btn-icon" title={t('comum.excluir')}
-                          style={{ color: 'var(--danger)' }}
-                          onClick={e => { e.stopPropagation(); setConfirmarExcluir(p) }}>✕</button>
-                      </div>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -606,29 +577,12 @@ function ProjetosList({ toast }: Props) {
         </div>
       )}
 
-      {modal && (
+      {modalNovo && (
         <ProjetoForm
           form={form} setForm={setForm} clientes={clientes}
           salvando={salvando} onSalvar={salvar} onFechar={fechar}
-          titulo={modal === 'novo' ? t('projetos.novoTitulo') : t('projetos.editarTitulo')}
+          titulo={t('projetos.novoTitulo')}
         />
-      )}
-
-      {confirmarExcluir && (
-        <div className="modal-overlay" onClick={() => setConfirmarExcluir(null)}>
-          <div className="modal" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header"><h2 className="modal-title">{t('projetos.excluirTitulo')}</h2></div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
-              <Trans i18nKey="projetos.confirmarExclusao" values={{ nome: confirmarExcluir.nome }}>
-                <strong style={{ color: 'var(--text-primary)' }} />
-              </Trans>
-            </p>
-            <div className="form-actions">
-              <button className="btn btn-secondary" onClick={() => setConfirmarExcluir(null)}>{t('comum.cancelar')}</button>
-              <button className="btn btn-danger" onClick={() => excluir(confirmarExcluir)}>{t('projetos.excluirTudo')}</button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   )
