@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { projetosApi, clientesApi, escoposApi, lancamentosApi } from '../services/api'
 import type { ResumoProjeto, AlteracaoEscopo, LancamentoHoras, StatusEscopo, Cliente } from '../types'
 import type { ToastFns } from '../App'
@@ -12,29 +13,46 @@ import { STATUS_COR } from '../constants/statusProjeto'
 
 interface Props { toast: ToastFns }
 
+const STATUS_PROJETO_I18N_KEY: Record<string, string> = {
+  'Aguardando início': 'statusProjeto.aguardandoInicio',
+  'Em desenvolvimento': 'statusProjeto.emDesenvolvimento',
+  'Com impedimento': 'statusProjeto.comImpedimento',
+  'Em testes': 'statusProjeto.emTestes',
+  'Entregue': 'statusProjeto.entregue',
+  'Finalizado': 'statusProjeto.finalizado',
+  'Cancelado': 'statusProjeto.cancelado',
+}
+
+const STATUS_ESCOPO_I18N_KEY: Record<StatusEscopo, string> = {
+  Aprovada: 'statusEscopo.Aprovada',
+  Pendente: 'statusEscopo.Pendente',
+  Cancelada: 'statusEscopo.Cancelada',
+}
+
 function progressClass(pct: number) {
   if (pct >= 100) return 'progress-danger'
   if (pct >= 80) return 'progress-warning'
   return 'progress-ok'
 }
 
-function fmtReais(v?: number) {
-  if (v == null) return '—'
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+function useFmtReais() {
+  const { i18n } = useTranslation()
+  return (v?: number) => v == null ? '—' : v.toLocaleString(i18n.language, { style: 'currency', currency: 'BRL' })
 }
 
-function fmtDataBR(iso?: string) {
-  if (!iso) return '—'
-  return new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+function useFmtDataBR() {
+  const { i18n } = useTranslation()
+  return (iso?: string) => !iso ? '—' : new Date(iso + 'T00:00:00').toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-function badgeEscopo(status: StatusEscopo) {
+function BadgeEscopo({ status }: { status: StatusEscopo }) {
+  const { t } = useTranslation()
   const map: Record<StatusEscopo, string> = {
     Aprovada: 'badge-aprovada',
     Pendente: 'badge-pendente',
     Cancelada: 'badge-cancelado',
   }
-  return <span className={`badge ${map[status]}`}>{status}</span>
+  return <span className={`badge ${map[status]}`}>{t(STATUS_ESCOPO_I18N_KEY[status])}</span>
 }
 
 function MetricCard({ label, value, sub, destaque }: { label: string; value: string | number; sub?: string; destaque?: boolean }) {
@@ -58,6 +76,7 @@ interface ModalEscopoProps {
 }
 
 function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEscopoProps) {
+  const { t } = useTranslation()
   const [form, setForm] = useState({
     titulo: editando?.titulo ?? '',
     descricaoDetalhada: editando?.descricaoDetalhada ?? '',
@@ -70,11 +89,11 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
   const [salvando, setSalvando] = useState(false)
 
   async function salvar() {
-    if (!form.titulo.trim()) { toast.error('Título obrigatório'); return }
+    if (!form.titulo.trim()) { toast.error(t('escopo.tituloObrigatorio')); return }
     const horas = parseFloat(form.horasAdicionais)
-    if (!horas || horas <= 0) { toast.error('Horas adicionais inválidas'); return }
+    if (!horas || horas <= 0) { toast.error(t('escopo.horasInvalidas')); return }
     if (form.dataInicio && form.dataFim && form.dataFim < form.dataInicio) {
-      toast.error('Data fim não pode ser anterior à data início'); return
+      toast.error(t('escopo.dataFimAnterior')); return
     }
     setSalvando(true)
     try {
@@ -89,14 +108,14 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
       }
       if (editando) {
         await escoposApi.atualizar(editando.id, payload)
-        toast.success('Escopo atualizado!')
+        toast.success(t('escopo.atualizado'))
       } else {
         await escoposApi.criar(projetoId, payload)
-        toast.success('Escopo criado!')
+        toast.success(t('escopo.criado'))
       }
       onSalvar()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao salvar')
+      toast.error(e instanceof Error ? e.message : t('comum.erroSalvar'))
     } finally {
       setSalvando(false)
     }
@@ -106,57 +125,57 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
     <div className="modal-overlay" onClick={onFechar}>
       <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">{editando ? 'Editar escopo' : 'Nova alteração de escopo'}</h2>
+          <h2 className="modal-title">{editando ? t('escopo.modalEditar') : t('escopo.modalNovo')}</h2>
           <button className="btn btn-ghost btn-icon" onClick={onFechar}>✕</button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="form-group">
-            <label className="form-label">Título *</label>
-            <input className="input" placeholder="Ex: Inclusão de módulo de relatórios"
+            <label className="form-label">{t('escopo.tituloLabel')}</label>
+            <input className="input" placeholder={t('escopo.tituloPlaceholder')}
               value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} autoFocus />
           </div>
           <div className="form-group">
-            <label className="form-label">Descrição detalhada</label>
-            <textarea className="input" rows={2} placeholder="Detalhe o escopo..."
+            <label className="form-label">{t('escopo.descricaoDetalhada')}</label>
+            <textarea className="input" rows={2} placeholder={t('escopo.descricaoPlaceholder')}
               value={form.descricaoDetalhada} onChange={e => setForm(f => ({ ...f, descricaoDetalhada: e.target.value }))} />
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Horas adicionais *</label>
-              <input className="input input-mono" type="number" placeholder="Ex: 20" min="0" step="0.5"
+              <label className="form-label">{t('escopo.horasAdicionais')}</label>
+              <input className="input input-mono" type="number" placeholder={t('escopo.horasPlaceholder')} min="0" step="0.5"
                 value={form.horasAdicionais} onChange={e => setForm(f => ({ ...f, horasAdicionais: e.target.value }))} />
             </div>
             <div className="form-group">
-              <label className="form-label">Status</label>
+              <label className="form-label">{t('comum.status')}</label>
               <select className="input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as StatusEscopo }))}>
-                <option value="Pendente">Pendente</option>
-                <option value="Aprovada">Aprovada</option>
-                <option value="Cancelada">Cancelada</option>
+                <option value="Pendente">{t('statusEscopo.Pendente')}</option>
+                <option value="Aprovada">{t('statusEscopo.Aprovada')}</option>
+                <option value="Cancelada">{t('statusEscopo.Cancelada')}</option>
               </select>
             </div>
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Data início <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(opcional)</span></label>
+              <label className="form-label">{t('comum.dataInicio')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('comum.opcional')}</span></label>
               <input className="input input-mono" type="date" value={form.dataInicio}
                 onChange={e => setForm(f => ({ ...f, dataInicio: e.target.value }))} />
             </div>
             <div className="form-group">
-              <label className="form-label">Data fim <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(opcional)</span></label>
+              <label className="form-label">{t('comum.dataFim')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('comum.opcional')}</span></label>
               <input className="input input-mono" type="date" value={form.dataFim}
                 onChange={e => setForm(f => ({ ...f, dataFim: e.target.value }))} />
             </div>
           </div>
           <div className="form-group">
-            <label className="form-label">Observações</label>
-            <textarea className="input" rows={2} placeholder="Observações opcionais..."
+            <label className="form-label">{t('comum.observacoes')}</label>
+            <textarea className="input" rows={2} placeholder={t('comum.observacoesPlaceholder')}
               value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
           </div>
         </div>
         <div className="form-actions" style={{ marginTop: 24 }}>
-          <button className="btn btn-secondary" onClick={onFechar}>Cancelar</button>
+          <button className="btn btn-secondary" onClick={onFechar}>{t('comum.cancelar')}</button>
           <button className="btn btn-primary" onClick={salvar} disabled={salvando}>
-            {salvando ? 'Salvando...' : editando ? 'Salvar' : 'Criar escopo'}
+            {salvando ? t('comum.salvando') : editando ? t('comum.salvar') : t('escopo.criarBtn')}
           </button>
         </div>
       </div>
@@ -167,6 +186,9 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
 // ── Página principal ─────────────────────────────────────────────
 
 export default function ProjetoDetalhe({ toast }: Props) {
+  const { t } = useTranslation()
+  const fmtReais = useFmtReais()
+  const fmtDataBR = useFmtDataBR()
   const { id } = useParams<{ id: string }>()
   const nav = useNavigate()
 
@@ -204,7 +226,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
       setLancamentos(l)
       setClientes(cs)
     } catch {
-      toast.error('Erro ao carregar projeto')
+      toast.error(t('detalhe.erroCarregar'))
     } finally {
       setLoading(false)
     }
@@ -220,42 +242,42 @@ export default function ProjetoDetalhe({ toast }: Props) {
 
   async function salvarProjeto() {
     if (!resumo || !formProjeto) return
-    if (!formProjeto.nome.trim()) { toast.error('Nome é obrigatório'); return }
-    if (!formProjeto.clienteId) { toast.error('Selecione um cliente'); return }
-    if (!formProjeto.dataInicio) { toast.error('Data de início é obrigatória'); return }
+    if (!formProjeto.nome.trim()) { toast.error(t('projetos.nomeObrigatorio')); return }
+    if (!formProjeto.clienteId) { toast.error(t('projetos.selecioneCliente')); return }
+    if (!formProjeto.dataInicio) { toast.error(t('projetos.dataInicioObrigatoria')); return }
     setSalvandoProjeto(true)
     try {
       await projetosApi.atualizar(resumo.projeto.id, formParaPayload(formProjeto, true))
-      toast.success('Projeto atualizado!')
+      toast.success(t('projetos.atualizado'))
       setModalEditarProjeto(false)
       carregar()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao salvar')
+      toast.error(e instanceof Error ? e.message : t('comum.erroSalvar'))
     } finally {
       setSalvandoProjeto(false)
     }
   }
 
   async function excluirEscopo(e: AlteracaoEscopo) {
-    if (!confirm(`Excluir escopo "${e.titulo}"?`)) return
+    if (!confirm(t('escopo.confirmarExclusao', { titulo: e.titulo }))) return
     try {
       await escoposApi.excluir(e.id)
-      toast.success('Escopo excluído!')
+      toast.success(t('escopo.excluido'))
       carregar()
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao excluir')
+      toast.error(err instanceof Error ? err.message : t('comum.erroExcluir'))
     }
   }
 
   if (loading) return (
-    <div className="loading-screen"><div className="spinner" /><span>Carregando projeto...</span></div>
+    <div className="loading-screen"><div className="spinner" /><span>{t('detalhe.carregando')}</span></div>
   )
 
   if (!resumo) return (
     <div className="card">
       <div className="empty-state">
-        <div>Projeto não encontrado</div>
-        <button className="btn btn-secondary" style={{ marginTop: 16 }} onClick={() => nav('/projetos')}>← Voltar</button>
+        <div>{t('detalhe.naoEncontrado')}</div>
+        <button className="btn btn-secondary" style={{ marginTop: 16 }} onClick={() => nav('/projetos')}>{t('detalhe.voltar')}</button>
       </div>
     </div>
   )
@@ -272,7 +294,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
       <div style={{ marginBottom: 28 }}>
         <button className="btn btn-ghost btn-sm" onClick={() => nav('/projetos')}
           style={{ marginBottom: 12, color: 'var(--text-muted)' }}>
-          ← Projetos
+          {t('detalhe.voltarProjetos')}
         </button>
         <div className="flex-between">
           <div>
@@ -282,10 +304,10 @@ export default function ProjetoDetalhe({ toast }: Props) {
           </div>
           <div className="flex-center gap-8">
             <span className="badge" style={{ background: statusCor.bg, color: statusCor.color, fontSize: 11 }}>
-              {projeto.status}
+              {t(STATUS_PROJETO_I18N_KEY[projeto.status] ?? projeto.status)}
             </span>
-            <button className="btn btn-secondary btn-sm" onClick={abrirEditarProjeto}>✎ Editar</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => setModalImportacao(true)}>↑ Importar</button>
+            <button className="btn btn-secondary btn-sm" onClick={abrirEditarProjeto}>{t('detalhe.editar')}</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setModalImportacao(true)}>{t('detalhe.importar')}</button>
             <ControlePonto
               projetoId={projeto.id}
               lancamentoAberto={lancamentoAberto}
@@ -298,15 +320,15 @@ export default function ProjetoDetalhe({ toast }: Props) {
 
       {/* Barra de progresso */}
       {resumo.horasAbertas ? (
-        <div style={{ background: 'var(--accent-dim)', border: '1px solid rgba(168,255,62,0.2)', borderRadius: 'var(--radius)', padding: '10px 16px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>
+        <div style={{ background: 'var(--accent-dim)', border: '1px solid var(--status-ativo-bg)', borderRadius: 'var(--radius)', padding: '10px 16px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>
           <span style={{ fontSize: 16 }}>∞</span>
-          <span>Projeto em horas abertas — sem limite contratado</span>
+          <span>{t('detalhe.horasAbertasBanner')}</span>
         </div>
       ) : (
         <div style={{ marginBottom: 28 }}>
           <div className="flex-between" style={{ marginBottom: 8 }}>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              {resumo.totalTrabalhado.toFixed(1)}h trabalhadas de {resumo.totalDisponivel.toFixed(1)}h disponíveis
+              {t('detalhe.trabalhadasDe', { trabalhado: resumo.totalTrabalhado.toFixed(1), disponivel: resumo.totalDisponivel.toFixed(1) })}
             </span>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: resumo.percentualConsumido >= 100 ? 'var(--danger)' : resumo.percentualConsumido >= 80 ? 'var(--warning)' : 'var(--accent)' }}>
               {resumo.percentualConsumido.toFixed(1)}%
@@ -321,24 +343,24 @@ export default function ProjetoDetalhe({ toast }: Props) {
       {/* Cards métricas */}
       {resumo.horasAbertas ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 32 }}>
-          <MetricCard label="Horas contratadas" value="∞ em aberto" sub="sem limite definido" />
-          <MetricCard label="Trabalhadas" value={`${resumo.totalTrabalhado.toFixed(1)}h`} sub="lançamentos finalizados" destaque />
+          <MetricCard label={t('detalhe.cardHorasContratadas')} value={t('detalhe.emAbertoValor')} sub={t('detalhe.semLimite')} />
+          <MetricCard label={t('detalhe.cardTrabalhadas')} value={`${resumo.totalTrabalhado.toFixed(1)}h`} sub={t('detalhe.lancFinalizados')} destaque />
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 32 }}>
-          <MetricCard label="Contratadas" value={`${resumo.horasContratadas.toFixed(0)}h`} sub="horas base" />
-          <MetricCard label="Extras aprovadas" value={`+${resumo.horasExtrasAprovadas.toFixed(1)}h`} sub="escopos aprovados" />
-          <MetricCard label="Trabalhadas" value={`${resumo.totalTrabalhado.toFixed(1)}h`} sub="lançamentos finalizados" destaque />
-          <MetricCard label="Saldo" value={`${resumo.saldo >= 0 ? '+' : ''}${resumo.saldo.toFixed(1)}h`} sub={resumo.saldo < 0 ? 'horas excedidas' : 'horas disponíveis'} />
+          <MetricCard label={t('detalhe.cardContratadas')} value={`${resumo.horasContratadas.toFixed(0)}h`} sub={t('detalhe.horasBase')} />
+          <MetricCard label={t('detalhe.cardExtras')} value={`+${resumo.horasExtrasAprovadas.toFixed(1)}h`} sub={t('detalhe.escoposAprovados')} />
+          <MetricCard label={t('detalhe.cardTrabalhadas')} value={`${resumo.totalTrabalhado.toFixed(1)}h`} sub={t('detalhe.lancFinalizados')} destaque />
+          <MetricCard label={t('detalhe.cardSaldo')} value={`${resumo.saldo >= 0 ? '+' : ''}${resumo.saldo.toFixed(1)}h`} sub={resumo.saldo < 0 ? t('detalhe.horasExcedidas') : t('detalhe.horasDisponiveis')} />
         </div>
       )}
 
       {/* Cards financeiros */}
       {projeto.valorHora != null && (
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${resumo.horasAbertas ? 2 : 3}, 1fr)`, gap: 14, marginBottom: 32 }}>
-          <MetricCard label="Valor/hora" value={fmtReais(projeto.valorHora)} sub="por hora" />
-          {!resumo.horasAbertas && <MetricCard label="Receita prevista" value={fmtReais(resumo.valorEstimado)} sub="total disponível × valor/h" />}
-          <MetricCard label="Receita executada" value={fmtReais(resumo.valorTrabalhado)} sub="horas trabalhadas × valor/h" destaque />
+          <MetricCard label={t('detalhe.cardValorHora')} value={fmtReais(projeto.valorHora)} sub={t('detalhe.porHora')} />
+          {!resumo.horasAbertas && <MetricCard label={t('detalhe.receitaPrevista')} value={fmtReais(resumo.valorEstimado)} sub={t('detalhe.receitaPrevistaSub')} />}
+          <MetricCard label={t('detalhe.receitaExecutada')} value={fmtReais(resumo.valorTrabalhado)} sub={t('detalhe.receitaExecutadaSub')} destaque />
         </div>
       )}
 
@@ -352,7 +374,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
             fontSize: 13, fontWeight: abaAtiva === aba ? 600 : 400,
             fontFamily: 'var(--font-ui)', cursor: 'pointer', marginBottom: -1, transition: 'all 0.15s',
           }}>
-            {aba === 'lancamentos' ? `Lançamentos (${lancamentos.length})` : `Escopos (${escopos.length})`}
+            {aba === 'lancamentos' ? t('detalhe.abaLancamentos', { count: lancamentos.length }) : t('detalhe.abaEscopos', { count: escopos.length })}
           </button>
         ))}
       </div>
@@ -373,10 +395,10 @@ export default function ProjetoDetalhe({ toast }: Props) {
         <div>
           <div className="flex-between" style={{ marginBottom: 16 }}>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Alterações de Escopo
+              {t('escopo.titulo')}
             </h3>
             <button className="btn btn-secondary btn-sm" onClick={() => { setEscopoEditando(null); setModalEscopo(true) }}>
-              + Nova alteração
+              {t('escopo.novo')}
             </button>
           </div>
 
@@ -384,9 +406,9 @@ export default function ProjetoDetalhe({ toast }: Props) {
             <div className="card">
               <div className="empty-state" style={{ padding: '32px 24px' }}>
                 <div className="empty-state-icon">⊕</div>
-                <div>Nenhuma alteração de escopo</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Somente escopos aprovados somam ao total de horas</div>
-                <button className="btn btn-secondary btn-sm" style={{ marginTop: 16 }} onClick={() => { setEscopoEditando(null); setModalEscopo(true) }}>Adicionar primeiro escopo</button>
+                <div>{t('escopo.nenhum')}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{t('escopo.dica')}</div>
+                <button className="btn btn-secondary btn-sm" style={{ marginTop: 16 }} onClick={() => { setEscopoEditando(null); setModalEscopo(true) }}>{t('escopo.adicionarPrimeiro')}</button>
               </div>
             </div>
           ) : (
@@ -395,11 +417,11 @@ export default function ProjetoDetalhe({ toast }: Props) {
                 <table>
                   <thead>
                     <tr>
-                      <th>Título</th>
-                      <th style={{ width: 90 }}>Início</th>
-                      <th style={{ width: 90 }}>Fim</th>
-                      <th style={{ width: 90 }}>Horas</th>
-                      <th style={{ width: 90 }}>Status</th>
+                      <th>{t('escopo.colTitulo')}</th>
+                      <th style={{ width: 90 }}>{t('comum.inicio')}</th>
+                      <th style={{ width: 90 }}>{t('comum.fim')}</th>
+                      <th style={{ width: 90 }}>{t('escopo.colHoras')}</th>
+                      <th style={{ width: 90 }}>{t('comum.status')}</th>
                       <th style={{ width: 80 }}></th>
                     </tr>
                   </thead>
@@ -415,7 +437,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
                         <td className="td-mono" style={{ color: e.status === 'Aprovada' ? 'var(--accent)' : 'var(--text-muted)', fontWeight: e.status === 'Aprovada' ? 600 : 400 }}>
                           +{e.horasAdicionais.toFixed(1)}h
                         </td>
-                        <td>{badgeEscopo(e.status)}</td>
+                        <td><BadgeEscopo status={e.status} /></td>
                         <td onClick={ev => ev.stopPropagation()}>
                           <div className="flex-center gap-4">
                             <button className="btn btn-ghost btn-sm btn-icon" onClick={() => { setEscopoEditando(e); setModalEscopo(true) }}>✎</button>
@@ -428,7 +450,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
                   {escopos.some(e => e.status === 'Aprovada') && (
                     <tfoot>
                       <tr style={{ borderTop: '1px solid var(--border-light)' }}>
-                        <td colSpan={3} style={{ padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total aprovado</td>
+                        <td colSpan={3} style={{ padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('escopo.totalAprovado')}</td>
                         <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent)', fontSize: 13 }}>+{resumo.horasExtrasAprovadas.toFixed(1)}h</td>
                         <td colSpan={2} />
                       </tr>

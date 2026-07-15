@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { lancamentosApi } from '../services/api'
+import { hojeLocal } from '../utils/tempo'
 import type { LancamentoHoras, TipoLancamento, AlteracaoEscopo } from '../types'
 import type { ToastFns } from '../App'
 
@@ -27,10 +29,18 @@ const TIPO_BADGE: Record<TipoLancamento, string> = {
   Importado: '↓',
 }
 
-function badgeTipo(tipo: TipoLancamento) {
+const TIPO_I18N_KEY: Record<TipoLancamento, string> = {
+  Automatico: 'tipoLanc.Automatico',
+  Manual: 'tipoLanc.Manual',
+  Ajuste: 'tipoLanc.Ajuste',
+  Importado: 'tipoLanc.Importado',
+}
+
+function BadgeTipo({ tipo }: { tipo: TipoLancamento }) {
+  const { t } = useTranslation()
   return (
     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', background: 'var(--bg-3)', padding: '2px 6px', borderRadius: 4 }}>
-      {TIPO_BADGE[tipo]} {tipo}
+      {TIPO_BADGE[tipo]} {t(TIPO_I18N_KEY[tipo])}
     </span>
   )
 }
@@ -46,14 +56,15 @@ interface ModalManualProps {
 }
 
 function ModalLancamentoManual({ projetoId, escopos, toast, onSalvar, onFechar }: ModalManualProps) {
-  const hoje = new Date().toISOString().slice(0, 10)
+  const { t } = useTranslation()
+  const hoje = hojeLocal()
   const [form, setForm] = useState<FormEdicao>({
     data: hoje, horaInicio: '', horaFim: '', descricao: '', tipo: 'Manual', escopoId: '',
   })
   const [salvando, setSalvando] = useState(false)
 
   async function salvar() {
-    if (!form.horaInicio) { toast.error('Hora início obrigatória'); return }
+    if (!form.horaInicio) { toast.error(t('lanc.horaInicioObrigatoria')); return }
     setSalvando(true)
     try {
       await lancamentosApi.criar({
@@ -65,10 +76,10 @@ function ModalLancamentoManual({ projetoId, escopos, toast, onSalvar, onFechar }
         descricao: form.descricao,
         tipo: form.tipo,
       })
-      toast.success('Lançamento criado!')
+      toast.success(t('lanc.criado'))
       onSalvar()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao salvar')
+      toast.error(e instanceof Error ? e.message : t('comum.erroSalvar'))
     } finally {
       setSalvando(false)
     }
@@ -78,44 +89,44 @@ function ModalLancamentoManual({ projetoId, escopos, toast, onSalvar, onFechar }
     <div className="modal-overlay" onClick={onFechar}>
       <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">Lançamento manual</h2>
+          <h2 className="modal-title">{t('lanc.modalTitulo')}</h2>
           <button className="btn btn-ghost btn-icon" onClick={onFechar}>✕</button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Data *</label>
+              <label className="form-label">{t('lanc.dataLabel')}</label>
               <input className="input input-mono" type="date" value={form.data}
                 onChange={e => setForm(f => ({ ...f, data: e.target.value }))} />
             </div>
             <div className="form-group">
-              <label className="form-label">Tipo</label>
+              <label className="form-label">{t('comum.tipo')}</label>
               <select className="input" value={form.tipo}
                 onChange={e => setForm(f => ({ ...f, tipo: e.target.value as TipoLancamento }))}>
-                <option value="Manual">Manual</option>
-                <option value="Ajuste">Ajuste</option>
-                <option value="Automatico">Automático</option>
+                <option value="Manual">{t('tipoLanc.Manual')}</option>
+                <option value="Ajuste">{t('tipoLanc.Ajuste')}</option>
+                <option value="Automatico">{t('tipoLanc.Automatico')}</option>
               </select>
             </div>
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Hora início *</label>
+              <label className="form-label">{t('lanc.horaInicioLabel')}</label>
               <input className="input input-mono" type="time" value={form.horaInicio}
                 onChange={e => setForm(f => ({ ...f, horaInicio: e.target.value }))} autoFocus />
             </div>
             <div className="form-group">
-              <label className="form-label">Hora fim</label>
+              <label className="form-label">{t('comum.horaFim')}</label>
               <input className="input input-mono" type="time" value={form.horaFim}
                 onChange={e => setForm(f => ({ ...f, horaFim: e.target.value }))} />
             </div>
           </div>
           {escopos.length > 0 && (
             <div className="form-group">
-              <label className="form-label">Associar a escopo <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(opcional)</span></label>
+              <label className="form-label">{t('lanc.associarEscopo')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('comum.opcional')}</span></label>
               <select className="input" value={form.escopoId}
                 onChange={e => setForm(f => ({ ...f, escopoId: e.target.value }))}>
-                <option value="">Escopo principal do projeto</option>
+                <option value="">{t('lanc.escopoPrincipal')}</option>
                 {escopos.filter(e => e.status === 'Aprovada').map(e => (
                   <option key={e.id} value={e.id}>{e.titulo} (+{e.horasAdicionais.toFixed(1)}h)</option>
                 ))}
@@ -123,15 +134,15 @@ function ModalLancamentoManual({ projetoId, escopos, toast, onSalvar, onFechar }
             </div>
           )}
           <div className="form-group">
-            <label className="form-label">Descrição</label>
-            <textarea className="input" rows={3} placeholder="O que foi feito?"
+            <label className="form-label">{t('comum.descricao')}</label>
+            <textarea className="input" rows={3} placeholder={t('lanc.oQueFoiFeito')}
               value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} />
           </div>
         </div>
         <div className="form-actions" style={{ marginTop: 24 }}>
-          <button className="btn btn-secondary" onClick={onFechar}>Cancelar</button>
+          <button className="btn btn-secondary" onClick={onFechar}>{t('comum.cancelar')}</button>
           <button className="btn btn-primary" onClick={salvar} disabled={salvando}>
-            {salvando ? 'Salvando...' : 'Salvar lançamento'}
+            {salvando ? t('comum.salvando') : t('lanc.salvarBtn')}
           </button>
         </div>
       </div>
@@ -149,6 +160,7 @@ interface LinhaProps {
 }
 
 function LinhaLancamento({ lancamento, escopos, toast, onAtualizar }: LinhaProps) {
+  const { t, i18n } = useTranslation()
   const [editando, setEditando] = useState(false)
   const [form, setForm] = useState<FormEdicao>({
     data: lancamento.data,
@@ -179,11 +191,11 @@ function LinhaLancamento({ lancamento, escopos, toast, onAtualizar }: LinhaProps
         tipo: form.tipo,
         escopoId: form.escopoId || null,
       })
-      toast.success('Lançamento atualizado!')
+      toast.success(t('lanc.atualizado'))
       setEditando(false)
       onAtualizar()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao salvar')
+      toast.error(e instanceof Error ? e.message : t('comum.erroSalvar'))
     } finally {
       setSalvando(false)
     }
@@ -191,13 +203,13 @@ function LinhaLancamento({ lancamento, escopos, toast, onAtualizar }: LinhaProps
 
   async function excluir(e: React.MouseEvent) {
     e.stopPropagation()
-    if (!confirm('Excluir este lançamento?')) return
+    if (!confirm(t('lanc.confirmarExclusao'))) return
     try {
       await lancamentosApi.excluir(lancamento.id)
-      toast.success('Lançamento excluído')
+      toast.success(t('lanc.excluido'))
       onAtualizar()
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao excluir')
+      toast.error(err instanceof Error ? err.message : t('comum.erroExcluir'))
     }
   }
 
@@ -205,10 +217,10 @@ function LinhaLancamento({ lancamento, escopos, toast, onAtualizar }: LinhaProps
     e.stopPropagation()
     try {
       await lancamentosApi.duplicar(lancamento.id)
-      toast.success('Lançamento duplicado!')
+      toast.success(t('lanc.duplicado'))
       onAtualizar()
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao duplicar')
+      toast.error(err instanceof Error ? err.message : t('lanc.erroDuplicar'))
     }
   }
 
@@ -219,22 +231,22 @@ function LinhaLancamento({ lancamento, escopos, toast, onAtualizar }: LinhaProps
     return (
       <tr style={{ background: 'var(--bg-3)' }}>
         <td><input className="input input-mono" type="date" value={form.data} onChange={e => setForm(f => ({ ...f, data: e.target.value }))} style={{ padding: '5px 8px', fontSize: 12 }} /></td>
-        <td><input className="input" value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Descrição..." style={{ padding: '5px 8px', fontSize: 12 }} autoFocus /></td>
+        <td><input className="input" value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder={`${t('comum.descricao')}...`} style={{ padding: '5px 8px', fontSize: 12 }} autoFocus /></td>
         <td><input className="input input-mono" type="time" value={form.horaInicio} onChange={e => setForm(f => ({ ...f, horaInicio: e.target.value }))} style={{ padding: '5px 8px', fontSize: 12, width: 90 }} /></td>
         <td><input className="input input-mono" type="time" value={form.horaFim} onChange={e => setForm(f => ({ ...f, horaFim: e.target.value }))} style={{ padding: '5px 8px', fontSize: 12, width: 90 }} /></td>
         <td className="td-mono">—</td>
         <td className="td-mono">—</td>
         <td>
           <select className="input" value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value as TipoLancamento }))} style={{ padding: '5px 8px', fontSize: 12 }}>
-            <option value="Automatico">Automático</option>
-            <option value="Manual">Manual</option>
-            <option value="Ajuste">Ajuste</option>
+            <option value="Automatico">{t('tipoLanc.Automatico')}</option>
+            <option value="Manual">{t('tipoLanc.Manual')}</option>
+            <option value="Ajuste">{t('tipoLanc.Ajuste')}</option>
           </select>
         </td>
         <td>
           {escopos.length > 0 && (
             <select className="input" value={form.escopoId} onChange={e => setForm(f => ({ ...f, escopoId: e.target.value }))} style={{ padding: '5px 8px', fontSize: 11 }}>
-              <option value="">Principal</option>
+              <option value="">{t('lanc.principal')}</option>
               {escopos.filter(e => e.status === 'Aprovada').map(e => (
                 <option key={e.id} value={e.id}>{e.titulo}</option>
               ))}
@@ -254,21 +266,21 @@ function LinhaLancamento({ lancamento, escopos, toast, onAtualizar }: LinhaProps
   return (
     <tr onClick={() => setEditando(true)} style={{ opacity: emAndamento ? 0.8 : 1 }}>
       <td className="td-mono">
-        {new Date(lancamento.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+        {new Date(lancamento.data + 'T00:00:00').toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit' })}
       </td>
       <td style={{ maxWidth: 220 }}>
         <div style={{ fontSize: 13, color: emAndamento ? 'var(--accent)' : 'var(--text-primary)' }}>
-          {lancamento.descricao || <span style={{ color: 'var(--text-muted)' }}>sem descrição</span>}
+          {lancamento.descricao || <span style={{ color: 'var(--text-muted)' }}>{t('comum.semDescricao')}</span>}
         </div>
         {escopoNome && (
-          <div style={{ fontSize: 10, color: 'var(--info)', fontFamily: 'var(--font-mono)', marginTop: 2, background: 'rgba(92,200,255,0.08)', display: 'inline-block', padding: '1px 5px', borderRadius: 3 }}>
+          <div style={{ fontSize: 10, color: 'var(--info)', fontFamily: 'var(--font-mono)', marginTop: 2, background: 'var(--info-bg)', display: 'inline-block', padding: '1px 5px', borderRadius: 3 }}>
             ⊕ {escopoNome}
           </div>
         )}
         {emAndamento && (
           <div className="flex-center gap-4" style={{ marginTop: 4 }}>
             <div className="pulse-dot" style={{ width: 6, height: 6 }} />
-            <span style={{ fontSize: 11, color: 'var(--accent)' }}>em andamento</span>
+            <span style={{ fontSize: 11, color: 'var(--accent)' }}>{t('comum.emAndamento')}</span>
           </div>
         )}
       </td>
@@ -276,15 +288,15 @@ function LinhaLancamento({ lancamento, escopos, toast, onAtualizar }: LinhaProps
       <td className="td-mono">{lancamento.horaFim ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
       <td className="td-mono" style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{lancamento.totalHHMM ?? '—'}</td>
       <td className="td-mono">{lancamento.totalDecimal != null ? lancamento.totalDecimal.toFixed(2).replace('.', ',') : '—'}</td>
-      <td>{badgeTipo(lancamento.tipo)}</td>
+      <td><BadgeTipo tipo={lancamento.tipo} /></td>
       <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>
         {escopoNome ? escopoNome.substring(0, 14) + (escopoNome.length > 14 ? '…' : '') : '—'}
       </td>
       <td onClick={e => e.stopPropagation()}>
         <div className="flex-center gap-4">
-          <button className="btn btn-ghost btn-sm btn-icon" title="Editar" onClick={() => setEditando(true)}>✎</button>
-          <button className="btn btn-ghost btn-sm btn-icon" title="Duplicar" onClick={duplicar}>⧉</button>
-          <button className="btn btn-ghost btn-sm btn-icon" title="Excluir" style={{ color: 'var(--danger)' }} onClick={excluir}>✕</button>
+          <button className="btn btn-ghost btn-sm btn-icon" title={t('comum.editar')} onClick={() => setEditando(true)}>✎</button>
+          <button className="btn btn-ghost btn-sm btn-icon" title={t('comum.duplicar')} onClick={duplicar}>⧉</button>
+          <button className="btn btn-ghost btn-sm btn-icon" title={t('comum.excluir')} style={{ color: 'var(--danger)' }} onClick={excluir}>✕</button>
         </div>
       </td>
     </tr>
@@ -294,6 +306,7 @@ function LinhaLancamento({ lancamento, escopos, toast, onAtualizar }: LinhaProps
 // ── Componente principal ─────────────────────────────────────────
 
 export default function TabelaLancamentos({ projetoId, lancamentos, escopos, toast, onAtualizar }: Props) {
+  const { t } = useTranslation()
   const [modalManual, setModalManual] = useState(false)
 
   const totalDecimal = lancamentos.reduce((acc, l) => acc + (l.totalDecimal ?? 0), 0)
@@ -305,22 +318,22 @@ export default function TabelaLancamentos({ projetoId, lancamentos, escopos, toa
     <div>
       <div className="flex-between" style={{ marginBottom: 16 }}>
         <div className="flex-center gap-8">
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Lançamentos</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('comum.lancamentos')}</h3>
           {lancamentos.length > 0 && (
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-3)', padding: '2px 8px', borderRadius: 4 }}>
               {lancamentos.length}
             </span>
           )}
         </div>
-        <button className="btn btn-secondary btn-sm" onClick={() => setModalManual(true)}>+ Lançamento manual</button>
+        <button className="btn btn-secondary btn-sm" onClick={() => setModalManual(true)}>{t('lanc.manual')}</button>
       </div>
 
       {lancamentos.length === 0 ? (
         <div className="card">
           <div className="empty-state" style={{ padding: '32px 24px' }}>
             <div className="empty-state-icon">⏱</div>
-            <div>Nenhum lançamento ainda</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Inicie o trabalho ou adicione um lançamento manual</div>
+            <div>{t('lanc.nenhum')}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{t('lanc.dica')}</div>
           </div>
         </div>
       ) : (
@@ -329,14 +342,14 @@ export default function TabelaLancamentos({ projetoId, lancamentos, escopos, toa
             <table>
               <thead>
                 <tr>
-                  <th style={{ width: 72 }}>Data</th>
-                  <th>Descrição</th>
-                  <th style={{ width: 80 }}>Início</th>
-                  <th style={{ width: 80 }}>Fim</th>
-                  <th style={{ width: 80 }}>HH:MM</th>
-                  <th style={{ width: 72 }}>Decimal</th>
-                  <th style={{ width: 100 }}>Tipo</th>
-                  <th style={{ width: 120 }}>Escopo</th>
+                  <th style={{ width: 72 }}>{t('comum.data')}</th>
+                  <th>{t('comum.descricao')}</th>
+                  <th style={{ width: 80 }}>{t('comum.inicio')}</th>
+                  <th style={{ width: 80 }}>{t('comum.fim')}</th>
+                  <th style={{ width: 80 }}>{t('comum.hhmm')}</th>
+                  <th style={{ width: 72 }}>{t('comum.decimal')}</th>
+                  <th style={{ width: 100 }}>{t('comum.tipo')}</th>
+                  <th style={{ width: 120 }}>{t('lanc.colEscopo')}</th>
                   <th style={{ width: 110 }}></th>
                 </tr>
               </thead>
@@ -348,7 +361,7 @@ export default function TabelaLancamentos({ projetoId, lancamentos, escopos, toa
               {lancamentos.length > 1 && (
                 <tfoot>
                   <tr style={{ borderTop: '1px solid var(--border-light)' }}>
-                    <td colSpan={4} style={{ padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total</td>
+                    <td colSpan={4} style={{ padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('comum.total')}</td>
                     <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent)', fontSize: 13 }}>{totalHHMM}</td>
                     <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent)', fontSize: 13 }}>{totalDecimal.toFixed(2).replace('.', ',')}</td>
                     <td colSpan={3} />

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { importacaoApi } from '../services/api'
 import type { LinhaImportacao, StatusLinhaImportacao } from '../types'
 import type { ToastFns } from '../App'
@@ -22,10 +23,13 @@ function statusCor(s: StatusLinhaImportacao) {
   return 'var(--accent)'
 }
 
-function statusLabel(s: StatusLinhaImportacao) {
-  if (s === 'erro') return '✕ Erro'
-  if (s === 'aviso') return '⚠ Aviso'
-  return '✓ Válida'
+function useStatusLabel() {
+  const { t } = useTranslation()
+  return (s: StatusLinhaImportacao) => {
+    if (s === 'erro') return t('importacao.statusErro')
+    if (s === 'aviso') return t('importacao.statusAviso')
+    return t('importacao.statusValida')
+  }
 }
 
 function statusBg(s: StatusLinhaImportacao) {
@@ -35,6 +39,8 @@ function statusBg(s: StatusLinhaImportacao) {
 }
 
 export default function ModalImportacao({ projetoId, toast, onImportado, onFechar }: Props) {
+  const { t, i18n } = useTranslation()
+  const statusLabel = useStatusLabel()
   const [etapa, setEtapa] = useState<Etapa>('colar')
   const [texto, setTexto] = useState('')
   const [ano, setAno] = useState(new Date().getFullYear())
@@ -47,28 +53,28 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
   const avisos = linhas.filter(l => l.status === 'aviso')
 
   async function preview() {
-    if (!texto.trim()) { toast.error('Cole o texto da planilha primeiro'); return }
+    if (!texto.trim()) { toast.error(t('importacao.coleTexto')); return }
     setCarregando(true)
     try {
       const resultado = await importacaoApi.preview(projetoId, texto, ano)
       setLinhas(resultado)
       setEtapa('preview')
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao processar')
+      toast.error(e instanceof Error ? e.message : t('importacao.erroProcessar'))
     } finally {
       setCarregando(false)
     }
   }
 
   async function confirmar() {
-    if (validas.length === 0) { toast.error('Nenhuma linha válida para importar'); return }
+    if (validas.length === 0) { toast.error(t('importacao.nenhumaValida')); return }
     setImportando(true)
     try {
       const criados = await importacaoApi.confirmar(projetoId, linhas)
-      toast.success(`${criados.length} lançamento${criados.length !== 1 ? 's' : ''} importado${criados.length !== 1 ? 's' : ''} com sucesso!`)
+      toast.success(t('importacao.sucesso', { count: criados.length }))
       onImportado()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao importar')
+      toast.error(e instanceof Error ? e.message : t('importacao.erroImportar'))
     } finally {
       setImportando(false)
     }
@@ -84,9 +90,9 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
         {/* Header */}
         <div className="modal-header">
           <div>
-            <h2 className="modal-title">Importar lançamentos</h2>
+            <h2 className="modal-title">{t('importacao.titulo')}</h2>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-              {etapa === 'colar' ? 'Cole as linhas da planilha abaixo' : `${linhas.length} linha${linhas.length !== 1 ? 's' : ''} processada${linhas.length !== 1 ? 's' : ''} — ${validas.length} importável${validas.length !== 1 ? 'is' : ''}`}
+              {etapa === 'colar' ? t('importacao.subtituloColar') : t('importacao.subtituloPreview', { count: linhas.length, validas: validas.length })}
             </div>
           </div>
           <button className="btn btn-ghost btn-icon" onClick={onFechar}>✕</button>
@@ -98,7 +104,7 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Ano de referência *</label>
+                  <label className="form-label">{t('importacao.anoLabel')}</label>
                   <input
                     className="input input-mono"
                     type="number"
@@ -112,11 +118,11 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
               </div>
 
               <div className="form-group">
-                <label className="form-label">Dados da planilha (cole aqui) *</label>
+                <label className="form-label">{t('importacao.dadosLabel')}</label>
                 <textarea
                   className="input input-mono"
                   rows={10}
-                  placeholder={`Cole as linhas copiadas do Excel ou Google Sheets.\n\nExemplo:\n${EXEMPLO}`}
+                  placeholder={t('importacao.placeholder', { exemplo: EXEMPLO })}
                   value={texto}
                   onChange={e => setTexto(e.target.value)}
                   style={{ fontSize: 12, lineHeight: 1.6 }}
@@ -133,18 +139,18 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
                 color: 'var(--text-muted)',
                 lineHeight: 1.7,
               }}>
-                <strong style={{ color: 'var(--text-secondary)' }}>Formato esperado (colunas separadas por TAB):</strong><br />
+                <strong style={{ color: 'var(--text-secondary)' }}>{t('importacao.formatoTitulo')}</strong><br />
                 <span style={{ fontFamily: 'var(--font-mono)' }}>
-                  Data &nbsp;·&nbsp; Descrição &nbsp;·&nbsp; Hora início &nbsp;·&nbsp; Hora fim &nbsp;·&nbsp; Total HH:MM &nbsp;·&nbsp; Total decimal
+                  {t('importacao.formatoColunas')}
                 </span><br />
-                Exemplo: <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>sex, 01/mai &nbsp; POC - Reunião &nbsp; 09:00 &nbsp; 10:30 &nbsp; 01:30 &nbsp; 1,50</span>
+                {t('importacao.exemplo')} <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>sex, 01/mai &nbsp; POC - Reunião &nbsp; 09:00 &nbsp; 10:30 &nbsp; 01:30 &nbsp; 1,50</span>
               </div>
             </div>
 
             <div className="form-actions" style={{ marginTop: 24 }}>
-              <button className="btn btn-secondary" onClick={onFechar}>Cancelar</button>
+              <button className="btn btn-secondary" onClick={onFechar}>{t('comum.cancelar')}</button>
               <button className="btn btn-primary" onClick={preview} disabled={carregando || !texto.trim()}>
-                {carregando ? 'Processando...' : '→ Pré-visualizar'}
+                {carregando ? t('comum.processando') : t('importacao.preVisualizar')}
               </button>
             </div>
           </>
@@ -156,9 +162,9 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
             {/* Resumo */}
             <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
               {[
-                { label: 'Válidas', count: linhas.filter(l => l.status === 'valida').length, cor: 'var(--accent)' },
-                { label: 'Avisos', count: avisos.length, cor: 'var(--warning)' },
-                { label: 'Erros', count: erros.length, cor: 'var(--danger)' },
+                { label: t('importacao.validas'), count: linhas.filter(l => l.status === 'valida').length, cor: 'var(--accent)' },
+                { label: t('importacao.avisos'), count: avisos.length, cor: 'var(--warning)' },
+                { label: t('importacao.erros'), count: erros.length, cor: 'var(--danger)' },
               ].map(m => (
                 <div key={m.label} style={{
                   flex: 1, background: 'var(--bg-3)', border: '1px solid var(--border)',
@@ -176,13 +182,13 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
                 <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-2)', zIndex: 1 }}>
                   <tr>
                     <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)', width: 28 }}>#</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)', width: 88 }}>Data</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)' }}>Descrição</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)', width: 60 }}>Início</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)', width: 60 }}>Fim</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)', width: 68 }}>Calculado</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)', width: 80 }}>Status</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)' }}>Mensagem</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)', width: 88 }}>{t('comum.data')}</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)' }}>{t('comum.descricao')}</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)', width: 60 }}>{t('comum.inicio')}</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)', width: 60 }}>{t('comum.fim')}</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)', width: 68 }}>{t('importacao.calculado')}</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)', width: 80 }}>{t('comum.status')}</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '1px solid var(--border)' }}>{t('importacao.mensagem')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -191,11 +197,11 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
                       <td style={{ padding: '7px 10px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{l.indice}</td>
                       <td style={{ padding: '7px 10px', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
                         {l.data
-                          ? new Date(l.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                          ? new Date(l.data + 'T00:00:00').toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: 'numeric' })
                           : <span style={{ color: 'var(--danger)' }}>—</span>}
                       </td>
                       <td style={{ padding: '7px 10px', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {l.descricao || <span style={{ color: 'var(--text-muted)' }}>sem descrição</span>}
+                        {l.descricao || <span style={{ color: 'var(--text-muted)' }}>{t('comum.semDescricao')}</span>}
                       </td>
                       <td style={{ padding: '7px 10px', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{l.horaInicio ?? '—'}</td>
                       <td style={{ padding: '7px 10px', fontFamily: 'var(--font-mono)', fontSize: 11 }}>{l.horaFim ?? '—'}</td>
@@ -227,19 +233,19 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
                 borderRadius: 'var(--radius)', padding: '10px 14px',
                 marginBottom: 16,
               }}>
-                ⚠ {erros.length} linha{erros.length !== 1 ? 's' : ''} com erro {erros.length !== 1 ? 'serão ignoradas' : 'será ignorada'} na importação.
-                {validas.length === 0 && ' Nenhuma linha pode ser importada.'}
+                {t('importacao.linhasComErro', { count: erros.length })}
+                {validas.length === 0 && ` ${t('importacao.nenhumaImportavel')}`}
               </div>
             )}
 
             <div className="form-actions">
-              <button className="btn btn-ghost" onClick={() => setEtapa('colar')}>← Voltar</button>
+              <button className="btn btn-ghost" onClick={() => setEtapa('colar')}>{t('importacao.voltar')}</button>
               <button
                 className="btn btn-primary"
                 onClick={confirmar}
                 disabled={importando || validas.length === 0}
               >
-                {importando ? 'Importando...' : `↓ Importar ${validas.length} lançamento${validas.length !== 1 ? 's' : ''}`}
+                {importando ? t('importacao.importando') : t('importacao.importarBtn', { count: validas.length })}
               </button>
             </div>
           </>

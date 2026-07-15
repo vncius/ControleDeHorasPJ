@@ -1,6 +1,6 @@
 import { lancamentosRepo, projetosRepo, clientesRepo } from '../repositories'
 import { DashboardData, Projeto, LancamentoHoras } from '../types'
-import { hoje, somarHoras } from '../utils/tempo'
+import { hoje, dataLocalISO, somarHoras } from '../utils/tempo'
 import { STATUS_ENCERRADO, projetoEhFaturavel, lancamentoEhFaturavel } from '../utils/faturamento'
 import { projetosService } from './projetosService'
 
@@ -9,7 +9,7 @@ function dataInicioSemana(): string {
   const dia = d.getDay()
   const diff = d.getDate() - dia + (dia === 0 ? -6 : 1)
   d.setDate(diff)
-  return d.toISOString().slice(0, 10)
+  return dataLocalISO(d)
 }
 
 function dataInicioMes(): string {
@@ -17,10 +17,12 @@ function dataInicioMes(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
 }
 
+// Decorrido do lançamento aberto, ancorado na DATA de início — um ponto
+// iniciado ontem à noite (virada de meia-noite) continua contando, em vez
+// de sumir dos totais.
 function horasEmAndamento(horaInicio: string, data: string): number {
-  if (data !== hoje()) return 0
   const [h, m] = horaInicio.split(':').map(Number)
-  const inicio = new Date()
+  const inicio = new Date(data + 'T00:00:00')
   inicio.setHours(h, m, 0, 0)
   const diffMs = Math.max(0, Date.now() - inicio.getTime())
   return Math.round((diffMs / 3600000) * 100) / 100

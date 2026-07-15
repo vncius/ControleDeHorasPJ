@@ -27,17 +27,17 @@ export function minutosParaDecimal(minutos: number): number {
 }
 
 /**
- * Calcula diferença em minutos entre duas horas "HH:MM"
- * Retorna null se horaFim < horaInicio
+ * Calcula diferença em minutos entre duas horas "HH:MM".
+ * horaFim menor que horaInicio é interpretada como virada de meia-noite
+ * (ex.: 23:00 → 00:30 = 1h30); o lançamento pertence ao dia em que começou.
  */
 export function calcularDiferenca(
   horaInicio: string,
   horaFim: string
-): { minutos: number; hhMM: string; decimal: number } | null {
+): { minutos: number; hhMM: string; decimal: number } {
   const inicio = horaParaMinutos(horaInicio)
   const fim = horaParaMinutos(horaFim)
-  if (fim < inicio) return null
-  const minutos = fim - inicio
+  const minutos = fim >= inicio ? fim - inicio : 24 * 60 - inicio + fim
   return {
     minutos,
     hhMM: minutosParaHHMM(minutos),
@@ -53,10 +53,19 @@ export function agora(): string {
 }
 
 /**
- * Data hoje no formato YYYY-MM-DD
+ * Formata um Date como YYYY-MM-DD no fuso LOCAL. Nunca usar
+ * toISOString().slice(0,10) para isso: devolve a data UTC e, após as
+ * 21h no Brasil, cai no dia seguinte.
+ */
+export function dataLocalISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * Data hoje no formato YYYY-MM-DD (fuso local, consistente com horaAtual)
  */
 export function hoje(): string {
-  return new Date().toISOString().slice(0, 10)
+  return dataLocalISO(new Date())
 }
 
 /**

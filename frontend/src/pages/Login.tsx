@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function Login() {
+  const { t } = useTranslation()
   const { login } = useAuth()
   const navigate = useNavigate()
   const [erro, setErro] = useState<string | null>(null)
@@ -52,7 +54,7 @@ export default function Login() {
         </div>
 
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24 }}>
-          Entre com sua conta Google para acessar
+          {t('login.subtitulo')}
         </p>
 
         <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -61,15 +63,15 @@ export default function Login() {
               setErro(null)
               try {
                 if (!credentialResponse.credential) {
-                  throw new Error('Credencial do Google ausente')
+                  throw new Error(t('login.credencialAusente'))
                 }
                 await login(credentialResponse.credential)
                 navigate('/', { replace: true })
               } catch (e) {
-                setErro(e instanceof Error ? e.message : 'Falha ao autenticar')
+                setErro(e instanceof Error ? e.message : t('login.falhaAutenticar'))
               }
             }}
-            onError={() => setErro('Não foi possível autenticar com o Google')}
+            onError={() => setErro(t('login.erroGoogle'))}
           />
         </div>
 

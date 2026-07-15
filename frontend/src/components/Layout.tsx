@@ -1,22 +1,25 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import type { Toast } from '../hooks/useToast'
 import { useAuth } from '../contexts/AuthContext'
+import Topbar from './Topbar'
 
 interface Props {
   toasts: Toast[]
 }
 
-const NAV = [
-  { to: '/', label: 'Dashboard', icon: '◈' },
-  { to: '/clientes', label: 'Clientes', icon: '◉' },
-  { to: '/projetos', label: 'Projetos', icon: '◫' },
-  { to: '/relatorios', label: 'Relatórios', icon: '◧' },
-]
-
 export default function Layout({ toasts }: Props) {
+  const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const { usuario, logout } = useAuth()
+
+  const NAV = [
+    { to: '/', label: t('nav.dashboard'), icon: '◈' },
+    { to: '/clientes', label: t('nav.clientes'), icon: '◉' },
+    { to: '/projetos', label: t('nav.projetos'), icon: '◫' },
+    { to: '/relatorios', label: t('nav.relatorios'), icon: '◧' },
+  ]
 
   async function handleLogout() {
     await logout()
@@ -118,7 +121,7 @@ export default function Layout({ toasts }: Props) {
                 className="btn btn-ghost btn-sm"
                 style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}
               >
-                Sair
+                {t('nav.sair')}
               </button>
             </div>
           )}
@@ -134,14 +137,17 @@ export default function Layout({ toasts }: Props) {
       </aside>
 
       {/* Conteúdo principal */}
-      <main style={{
-        flex: 1,
-        overflow: 'auto',
-        background: 'var(--bg-0)',
-        padding: '32px 36px',
-      }}>
-        <Outlet />
-      </main>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <Topbar />
+        <main style={{
+          flex: 1,
+          overflow: 'auto',
+          background: 'var(--bg-0)',
+          padding: '32px 36px',
+        }}>
+          <Outlet />
+        </main>
+      </div>
 
       {/* Toasts */}
       <div className="toast-container">

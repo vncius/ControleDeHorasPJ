@@ -15,6 +15,24 @@ import { MongoClient, Db, ClientSession } from 'mongodb'
 let db: Db | undefined
 let mongoClient: MongoClient | undefined
 
+/**
+ * Nome do banco a usar. Em NODE_ENV=test resolve para o banco de teste
+ * (MONGODB_DB_NAME_TEST, default "<produção>-test") e NUNCA pode coincidir
+ * com o banco de produção — testes não tocam dados reais.
+ */
+export function resolverNomeBanco(): string {
+  const nomeProducao = process.env.MONGODB_DB_NAME ?? 'horas-pj'
+  if (process.env.NODE_ENV !== 'test') return nomeProducao
+
+  const nomeTeste = process.env.MONGODB_DB_NAME_TEST ?? `${nomeProducao}-test`
+  if (nomeTeste === nomeProducao) {
+    throw new Error(
+      'MONGODB_DB_NAME_TEST não pode ser igual a MONGODB_DB_NAME — testes nunca rodam no banco de produção'
+    )
+  }
+  return nomeTeste
+}
+
 export async function conectarMongo(): Promise<Db> {
   const uri = process.env.MONGODB_URI
   if (!uri) {
@@ -24,7 +42,7 @@ export async function conectarMongo(): Promise<Db> {
   const client = new MongoClient(uri)
   await client.connect()
 
-  const nomeBanco = process.env.MONGODB_DB_NAME ?? 'horas-pj'
+  const nomeBanco = resolverNomeBanco()
   const database = client.db(nomeBanco)
 
   // ping de verificação — falha rápido se a connection string estiver errada

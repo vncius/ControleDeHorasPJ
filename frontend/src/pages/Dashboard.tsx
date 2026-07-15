@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { dashboardApi, lancamentosApi } from '../services/api'
 import type { DashboardData, ResumoProjeto } from '../types'
 import type { ToastFns } from '../App'
@@ -21,6 +22,7 @@ interface Props { toast: ToastFns }
 
 // ── Card de projeto reutilizável ─────────────────────────────────
 function CardProjeto({ r, pago, onClick }: { r: ResumoProjeto; pago?: boolean; onClick: () => void }) {
+  const { t } = useTranslation()
   return (
     <div
       className="card"
@@ -44,22 +46,22 @@ function CardProjeto({ r, pago, onClick }: { r: ResumoProjeto; pago?: boolean; o
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: r.saldo < 0 ? 'var(--danger)' : 'var(--accent)', fontWeight: 600 }}>
               {r.saldo >= 0 ? '+' : ''}{r.saldo.toFixed(1)}h
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>saldo</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{t('dashboard.saldo')}</div>
           </div>
         )}
         {pago && (
-          <span className="badge" style={{ background: 'rgba(92,200,255,0.12)', color: 'var(--info)' }}>✓ Pago</span>
+          <span className="badge" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>{t('dashboard.badgePago')}</span>
         )}
       </div>
       <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginBottom: 8 }}>
         {fmtData(r.projeto.dataInicio)}
-        {r.projeto.dataFim ? ` → ${fmtData(r.projeto.dataFim)}` : ' → em andamento'}
+        {r.projeto.dataFim ? ` → ${fmtData(r.projeto.dataFim)}` : ` → ${t('dashboard.ateEmAndamento')}`}
       </div>
       {r.horasAbertas ? (
         <div className="flex-between">
-          <span style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>∞ horas em aberto</span>
+          <span style={{ fontSize: 11, color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{t('dashboard.horasEmAberto')}</span>
           <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-            {r.totalTrabalhado.toFixed(1)}h trabalhadas
+            {t('dashboard.horasTrabalhadas', { horas: r.totalTrabalhado.toFixed(1) })}
           </span>
         </div>
       ) : (
@@ -83,7 +85,7 @@ function CardProjeto({ r, pago, onClick }: { r: ResumoProjeto; pago?: boolean; o
       {r.emAndamento && (
         <div className="flex-center gap-4" style={{ marginTop: 8 }}>
           <div className="pulse-dot" style={{ width: 6, height: 6 }} />
-          <span style={{ fontSize: 11, color: 'var(--accent)' }}>em andamento</span>
+          <span style={{ fontSize: 11, color: 'var(--accent)' }}>{t('comum.emAndamento')}</span>
         </div>
       )}
     </div>
@@ -100,6 +102,7 @@ function SecaoProjetos({
   cor: string
   nav: (path: string) => void
 }) {
+  const { t } = useTranslation()
   const [busca, setBusca] = useState('')
   const filtrados = projetos.filter(r =>
     !busca ||
@@ -117,7 +120,7 @@ function SecaoProjetos({
         </h2>
         <input
           className="input"
-          placeholder="Filtrar..."
+          placeholder={t('dashboard.filtrar')}
           value={busca}
           onChange={e => setBusca(e.target.value)}
           style={{ width: 140, padding: '5px 10px', fontSize: 12 }}
@@ -126,7 +129,7 @@ function SecaoProjetos({
       {filtrados.length === 0 ? (
         <div className="card">
           <div className="empty-state" style={{ padding: '24px' }}>
-            <div>{busca ? 'Nenhum projeto encontrado' : 'Nenhum projeto nesta seção'}</div>
+            <div>{busca ? t('dashboard.nenhumProjetoEncontrado') : t('dashboard.nenhumProjetoSecao')}</div>
           </div>
         </div>
       ) : (
@@ -142,6 +145,7 @@ function SecaoProjetos({
 
 // ── Dashboard principal ──────────────────────────────────────────
 export default function Dashboard({ toast }: Props) {
+  const { t } = useTranslation()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [finalizando, setFinalizando] = useState(false)
@@ -153,7 +157,7 @@ export default function Dashboard({ toast }: Props) {
 
   async function carregar(silencioso = false) {
     try { setData(await dashboardApi.obter()) }
-    catch { if (!silencioso) toast.error('Erro ao carregar dashboard') }
+    catch { if (!silencioso) toast.error(t('dashboard.erroCarregar')) }
     finally { setLoading(false) }
   }
 
@@ -176,22 +180,22 @@ export default function Dashboard({ toast }: Props) {
 
   async function confirmarFinalizar() {
     if (!data?.lancamentoEmAndamento) return
-    if (!horaFim) { toast.error('Informe a hora de fim'); return }
+    if (!horaFim) { toast.error(t('dashboard.horaFimObrigatoria')); return }
     setFinalizando(true)
     try {
       await lancamentosApi.finalizar(data.lancamentoEmAndamento.id, {
         horaFim,
         descricao: descricaoFinal || undefined,
       })
-      toast.success('Trabalho finalizado!')
+      toast.success(t('dashboard.trabalhoFinalizado'))
       setModalFinalizar(false)
       carregar()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao finalizar')
+      toast.error(e instanceof Error ? e.message : t('dashboard.erroFinalizar'))
     } finally { setFinalizando(false) }
   }
 
-  if (loading) return <div className="loading-screen"><div className="spinner" /><span>Carregando...</span></div>
+  if (loading) return <div className="loading-screen"><div className="spinner" /><span>{t('comum.carregando')}</span></div>
   if (!data) return null
 
   const temProjetosPagos = data.resumosProjetosPagos.length > 0
@@ -201,10 +205,10 @@ export default function Dashboard({ toast }: Props) {
     <div style={{ animation: 'slideUp 0.25s ease' }}>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">Atualização automática a cada minuto</p>
+          <h1 className="page-title">{t('dashboard.titulo')}</h1>
+          <p className="page-subtitle">{t('dashboard.subtitulo')}</p>
         </div>
-        <button className="btn btn-secondary" onClick={() => carregar()}>↻ Atualizar</button>
+        <button className="btn btn-secondary" onClick={() => carregar()}>{t('dashboard.atualizar')}</button>
       </div>
 
       {/* Lançamento em andamento */}
@@ -217,12 +221,12 @@ export default function Dashboard({ toast }: Props) {
           <div className="flex-center gap-12">
             <div className="pulse-dot" />
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>Trabalho em andamento</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>{t('dashboard.trabalhoEmAndamento')}</div>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
                 {data.lancamentoEmAndamento.projeto.nome} · {data.lancamentoEmAndamento.cliente.nome}
-                &nbsp;· Iniciado às {data.lancamentoEmAndamento.horaInicio}
+                &nbsp;· {t('dashboard.iniciadoAs', { hora: data.lancamentoEmAndamento.horaInicio })}
                 {data.lancamentoEmAndamento.projeto.pago && (
-                  <span style={{ marginLeft: 8, color: 'var(--info)' }}>[pago]</span>
+                  <span style={{ marginLeft: 8, color: 'var(--info)' }}>{t('dashboard.tagPago')}</span>
                 )}
               </div>
               {data.lancamentoEmAndamento.descricao && (
@@ -231,9 +235,9 @@ export default function Dashboard({ toast }: Props) {
             </div>
           </div>
           <div className="flex-center gap-8">
-            <button className="btn btn-secondary btn-sm" onClick={() => nav(`/projetos/${data.lancamentoEmAndamento!.projetoId}`)}>Ver projeto</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => nav(`/projetos/${data.lancamentoEmAndamento!.projetoId}`)}>{t('dashboard.verProjeto')}</button>
             <button className="btn btn-primary btn-sm" onClick={abrirModalFinalizar} disabled={finalizando}>
-              {finalizando ? '...' : '⏹ Finalizar'}
+              {finalizando ? '...' : t('dashboard.finalizar')}
             </button>
           </div>
         </div>
@@ -243,7 +247,7 @@ export default function Dashboard({ toast }: Props) {
         <div className="modal-overlay" onClick={fecharModalFinalizar}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">Finalizar trabalho</h2>
+              <h2 className="modal-title">{t('dashboard.finalizarTrabalho')}</h2>
               <button className="btn btn-ghost btn-icon" onClick={fecharModalFinalizar}>✕</button>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16, fontFamily: 'var(--font-mono)' }}>
@@ -252,27 +256,27 @@ export default function Dashboard({ toast }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Hora início</label>
+                  <label className="form-label">{t('comum.horaInicio')}</label>
                   <input className="input input-mono" value={data.lancamentoEmAndamento.horaInicio} disabled />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Hora fim *</label>
+                  <label className="form-label">{t('comum.horaFim')} *</label>
                   <input className="input input-mono" type="time" value={horaFim}
                     onChange={e => setHoraFim(e.target.value)} autoFocus />
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">Descrição</label>
+                <label className="form-label">{t('comum.descricao')}</label>
                 <textarea className="input" rows={3}
-                  placeholder="O que foi feito neste período?"
+                  placeholder={t('dashboard.oQueFoiFeito')}
                   value={descricaoFinal}
                   onChange={e => setDescricaoFinal(e.target.value)} />
               </div>
             </div>
             <div className="form-actions" style={{ marginTop: 24 }}>
-              <button className="btn btn-secondary" onClick={fecharModalFinalizar}>Cancelar</button>
+              <button className="btn btn-secondary" onClick={fecharModalFinalizar}>{t('comum.cancelar')}</button>
               <button className="btn btn-primary" onClick={confirmarFinalizar} disabled={finalizando}>
-                {finalizando ? 'Processando...' : '⏹ Finalizar e salvar'}
+                {finalizando ? t('comum.processando') : t('dashboard.finalizarESalvar')}
               </button>
             </div>
           </div>
@@ -282,14 +286,14 @@ export default function Dashboard({ toast }: Props) {
       {/* ── Cards faturáveis ── */}
       <div style={{ marginBottom: 8 }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
-          Horas faturáveis
+          {t('dashboard.horasFaturaveis')}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: temHorasPagas ? 24 : 32 }}>
           {[
-            { label: 'Hoje', value: fmt(data.horasHoje), sub: data.lancamentoEmAndamento && !data.lancamentoEmAndamento.projeto.pago ? 'inclui tempo em aberto' : 'horas finalizadas' },
-            { label: 'Semana', value: fmt(data.horasSemana), sub: 'horas faturáveis' },
-            { label: 'Mês', value: fmt(data.horasMes), sub: 'horas faturáveis' },
-            { label: 'Projetos', value: data.resumosProjetos.length, sub: 'faturáveis ativos' },
+            { label: t('dashboard.hoje'), value: fmt(data.horasHoje), sub: data.lancamentoEmAndamento && !data.lancamentoEmAndamento.projeto.pago ? t('dashboard.incluiTempoAberto') : t('dashboard.horasFinalizadas') },
+            { label: t('dashboard.semana'), value: fmt(data.horasSemana), sub: t('dashboard.subFaturaveis') },
+            { label: t('dashboard.mes'), value: fmt(data.horasMes), sub: t('dashboard.subFaturaveis') },
+            { label: t('dashboard.projetos'), value: data.resumosProjetos.length, sub: t('dashboard.faturaveisAtivos') },
           ].map(m => (
             <div key={m.label} className="card" style={{ padding: '20px 24px' }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{m.label}</div>
@@ -304,16 +308,16 @@ export default function Dashboard({ toast }: Props) {
       {(temHorasPagas || temProjetosPagos) && (
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--info)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
-            Horas em projetos pagos (não faturáveis)
+            {t('dashboard.horasProjetosPagos')}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
             {[
-              { label: 'Hoje', value: fmt(data.horasHojePago), sub: 'não faturável' },
-              { label: 'Semana', value: fmt(data.horasSemanaPago), sub: 'não faturável' },
-              { label: 'Mês', value: fmt(data.horasMesPago), sub: 'não faturável' },
-              { label: 'Projetos', value: data.resumosProjetosPagos.length, sub: 'pagos em andamento' },
+              { label: t('dashboard.hoje'), value: fmt(data.horasHojePago), sub: t('dashboard.subProjetoPago') },
+              { label: t('dashboard.semana'), value: fmt(data.horasSemanaPago), sub: t('dashboard.subProjetoPago') },
+              { label: t('dashboard.mes'), value: fmt(data.horasMesPago), sub: t('dashboard.subProjetoPago') },
+              { label: t('dashboard.projetos'), value: data.resumosProjetosPagos.length, sub: t('dashboard.pagosEmAndamento') },
             ].map(m => (
-              <div key={m.label} className="card" style={{ padding: '20px 24px', borderColor: 'rgba(92,200,255,0.2)' }}>
+              <div key={m.label} className="card" style={{ padding: '20px 24px', borderColor: 'var(--info-bg)' }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>{m.label}</div>
                 <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--info)', letterSpacing: '-0.02em', marginBottom: 4 }}>{m.value}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{m.sub}</div>
@@ -324,10 +328,10 @@ export default function Dashboard({ toast }: Props) {
       )}
 
       {/* ── Listas de projetos ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: temProjetosPagos ? '1fr 1fr' : '1fr 1fr', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
         {/* Faturáveis */}
         <SecaoProjetos
-          titulo="Projetos faturáveis"
+          titulo={t('dashboard.projetosFaturaveis')}
           projetos={data.resumosProjetos}
           cor="var(--text-secondary)"
           nav={nav}
@@ -339,7 +343,7 @@ export default function Dashboard({ toast }: Props) {
           {data.projetosProximosLimite.length > 0 && (
             <div>
               <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Atenção — Próximos do Limite
+                {t('dashboard.atencaoLimite')}
               </h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {data.projetosProximosLimite.map(r => (
@@ -359,8 +363,8 @@ export default function Dashboard({ toast }: Props) {
                       </span>
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                      {r.totalTrabalhado.toFixed(1)}h de {r.totalDisponivel.toFixed(1)}h
-                      {r.saldo < 0 && <span style={{ color: 'var(--danger)' }}> · {Math.abs(r.saldo).toFixed(1)}h excedidas</span>}
+                      {t('dashboard.horasDe', { trabalhado: r.totalTrabalhado.toFixed(1), disponivel: r.totalDisponivel.toFixed(1) })}
+                      {r.saldo < 0 && <span style={{ color: 'var(--danger)' }}> · {t('dashboard.horasExcedidas', { horas: Math.abs(r.saldo).toFixed(1) })}</span>}
                     </div>
                   </div>
                 ))}
@@ -371,7 +375,7 @@ export default function Dashboard({ toast }: Props) {
           {/* Projetos pagos */}
           {temProjetosPagos && (
             <SecaoProjetos
-              titulo="Pagos — em andamento"
+              titulo={t('dashboard.pagosTitulo')}
               projetos={data.resumosProjetosPagos}
               pago
               cor="var(--info)"
@@ -383,12 +387,12 @@ export default function Dashboard({ toast }: Props) {
           {data.projetosProximosLimite.length === 0 && !temProjetosPagos && (
             <div>
               <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Atenção — Próximos do Limite
+                {t('dashboard.atencaoLimite')}
               </h2>
               <div className="card">
                 <div className="empty-state">
                   <div className="empty-state-icon" style={{ fontSize: 24 }}>✓</div>
-                  <div style={{ color: 'var(--text-secondary)' }}>Todos os projetos estão dentro do limite</div>
+                  <div style={{ color: 'var(--text-secondary)' }}>{t('dashboard.todosDentroLimite')}</div>
                 </div>
               </div>
             </div>

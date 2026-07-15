@@ -25,7 +25,6 @@ function calcularEAtribuir(
 ): Pick<LancamentoHoras, 'totalHHMM' | 'totalDecimal'> {
   if (!lancamento.horaFim) return {}
   const diff = calcularDiferenca(lancamento.horaInicio, lancamento.horaFim)
-  if (!diff) throw new Error('Hora fim não pode ser anterior à hora início')
   return { totalHHMM: diff.hhMM, totalDecimal: diff.decimal }
 }
 
@@ -109,7 +108,6 @@ export const lancamentosService = {
 
     const horaFim = dto.horaFim ?? horaAtual()
     const calculo = calcularDiferenca(lancamento.horaInicio, horaFim)
-    if (!calculo) throw new Error('Hora fim não pode ser anterior à hora início')
 
     const descricao = dto.descricao ?? lancamento.descricao
 
@@ -137,7 +135,6 @@ export const lancamentosService = {
     if (dto.horaFim) {
       if (!isHoraValida(dto.horaFim)) throw new Error('Hora fim inválida (esperado HH:MM)')
       const calculo = calcularDiferenca(dto.horaInicio, dto.horaFim)
-      if (!calculo) throw new Error('Hora fim não pode ser anterior à hora início')
       partial.horaFim = dto.horaFim
       partial.totalHHMM = calculo.hhMM
       partial.totalDecimal = calculo.decimal
@@ -182,7 +179,6 @@ export const lancamentosService = {
     // Recalcular totais se ambas as horas estiverem presentes
     if (horaFim) {
       const calculo = calcularDiferenca(horaInicio, horaFim)
-      if (!calculo) throw new Error('Hora fim não pode ser anterior à hora início')
       partial.totalHHMM = calculo.hhMM
       partial.totalDecimal = calculo.decimal
     } else {
@@ -208,7 +204,8 @@ export const lancamentosService = {
     const original = await this.buscarPorId(tenantId, id)
     return this.criar(tenantId, {
       projetoId: original.projetoId,
-      data: hoje(),
+      escopoId: original.escopoId,
+      data: original.data,
       horaInicio: original.horaInicio,
       horaFim: original.horaFim,
       descricao: original.descricao,

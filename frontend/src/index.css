@@ -43,6 +43,11 @@
   --status-pausado: #ffd166;
   --status-finalizado: #5cc8ff;
   --status-cancelado: #ff5c7a;
+  --status-ativo-bg: rgba(168, 255, 62, 0.12);
+  --status-pausado-bg: rgba(255, 209, 102, 0.12);
+  --status-finalizado-bg: rgba(92, 200, 255, 0.12);
+  --status-cancelado-bg: rgba(255, 92, 122, 0.12);
+  --info-bg: rgba(92, 200, 255, 0.12);
 
   /* Tipografia */
   --font-ui: 'Sora', sans-serif;
@@ -52,6 +57,52 @@
   --radius: 8px;
   --radius-lg: 12px;
   --sidebar-width: 220px;
+  --topbar-height: 52px;
+}
+
+/* Tema claro — mesmos matizes (verde, azul bebê), luminosidade invertida.
+   O verde neon do dark (#a8ff3e) quase some sobre fundo branco, então aqui
+   ele escurece para manter contraste; o dark continua sendo o tema padrão. */
+:root[data-theme='light'] {
+  --bg-0: #f5f6fa;
+  --bg-1: #ffffff;
+  --bg-2: #ffffff;
+  --bg-3: #eef0f6;
+  --bg-4: #e2e5ee;
+
+  --border: #dde0ea;
+  --border-light: #c8cce0;
+
+  --text-primary: #16161f;
+  --text-secondary: #55586b;
+  --text-muted: #85889c;
+
+  --accent: #5b9c1e;
+  --accent-dim: rgba(91, 156, 30, 0.12);
+  --accent-hover: #4c8419;
+
+  --success: #5b9c1e;
+  --warning: #b8790a;
+  --danger: #d63a5c;
+  --danger-dim: rgba(214, 58, 92, 0.1);
+  --info: #1478b8;
+
+  --status-ativo: #5b9c1e;
+  --status-pausado: #b8790a;
+  --status-finalizado: #1478b8;
+  --status-cancelado: #d63a5c;
+  --status-ativo-bg: rgba(91, 156, 30, 0.12);
+  --status-pausado-bg: rgba(184, 121, 10, 0.12);
+  --status-finalizado-bg: rgba(20, 120, 184, 0.12);
+  --status-cancelado-bg: rgba(214, 58, 92, 0.12);
+  --info-bg: rgba(20, 120, 184, 0.12);
+}
+
+/* ThemeProvider aplica data-theme no <html> antes da primeira pintura útil
+   (useLayoutEffect seria ainda mais cedo, mas useEffect já roda antes do
+   usuário interagir) — não duplicamos a regra acima via @media aqui. */
+html {
+  transition: background 0.15s ease;
 }
 
 html, body {
@@ -237,12 +288,12 @@ textarea.input {
   font-family: var(--font-mono);
 }
 
-.badge-ativo    { background: rgba(168,255,62,0.12); color: var(--status-ativo); }
-.badge-pausado  { background: rgba(255,209,102,0.12); color: var(--status-pausado); }
-.badge-finalizado { background: rgba(92,200,255,0.12); color: var(--status-finalizado); }
-.badge-cancelado { background: rgba(255,92,122,0.12); color: var(--status-cancelado); }
-.badge-aprovada { background: rgba(168,255,62,0.12); color: var(--status-ativo); }
-.badge-pendente { background: rgba(255,209,102,0.12); color: var(--status-pausado); }
+.badge-ativo    { background: var(--status-ativo-bg); color: var(--status-ativo); }
+.badge-pausado  { background: var(--status-pausado-bg); color: var(--status-pausado); }
+.badge-finalizado { background: var(--status-finalizado-bg); color: var(--status-finalizado); }
+.badge-cancelado { background: var(--status-cancelado-bg); color: var(--status-cancelado); }
+.badge-aprovada { background: var(--status-ativo-bg); color: var(--status-ativo); }
+.badge-pendente { background: var(--status-pausado-bg); color: var(--status-pausado); }
 
 /* ── Tabela ── */
 .table-wrap {

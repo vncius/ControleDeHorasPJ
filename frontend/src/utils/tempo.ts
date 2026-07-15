@@ -3,9 +3,24 @@ export function horaAtual(): string {
   return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 }
 
-export function calcularDecorrido(horaInicio: string): string {
+/**
+ * Formata um Date como YYYY-MM-DD no fuso LOCAL. Nunca usar
+ * toISOString().slice(0,10): devolve a data UTC e, após as 21h no
+ * Brasil, cai no dia seguinte.
+ */
+export function dataLocalISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+export function hojeLocal(): string {
+  return dataLocalISO(new Date())
+}
+
+export function calcularDecorrido(horaInicio: string, data?: string): string {
   const [h, m] = horaInicio.split(':').map(Number)
-  const inicio = new Date()
+  // ancorado na data de início quando conhecida — um ponto iniciado ontem
+  // à noite (virada de meia-noite) continua contando corretamente
+  const inicio = data ? new Date(data + 'T00:00:00') : new Date()
   inicio.setHours(h, m, 0, 0)
   const diff = Math.max(0, Date.now() - inicio.getTime())
   const totalMin = Math.floor(diff / 60000)

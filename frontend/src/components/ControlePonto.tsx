@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { lancamentosApi } from '../services/api'
 import type { LancamentoHoras } from '../types'
 import type { ToastFns } from '../App'
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAtualizar }: Props) {
+  const { t } = useTranslation()
   const [carregando, setCarregando] = useState(false)
 
   // modal finalizar
@@ -68,10 +70,10 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
 
       // sem conflito — inicia normalmente
       await lancamentosApi.iniciar(projetoId)
-      toast.success('Trabalho iniciado!')
+      toast.success(t('ponto.iniciado'))
       onAtualizar()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao iniciar')
+      toast.error(e instanceof Error ? e.message : t('ponto.erroIniciar'))
     } finally {
       setCarregando(false)
     }
@@ -79,7 +81,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
 
   async function finalizar() {
     if (!lancamentoParaFinalizar) return
-    if (!horaFim) { toast.error('Informe a hora de fim'); return }
+    if (!horaFim) { toast.error(t('dashboard.horaFimObrigatoria')); return }
     setCarregando(true)
     try {
       await lancamentosApi.finalizar(lancamentoParaFinalizar.id, {
@@ -89,15 +91,15 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
 
       if (iniciarAposFechar) {
         await lancamentosApi.iniciar(projetoId)
-        toast.success('Trabalho anterior encerrado e novo iniciado!')
+        toast.success(t('ponto.trocaConcluida'))
       } else {
-        toast.success('Trabalho finalizado!')
+        toast.success(t('dashboard.trabalhoFinalizado'))
       }
 
       fecharModal()
       onAtualizar()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao finalizar')
+      toast.error(e instanceof Error ? e.message : t('dashboard.erroFinalizar'))
     } finally {
       setCarregando(false)
     }
@@ -105,14 +107,14 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
 
   async function cancelar() {
     if (!lancamentoAberto) return
-    if (!confirm('Cancelar o lançamento em andamento? Os dados serão perdidos.')) return
+    if (!confirm(t('ponto.confirmarCancelar'))) return
     setCarregando(true)
     try {
       await lancamentosApi.excluir(lancamentoAberto.id)
-      toast.success('Lançamento cancelado')
+      toast.success(t('ponto.cancelado'))
       onAtualizar()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao cancelar')
+      toast.error(e instanceof Error ? e.message : t('ponto.erroCancelar'))
     } finally {
       setCarregando(false)
     }
@@ -125,11 +127,11 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
         <div className="modal-header">
           <div>
             <h2 className="modal-title">
-              {iniciarAposFechar ? 'Encerrar e trocar projeto' : 'Finalizar trabalho'}
+              {iniciarAposFechar ? t('ponto.modalTrocar') : t('dashboard.finalizarTrabalho')}
             </h2>
             {iniciarAposFechar && (
               <div style={{ fontSize: 12, color: 'var(--warning)', marginTop: 4 }}>
-                ⚠ Encerre o trabalho atual para iniciar este projeto.
+                {t('ponto.avisoTroca')}
               </div>
             )}
           </div>
@@ -148,10 +150,10 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
             color: 'var(--text-secondary)',
             fontFamily: 'var(--font-mono)',
           }}>
-            Encerrando: iniciado às {lancamentoParaFinalizar.horaInicio}
+            {t('ponto.encerrandoIniciado', { hora: lancamentoParaFinalizar.horaInicio })}
             {lancamentoParaFinalizar.descricao && ` · ${lancamentoParaFinalizar.descricao}`}
             <span style={{ color: 'var(--accent)', marginLeft: 8 }}>
-              ({calcularDecorrido(lancamentoParaFinalizar.horaInicio)} decorrido)
+              ({t('ponto.decorrido', { tempo: calcularDecorrido(lancamentoParaFinalizar.horaInicio, lancamentoParaFinalizar.data) })})
             </span>
           </div>
         )}
@@ -159,32 +161,32 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Hora início</label>
+              <label className="form-label">{t('comum.horaInicio')}</label>
               <input className="input input-mono" value={lancamentoParaFinalizar.horaInicio} disabled />
             </div>
             <div className="form-group">
-              <label className="form-label">Hora fim *</label>
+              <label className="form-label">{t('comum.horaFim')} *</label>
               <input className="input input-mono" type="time" value={horaFim}
                 onChange={e => setHoraFim(e.target.value)} autoFocus />
             </div>
           </div>
           <div className="form-group">
-            <label className="form-label">Descrição</label>
+            <label className="form-label">{t('comum.descricao')}</label>
             <textarea className="input" rows={3}
-              placeholder="O que foi feito neste período?"
+              placeholder={t('dashboard.oQueFoiFeito')}
               value={descricaoFinal}
               onChange={e => setDescricaoFinal(e.target.value)} />
           </div>
         </div>
 
         <div className="form-actions" style={{ marginTop: 24 }}>
-          <button className="btn btn-secondary" onClick={fecharModal}>Cancelar</button>
+          <button className="btn btn-secondary" onClick={fecharModal}>{t('comum.cancelar')}</button>
           <button className="btn btn-primary" onClick={finalizar} disabled={carregando}>
             {carregando
-              ? 'Processando...'
+              ? t('comum.processando')
               : iniciarAposFechar
-                ? '⇄ Encerrar e iniciar novo'
-                : '⏹ Finalizar e salvar'}
+                ? t('ponto.encerrarEIniciar')
+                : t('dashboard.finalizarESalvar')}
           </button>
         </div>
       </div>
@@ -197,7 +199,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
       <>
         <div style={{
           background: 'var(--accent-dim)',
-          border: '1px solid rgba(168,255,62,0.25)',
+          border: '1px solid var(--status-ativo-bg)',
           borderRadius: 'var(--radius-lg)',
           padding: '16px 20px',
           display: 'flex',
@@ -209,13 +211,13 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
             <div className="pulse-dot" />
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>
-                Em andamento — iniciado às {lancamentoAberto.horaInicio}
+                {t('ponto.emAndamento', { hora: lancamentoAberto.horaInicio })}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
-                {lancamentoAberto.descricao || <em>sem descrição</em>}
+                {lancamentoAberto.descricao || <em>{t('comum.semDescricao')}</em>}
                 &nbsp;·&nbsp;
                 <span style={{ color: 'var(--accent)' }}>
-                  {calcularDecorrido(lancamentoAberto.horaInicio)} decorrido
+                  {t('ponto.decorrido', { tempo: calcularDecorrido(lancamentoAberto.horaInicio, lancamentoAberto.data) })}
                 </span>
               </div>
             </div>
@@ -223,11 +225,11 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
           <div className="flex-center gap-8">
             <button className="btn btn-ghost btn-sm" onClick={cancelar} disabled={carregando}
               style={{ color: 'var(--danger)' }}>
-              ✕ Cancelar
+              {t('ponto.cancelarBtn')}
             </button>
             <button className="btn btn-primary btn-sm"
               onClick={() => abrirModal(lancamentoAberto, false)} disabled={carregando}>
-              ⏹ Finalizar trabalho
+              {t('ponto.finalizarBtn')}
             </button>
           </div>
         </div>
@@ -241,7 +243,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
     <>
       <button className="btn btn-primary" onClick={iniciar} disabled={carregando}
         style={{ fontSize: 14, padding: '10px 20px' }}>
-        {carregando ? '...' : '▶ Iniciar trabalho'}
+        {carregando ? '...' : t('ponto.iniciar')}
       </button>
       {modalJSX}
     </>

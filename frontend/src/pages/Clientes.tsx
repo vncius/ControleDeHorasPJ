@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { clientesApi } from '../services/api'
 import type { Cliente } from '../types'
 import type { ToastFns } from '../App'
@@ -9,6 +10,7 @@ interface FormState { nome: string; observacoes: string }
 const EMPTY: FormState = { nome: '', observacoes: '' }
 
 export default function Clientes({ toast }: Props) {
+  const { t, i18n } = useTranslation()
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
@@ -22,7 +24,7 @@ export default function Clientes({ toast }: Props) {
     try {
       setClientes(await clientesApi.listar())
     } catch {
-      toast.error('Erro ao carregar clientes')
+      toast.error(t('clientes.erroCarregar'))
     } finally {
       setLoading(false)
     }
@@ -49,20 +51,20 @@ export default function Clientes({ toast }: Props) {
   }
 
   async function salvar() {
-    if (!form.nome.trim()) { toast.error('Nome é obrigatório'); return }
+    if (!form.nome.trim()) { toast.error(t('clientes.nomeObrigatorio')); return }
     setSalvando(true)
     try {
       if (modal === 'novo') {
         await clientesApi.criar({ nome: form.nome, observacoes: form.observacoes || undefined })
-        toast.success('Cliente criado com sucesso!')
+        toast.success(t('clientes.criado'))
       } else if (editando) {
         await clientesApi.atualizar(editando.id, { nome: form.nome, observacoes: form.observacoes || undefined })
-        toast.success('Cliente atualizado!')
+        toast.success(t('clientes.atualizado'))
       }
       fecharModal()
       carregar()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao salvar')
+      toast.error(e instanceof Error ? e.message : t('comum.erroSalvar'))
     } finally {
       setSalvando(false)
     }
@@ -71,11 +73,11 @@ export default function Clientes({ toast }: Props) {
   async function excluir(c: Cliente) {
     try {
       await clientesApi.excluir(c.id)
-      toast.success('Cliente excluído!')
+      toast.success(t('clientes.excluido'))
       setConfirmarExcluir(null)
       carregar()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao excluir')
+      toast.error(e instanceof Error ? e.message : t('comum.erroExcluir'))
       setConfirmarExcluir(null)
     }
   }
@@ -85,23 +87,23 @@ export default function Clientes({ toast }: Props) {
   )
 
   const formatarData = (iso: string) =>
-    new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    new Date(iso).toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: 'numeric' })
 
   return (
     <div style={{ animation: 'slideUp 0.25s ease' }}>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Clientes</h1>
-          <p className="page-subtitle">{clientes.length} cliente{clientes.length !== 1 ? 's' : ''} cadastrado{clientes.length !== 1 ? 's' : ''}</p>
+          <h1 className="page-title">{t('clientes.titulo')}</h1>
+          <p className="page-subtitle">{t('clientes.subtitulo', { count: clientes.length })}</p>
         </div>
-        <button className="btn btn-primary" onClick={abrirNovo}>+ Novo cliente</button>
+        <button className="btn btn-primary" onClick={abrirNovo}>{t('clientes.novo')}</button>
       </div>
 
       {/* Busca */}
       <div style={{ marginBottom: 20 }}>
         <input
           className="input"
-          placeholder="Buscar cliente..."
+          placeholder={t('clientes.buscar')}
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           style={{ maxWidth: 320 }}
@@ -117,10 +119,10 @@ export default function Clientes({ toast }: Props) {
         <div className="card">
           <div className="empty-state">
             <div className="empty-state-icon">◉</div>
-            <div>{busca ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado ainda'}</div>
+            <div>{busca ? t('clientes.nenhumEncontrado') : t('clientes.nenhumCadastrado')}</div>
             {!busca && (
               <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={abrirNovo}>
-                Criar primeiro cliente
+                {t('clientes.criarPrimeiro')}
               </button>
             )}
           </div>
@@ -131,9 +133,9 @@ export default function Clientes({ toast }: Props) {
             <table>
               <thead>
                 <tr>
-                  <th>Nome</th>
-                  <th>Observações</th>
-                  <th>Criado em</th>
+                  <th>{t('clientes.nome')}</th>
+                  <th>{t('comum.observacoes')}</th>
+                  <th>{t('clientes.criadoEm')}</th>
                   <th style={{ width: 100 }}></th>
                 </tr>
               </thead>
@@ -149,12 +151,12 @@ export default function Clientes({ toast }: Props) {
                       <div className="flex-center gap-4">
                         <button
                           className="btn btn-ghost btn-sm btn-icon"
-                          title="Editar"
+                          title={t('comum.editar')}
                           onClick={() => abrirEditar(c)}
                         >✎</button>
                         <button
                           className="btn btn-ghost btn-sm btn-icon"
-                          title="Excluir"
+                          title={t('comum.excluir')}
                           style={{ color: 'var(--danger)' }}
                           onClick={() => setConfirmarExcluir(c)}
                         >✕</button>
@@ -174,17 +176,17 @@ export default function Clientes({ toast }: Props) {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">
-                {modal === 'novo' ? 'Novo cliente' : 'Editar cliente'}
+                {modal === 'novo' ? t('clientes.novoTitulo') : t('clientes.editarTitulo')}
               </h2>
               <button className="btn btn-ghost btn-icon" onClick={fecharModal}>✕</button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div className="form-group">
-                <label className="form-label">Nome *</label>
+                <label className="form-label">{t('clientes.nomeLabel')}</label>
                 <input
                   className="input"
-                  placeholder="Nome do cliente"
+                  placeholder={t('clientes.nomePlaceholder')}
                   value={form.nome}
                   onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
                   autoFocus
@@ -193,10 +195,10 @@ export default function Clientes({ toast }: Props) {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Observações</label>
+                <label className="form-label">{t('comum.observacoes')}</label>
                 <textarea
                   className="input"
-                  placeholder="Observações opcionais..."
+                  placeholder={t('comum.observacoesPlaceholder')}
                   value={form.observacoes}
                   onChange={(e) => setForm((f) => ({ ...f, observacoes: e.target.value }))}
                   rows={3}
@@ -205,9 +207,9 @@ export default function Clientes({ toast }: Props) {
             </div>
 
             <div className="form-actions" style={{ marginTop: 24 }}>
-              <button className="btn btn-secondary" onClick={fecharModal}>Cancelar</button>
+              <button className="btn btn-secondary" onClick={fecharModal}>{t('comum.cancelar')}</button>
               <button className="btn btn-primary" onClick={salvar} disabled={salvando}>
-                {salvando ? 'Salvando...' : modal === 'novo' ? 'Criar cliente' : 'Salvar'}
+                {salvando ? t('comum.salvando') : modal === 'novo' ? t('clientes.criarBtn') : t('comum.salvar')}
               </button>
             </div>
           </div>
@@ -219,15 +221,16 @@ export default function Clientes({ toast }: Props) {
         <div className="modal-overlay" onClick={() => setConfirmarExcluir(null)}>
           <div className="modal" style={{ maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">Excluir cliente</h2>
+              <h2 className="modal-title">{t('clientes.excluirTitulo')}</h2>
             </div>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
-              Tem certeza que deseja excluir <strong style={{ color: 'var(--text-primary)' }}>{confirmarExcluir.nome}</strong>?
-              Esta ação não pode ser desfeita.
+              <Trans i18nKey="clientes.confirmarExclusao" values={{ nome: confirmarExcluir.nome }}>
+                <strong style={{ color: 'var(--text-primary)' }} />
+              </Trans>
             </p>
             <div className="form-actions">
-              <button className="btn btn-secondary" onClick={() => setConfirmarExcluir(null)}>Cancelar</button>
-              <button className="btn btn-danger" onClick={() => excluir(confirmarExcluir)}>Excluir</button>
+              <button className="btn btn-secondary" onClick={() => setConfirmarExcluir(null)}>{t('comum.cancelar')}</button>
+              <button className="btn btn-danger" onClick={() => excluir(confirmarExcluir)}>{t('comum.excluir')}</button>
             </div>
           </div>
         </div>

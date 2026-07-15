@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
+import { useTranslation, Trans } from 'react-i18next'
 import { projetosApi, clientesApi, lancamentosApi } from '../services/api'
 import type { Projeto, Cliente, StatusProjeto, LancamentoHoras } from '../types'
 import type { ToastFns } from '../App'
 import { STATUS_COR } from '../constants/statusProjeto'
+import { hojeLocal } from '../utils/tempo'
 import ProjetoDetalhe from './ProjetoDetalhe'
 
 interface Props { toast: ToastFns }
@@ -18,11 +20,23 @@ const STATUS_OPTS: StatusProjeto[] = [
   'Cancelado',
 ]
 
+// mapeia o valor canônico (pt, usado como chave de negócio/API) para a chave de tradução
+const STATUS_I18N_KEY: Record<StatusProjeto, string> = {
+  'Aguardando início': 'statusProjeto.aguardandoInicio',
+  'Em desenvolvimento': 'statusProjeto.emDesenvolvimento',
+  'Com impedimento': 'statusProjeto.comImpedimento',
+  'Em testes': 'statusProjeto.emTestes',
+  'Entregue': 'statusProjeto.entregue',
+  'Finalizado': 'statusProjeto.finalizado',
+  'Cancelado': 'statusProjeto.cancelado',
+}
+
 function BadgeStatus({ status }: { status: StatusProjeto }) {
+  const { t } = useTranslation()
   const { bg, color } = STATUS_COR[status] ?? { bg: 'var(--bg-3)', color: 'var(--text-muted)' }
   return (
     <span className="badge" style={{ background: bg, color, fontSize: 10, whiteSpace: 'nowrap' }}>
-      {status}
+      {t(STATUS_I18N_KEY[status])}
     </span>
   )
 }
@@ -52,7 +66,7 @@ const EMPTY_FORM: FormState = {
   status: 'Aguardando início',
   pago: false,
   dataPagamento: '',
-  dataInicio: new Date().toISOString().slice(0, 10),
+  dataInicio: hojeLocal(),
   dataFim: '',
   observacoes: '',
 }
@@ -69,6 +83,7 @@ export function ProjetoForm({
   onFechar: () => void
   titulo: string
 }) {
+  const { t } = useTranslation()
   return (
     <div className="modal-overlay" onClick={onFechar}>
       <div className="modal modal-lg" style={{ maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
@@ -80,39 +95,39 @@ export function ProjetoForm({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Cliente *</label>
+              <label className="form-label">{t('formProjeto.clienteLabel')}</label>
               <select className="input" value={form.clienteId} onChange={e => setForm(f => ({ ...f, clienteId: e.target.value }))}>
-                <option value="">Selecione...</option>
+                <option value="">{t('formProjeto.selecione')}</option>
                 {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
             <div className="form-group">
-              <label className="form-label">Status</label>
+              <label className="form-label">{t('comum.status')}</label>
               <select className="input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as StatusProjeto }))}>
-                {STATUS_OPTS.map(s => <option key={s} value={s}>{s}</option>)}
+                {STATUS_OPTS.map(s => <option key={s} value={s}>{t(STATUS_I18N_KEY[s])}</option>)}
               </select>
             </div>
           </div>
 
           <div className="form-group">
-            <label className="form-label">Nome do projeto *</label>
-            <input className="input" placeholder="Ex: Desenvolvimento do site" value={form.nome}
+            <label className="form-label">{t('formProjeto.nomeLabel')}</label>
+            <input className="input" placeholder={t('formProjeto.nomePlaceholder')} value={form.nome}
               onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} autoFocus />
           </div>
 
           <div className="form-group">
-            <label className="form-label">Descrição</label>
-            <textarea className="input" placeholder="Descreva o escopo do projeto..." value={form.descricao}
+            <label className="form-label">{t('comum.descricao')}</label>
+            <textarea className="input" placeholder={t('formProjeto.descricaoPlaceholder')} value={form.descricao}
               onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} rows={2} />
           </div>
 
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">
-                Horas contratadas
-                {form.horasAbertas && <span style={{ color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6 }}>(em aberto)</span>}
+                {t('formProjeto.horasContratadas')}
+                {form.horasAbertas && <span style={{ color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6 }}>{t('formProjeto.emAberto')}</span>}
               </label>
-              <input className="input input-mono" type="number" placeholder="Ex: 120"
+              <input className="input input-mono" type="number" placeholder={t('formProjeto.horasPlaceholder')}
                 value={form.horasContratadas}
                 onChange={e => setForm(f => ({ ...f, horasContratadas: e.target.value }))}
                 min="0" step="0.5" disabled={form.horasAbertas}
@@ -121,39 +136,39 @@ export function ProjetoForm({
                 <input type="checkbox" checked={form.horasAbertas}
                   onChange={e => setForm(f => ({ ...f, horasAbertas: e.target.checked, horasContratadas: e.target.checked ? '' : f.horasContratadas }))}
                   style={{ accentColor: 'var(--accent)', width: 14, height: 14 }} />
-                Projeto em horas abertas (sem limite)
+                {t('formProjeto.horasAbertasCheck')}
               </label>
             </div>
             <div className="form-group">
-              <label className="form-label">Valor por hora (R$)</label>
-              <input className="input input-mono" type="number" placeholder="Ex: 150.00" value={form.valorHora}
+              <label className="form-label">{t('formProjeto.valorHoraLabel')}</label>
+              <input className="input input-mono" type="number" placeholder={t('formProjeto.valorHoraPlaceholder')} value={form.valorHora}
                 onChange={e => setForm(f => ({ ...f, valorHora: e.target.value }))} min="0" step="0.01" />
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Data de início *</label>
+              <label className="form-label">{t('formProjeto.dataInicioLabel')}</label>
               <input className="input input-mono" type="date" value={form.dataInicio}
                 onChange={e => setForm(f => ({ ...f, dataInicio: e.target.value }))} />
             </div>
             <div className="form-group">
-              <label className="form-label">Data de fim <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(opcional)</span></label>
+              <label className="form-label">{t('formProjeto.dataFimLabel')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('comum.opcional')}</span></label>
               <input className="input input-mono" type="date" value={form.dataFim}
                 onChange={e => setForm(f => ({ ...f, dataFim: e.target.value }))} />
             </div>
           </div>
 
           <div className="form-group">
-            <label className="form-label">Observações</label>
-            <textarea className="input" placeholder="Observações opcionais..." value={form.observacoes}
+            <label className="form-label">{t('comum.observacoes')}</label>
+            <textarea className="input" placeholder={t('comum.observacoesPlaceholder')} value={form.observacoes}
               onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
           </div>
 
           {/* Pago */}
           <div style={{
             background: form.pago ? 'rgba(92,200,255,0.06)' : 'var(--bg-3)',
-            border: `1px solid ${form.pago ? 'rgba(92,200,255,0.25)' : 'var(--border)'}`,
+            border: `1px solid ${form.pago ? 'var(--info-bg)' : 'var(--border)'}`,
             borderRadius: 'var(--radius)', padding: '12px 16px',
           }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: form.pago ? 12 : 0 }}>
@@ -162,20 +177,20 @@ export function ProjetoForm({
                 style={{ accentColor: 'var(--info)', width: 16, height: 16 }} />
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: form.pago ? 'var(--info)' : 'var(--text-primary)' }}>
-                  Projeto pago / recebido
+                  {t('formProjeto.pagoTitulo')}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                  Lançamentos a partir da data de pagamento não serão faturáveis
+                  {t('formProjeto.pagoAjuda')}
                 </div>
               </div>
             </label>
             {form.pago && (
               <div className="form-group">
-                <label className="form-label">Data de pagamento *</label>
+                <label className="form-label">{t('formProjeto.dataPagamentoLabel')}</label>
                 <input className="input input-mono" type="date" value={form.dataPagamento}
                   onChange={e => setForm(f => ({ ...f, dataPagamento: e.target.value }))} />
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                  Lançamentos anteriores a esta data continuam faturáveis no histórico
+                  {t('formProjeto.dataPagamentoAjuda')}
                 </div>
               </div>
             )}
@@ -183,9 +198,9 @@ export function ProjetoForm({
         </div>
 
         <div className="form-actions" style={{ marginTop: 24 }}>
-          <button className="btn btn-secondary" onClick={onFechar}>Cancelar</button>
+          <button className="btn btn-secondary" onClick={onFechar}>{t('comum.cancelar')}</button>
           <button className="btn btn-primary" onClick={onSalvar} disabled={salvando}>
-            {salvando ? 'Salvando...' : 'Salvar'}
+            {salvando ? t('comum.salvando') : t('comum.salvar')}
           </button>
         </div>
       </div>
@@ -231,9 +246,10 @@ export function formParaPayload(form: FormState, paraAtualizar = false) {
 }
 
 // ── tipo para ordenação ──────────────────────────────────────────
-type ColOrdem = 'cliente' | 'nome' | 'status' | 'dataInicio' | 'horas' | 'valorHora'
+type ColOrdem = 'cliente' | 'nome' | 'status' | 'dataInicio' | 'horasContratadas' | 'horas' | 'valorHora'
 
 function ProjetosList({ toast }: Props) {
+  const { t, i18n } = useTranslation()
   const [projetos, setProjetos] = useState<Projeto[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [horasPorProjeto, setHorasPorProjeto] = useState<Map<string, number>>(new Map())
@@ -275,7 +291,7 @@ function ProjetosList({ toast }: Props) {
       })
       setHorasPorProjeto(mapa)
     } catch {
-      toast.error('Erro ao carregar projetos')
+      toast.error(t('projetos.erroCarregar'))
     } finally {
       setLoading(false)
     }
@@ -312,35 +328,35 @@ function ProjetosList({ toast }: Props) {
   function fechar() { setModal(null); setEditando(null); setForm(EMPTY_FORM) }
 
   async function salvar() {
-    if (!form.nome.trim()) { toast.error('Nome é obrigatório'); return }
-    if (!form.clienteId) { toast.error('Selecione um cliente'); return }
-    if (!form.dataInicio) { toast.error('Data de início é obrigatória'); return }
-    if (form.dataFim && form.dataFim < form.dataInicio) { toast.error('Data de fim inválida'); return }
+    if (!form.nome.trim()) { toast.error(t('projetos.nomeObrigatorio')); return }
+    if (!form.clienteId) { toast.error(t('projetos.selecioneCliente')); return }
+    if (!form.dataInicio) { toast.error(t('projetos.dataInicioObrigatoria')); return }
+    if (form.dataFim && form.dataFim < form.dataInicio) { toast.error(t('projetos.dataFimInvalida')); return }
     if (!form.horasAbertas && (!parseFloat(form.horasContratadas) || parseFloat(form.horasContratadas) <= 0)) {
-      toast.error('Informe as horas contratadas'); return
+      toast.error(t('projetos.informeHoras')); return
     }
     setSalvando(true)
     try {
       if (modal === 'novo') {
         await projetosApi.criar(formParaPayload(form) as Parameters<typeof projetosApi.criar>[0])
-        toast.success('Projeto criado!')
+        toast.success(t('projetos.criado'))
       } else if (editando) {
         await projetosApi.atualizar(editando.id, formParaPayload(form, true))
-        toast.success('Projeto atualizado!')
+        toast.success(t('projetos.atualizado'))
       }
       fechar(); carregar()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao salvar')
+      toast.error(e instanceof Error ? e.message : t('comum.erroSalvar'))
     } finally { setSalvando(false) }
   }
 
   async function excluir(p: Projeto) {
     try {
       await projetosApi.excluir(p.id)
-      toast.success('Projeto excluído!')
+      toast.success(t('projetos.excluido'))
       setConfirmarExcluir(null); carregar()
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao excluir')
+      toast.error(e instanceof Error ? e.message : t('comum.erroExcluir'))
       setConfirmarExcluir(null)
     }
   }
@@ -360,6 +376,11 @@ function ProjetosList({ toast }: Props) {
         case 'nome':       va = a.nome; vb = b.nome; break
         case 'status':     va = a.status; vb = b.status; break
         case 'dataInicio': va = a.dataInicio ?? ''; vb = b.dataInicio ?? ''; break
+        case 'horasContratadas':
+          // sem limite ("Aberto") ordena por último
+          va = a.horasContratadas ?? Number.MAX_SAFE_INTEGER
+          vb = b.horasContratadas ?? Number.MAX_SAFE_INTEGER
+          break
         case 'horas':      va = horasPorProjeto.get(a.id) ?? 0; vb = horasPorProjeto.get(b.id) ?? 0; break
         case 'valorHora':  va = a.valorHora ?? 0; vb = b.valorHora ?? 0; break
       }
@@ -373,19 +394,19 @@ function ProjetosList({ toast }: Props) {
     <div style={{ animation: 'slideUp 0.25s ease' }}>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Projetos</h1>
-          <p className="page-subtitle">{projetos.length} projeto{projetos.length !== 1 ? 's' : ''} cadastrado{projetos.length !== 1 ? 's' : ''}</p>
+          <h1 className="page-title">{t('projetos.titulo')}</h1>
+          <p className="page-subtitle">{t('projetos.subtitulo', { count: projetos.length })}</p>
         </div>
-        <button className="btn btn-primary" onClick={abrirNovo}>+ Novo projeto</button>
+        <button className="btn btn-primary" onClick={abrirNovo}>{t('projetos.novo')}</button>
       </div>
 
       {/* Filtros */}
       <div style={{ marginBottom: 20 }}>
         <div className="flex-center gap-12" style={{ flexWrap: 'wrap', marginBottom: 8 }}>
-          <input className="input" placeholder="Buscar projeto..." value={busca}
+          <input className="input" placeholder={t('projetos.buscar')} value={busca}
             onChange={e => setBusca(e.target.value)} style={{ maxWidth: 240 }} />
           <select className="input" value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{ maxWidth: 200 }}>
-            <option value="">Todos os clientes</option>
+            <option value="">{t('projetos.todosClientes')}</option>
             {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
 
@@ -396,14 +417,14 @@ function ProjetosList({ toast }: Props) {
               onClick={() => setMostrarFiltroStatus(v => !v)}
               style={{ gap: 6, minWidth: 160 }}
             >
-              <span>Status</span>
+              <span>{t('projetos.filtroStatus')}</span>
               <span style={{
                 background: 'var(--bg-4)', borderRadius: 10,
                 padding: '1px 7px', fontSize: 11,
                 fontFamily: 'var(--font-mono)',
                 color: filtroStatus.size === STATUS_OPTS.length ? 'var(--text-muted)' : 'var(--accent)',
               }}>
-                {filtroStatus.size === STATUS_OPTS.length ? 'todos' : `${filtroStatus.size}/${STATUS_OPTS.length}`}
+                {filtroStatus.size === STATUS_OPTS.length ? t('projetos.filtroTodos') : `${filtroStatus.size}/${STATUS_OPTS.length}`}
               </span>
               <span style={{ fontSize: 10 }}>{mostrarFiltroStatus ? '▲' : '▼'}</span>
             </button>
@@ -419,15 +440,15 @@ function ProjetosList({ toast }: Props) {
                 <div className="flex-center gap-8" style={{ padding: '4px 12px 8px', borderBottom: '1px solid var(--border)' }}>
                   <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, padding: '3px 8px' }}
                     onClick={() => setFiltroStatus(new Set(STATUS_OPTS))}>
-                    Todos
+                    {t('comum.todos')}
                   </button>
                   <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, padding: '3px 8px' }}
                     onClick={() => setFiltroStatus(new Set(STATUS_PADRAO))}>
-                    Ativos
+                    {t('projetos.ativos')}
                   </button>
                   <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, padding: '3px 8px' }}
                     onClick={() => setFiltroStatus(new Set())}>
-                    Nenhum
+                    {t('comum.nenhum')}
                   </button>
                 </div>
 
@@ -450,7 +471,7 @@ function ProjetosList({ toast }: Props) {
                           })
                         }}
                         style={{ accentColor: 'var(--accent)', width: 14, height: 14 }} />
-                      <span className="badge" style={{ background: bg, color, fontSize: 10 }}>{s}</span>
+                      <span className="badge" style={{ background: bg, color, fontSize: 10 }}>{t(STATUS_I18N_KEY[s])}</span>
                     </label>
                   )
                 })}
@@ -470,7 +491,7 @@ function ProjetosList({ toast }: Props) {
             <button className="btn btn-ghost btn-sm" onClick={() => {
               setBusca(''); setFiltroCliente(''); setFiltroStatus(new Set(STATUS_PADRAO))
             }}>
-              ↺ Resetar filtros
+              {t('projetos.resetarFiltros')}
             </button>
           )}
         </div>
@@ -495,7 +516,7 @@ function ProjetosList({ toast }: Props) {
                   opacity: marcado ? 1 : 0.5,
                   transition: 'all 0.15s',
                 }}>
-                {s}
+                {t(STATUS_I18N_KEY[s])}
               </button>
             )
           })}
@@ -508,9 +529,9 @@ function ProjetosList({ toast }: Props) {
         <div className="card">
           <div className="empty-state">
             <div className="empty-state-icon">◫</div>
-            <div>{busca || filtroCliente || filtroStatus.size < STATUS_OPTS.length ? 'Nenhum projeto encontrado' : 'Nenhum projeto cadastrado ainda'}</div>
+            <div>{busca || filtroCliente || filtroStatus.size < STATUS_OPTS.length ? t('projetos.nenhumEncontrado') : t('projetos.nenhumCadastrado')}</div>
             {!busca && !filtroCliente && filtroStatus.size === STATUS_OPTS.length && (
-              <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={abrirNovo}>Criar primeiro projeto</button>
+              <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={abrirNovo}>{t('projetos.criarPrimeiro')}</button>
             )}
           </div>
         </div>
@@ -520,14 +541,14 @@ function ProjetosList({ toast }: Props) {
             <table>
               <thead>
                 <tr>
-                  <Th col="nome" label="Projeto" />
-                  <Th col="cliente" label="Cliente" width={160} />
-                  <Th col="status" label="Status" width={160} />
-                  <Th col="dataInicio" label="Início" width={90} />
-                  <Th col="horas" label="H. contratadas" width={110} />
-                  <Th col="horas" label="H. lançadas" width={100} />
-                  <Th col="valorHora" label="Valor/h" width={90} />
-                  <th style={{ width: 60 }}>Pago</th>
+                  <Th col="nome" label={t('projetos.colProjeto')} />
+                  <Th col="cliente" label={t('comum.cliente')} width={160} />
+                  <Th col="status" label={t('comum.status')} width={160} />
+                  <Th col="dataInicio" label={t('comum.inicio')} width={90} />
+                  <Th col="horasContratadas" label={t('projetos.colHContratadas')} width={110} />
+                  <Th col="horas" label={t('projetos.colHLancadas')} width={100} />
+                  <Th col="valorHora" label={t('projetos.colValorHora')} width={90} />
+                  <th style={{ width: 60 }}>{t('comum.pago')}</th>
                   <th style={{ width: 90 }}></th>
                 </tr>
               </thead>
@@ -541,12 +562,12 @@ function ProjetosList({ toast }: Props) {
                     <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{nomeCliente(p.clienteId)}</td>
                     <td><BadgeStatus status={p.status} /></td>
                     <td className="td-mono">
-                      {p.dataInicio ? new Date(p.dataInicio + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
+                      {p.dataInicio ? new Date(p.dataInicio + 'T00:00:00').toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
                     </td>
                     <td className="td-mono">
                       {p.horasContratadas != null
                         ? `${p.horasContratadas.toFixed(0)}h`
-                        : <span style={{ color: 'var(--accent)', fontWeight: 600 }}>Aberto</span>}
+                        : <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{t('projetos.aberto')}</span>}
                     </td>
                     <td className="td-mono" style={{ color: 'var(--accent)', fontWeight: 600 }}>
                       {(horasPorProjeto.get(p.id) ?? 0).toFixed(1)}h
@@ -556,13 +577,13 @@ function ProjetosList({ toast }: Props) {
                     </td>
                     <td>
                       {p.pago
-                        ? <span className="badge" style={{ background: 'rgba(92,200,255,0.12)', color: 'var(--info)' }}>✓ Pago</span>
+                        ? <span className="badge" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>{t('projetos.badgePago')}</span>
                         : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
                     </td>
                     <td onClick={e => e.stopPropagation()}>
                       <div className="flex-center gap-4">
-                        <button className="btn btn-ghost btn-sm btn-icon" title="Editar" onClick={e => abrirEditar(p, e)}>✎</button>
-                        <button className="btn btn-ghost btn-sm btn-icon" title="Excluir"
+                        <button className="btn btn-ghost btn-sm btn-icon" title={t('comum.editar')} onClick={e => abrirEditar(p, e)}>✎</button>
+                        <button className="btn btn-ghost btn-sm btn-icon" title={t('comum.excluir')}
                           style={{ color: 'var(--danger)' }}
                           onClick={e => { e.stopPropagation(); setConfirmarExcluir(p) }}>✕</button>
                       </div>
@@ -579,20 +600,22 @@ function ProjetosList({ toast }: Props) {
         <ProjetoForm
           form={form} setForm={setForm} clientes={clientes}
           salvando={salvando} onSalvar={salvar} onFechar={fechar}
-          titulo={modal === 'novo' ? 'Novo projeto' : 'Editar projeto'}
+          titulo={modal === 'novo' ? t('projetos.novoTitulo') : t('projetos.editarTitulo')}
         />
       )}
 
       {confirmarExcluir && (
         <div className="modal-overlay" onClick={() => setConfirmarExcluir(null)}>
           <div className="modal" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header"><h2 className="modal-title">Excluir projeto</h2></div>
+            <div className="modal-header"><h2 className="modal-title">{t('projetos.excluirTitulo')}</h2></div>
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
-              Excluir <strong style={{ color: 'var(--text-primary)' }}>{confirmarExcluir.nome}</strong> também removerá todos os escopos e lançamentos vinculados.
+              <Trans i18nKey="projetos.confirmarExclusao" values={{ nome: confirmarExcluir.nome }}>
+                <strong style={{ color: 'var(--text-primary)' }} />
+              </Trans>
             </p>
             <div className="form-actions">
-              <button className="btn btn-secondary" onClick={() => setConfirmarExcluir(null)}>Cancelar</button>
-              <button className="btn btn-danger" onClick={() => excluir(confirmarExcluir)}>Excluir tudo</button>
+              <button className="btn btn-secondary" onClick={() => setConfirmarExcluir(null)}>{t('comum.cancelar')}</button>
+              <button className="btn btn-danger" onClick={() => excluir(confirmarExcluir)}>{t('projetos.excluirTudo')}</button>
             </div>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { clientesApi, projetosApi, lancamentosApi } from '../services/api'
+import { dataLocalISO, hojeLocal } from '../utils/tempo'
 import type { Cliente, Projeto, LancamentoHoras } from '../types'
 
 interface LancamentoEnriquecido extends LancamentoHoras {
@@ -34,11 +35,11 @@ function dataInicioMes(mesesAtras: number): string {
   const d = new Date()
   d.setMonth(d.getMonth() - mesesAtras)
   d.setDate(1)
-  return d.toISOString().slice(0, 10)
+  return dataLocalISO(d)
 }
 
 function dataHoje(): string {
-  return new Date().toISOString().slice(0, 10)
+  return hojeLocal()
 }
 
 function exportarCSV(lancamentos: LancamentoEnriquecido[], sufixo = '') {

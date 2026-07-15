@@ -5,7 +5,7 @@ import {
   LancamentoHoras,
   StatusLinhaImportacao,
 } from '../types'
-import { calcularDiferenca, agora, isHoraValida } from '../utils/tempo'
+import { calcularDiferenca, agora, isHoraValida, horaParaMinutos } from '../utils/tempo'
 
 // ── constantes ──────────────────────────────────────────────────
 
@@ -108,14 +108,13 @@ export function parsearLinhas(texto: string, ano: number): LinhaImportacao[] {
 
     // ── diferença calculada ──
     const diff = calcularDiferenca(colInicio, colFim)
-    if (!diff) {
-      entry.status = 'erro'
-      entry.mensagem = `Hora fim (${colFim}) anterior à hora início (${colInicio})`
-      resultado.push(entry)
-      continue
-    }
     entry.totalHHMMCalculado = diff.hhMM
     entry.totalDecimalCalculado = diff.decimal
+    if (horaParaMinutos(colFim) < horaParaMinutos(colInicio)) {
+      avisos.push(
+        `Hora fim (${colFim}) menor que início (${colInicio}) — interpretado como virada de meia-noite (${diff.hhMM})`
+      )
+    }
 
     // ── total hh:mm informado ──
     if (colHHMM) {
@@ -178,7 +177,6 @@ export const importacaoService = {
 
     for (const linha of importaveis) {
       const diff = calcularDiferenca(linha.horaInicio!, linha.horaFim!)
-      if (!diff) continue
 
       const lancamento: LancamentoHoras = {
         id: uuid(),

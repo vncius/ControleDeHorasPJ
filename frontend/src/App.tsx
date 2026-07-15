@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useToast } from './hooks/useToast'
 import type { Toast } from './hooks/useToast'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -13,11 +15,12 @@ export type ToastFns = { success: (m: string) => void; error: (m: string) => voi
 export type { Toast }
 
 function ProtectedRoute() {
+  const { t } = useTranslation()
   const { usuario, carregando } = useAuth()
 
   if (carregando) {
     return (
-      <div className="loading-screen"><div className="spinner" /><span>Carregando sessão...</span></div>
+      <div className="loading-screen"><div className="spinner" /><span>{t('app.carregandoSessao')}</span></div>
     )
   }
 
@@ -47,10 +50,12 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   )
 }
