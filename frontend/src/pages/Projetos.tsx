@@ -86,7 +86,7 @@ export function ProjetoForm({
   const { t } = useTranslation()
   return (
     <div className="modal-overlay" onClick={onFechar}>
-      <div className="modal modal-lg" style={{ maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+      <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2 className="modal-title">{titulo}</h2>
           <button className="btn btn-ghost btn-icon" onClick={onFechar}>✕</button>
@@ -304,10 +304,10 @@ function ProjetosList({ toast }: Props) {
     else { setColOrdem(col); setOrdemAsc(true) }
   }
 
-  function Th({ col, label, width }: { col: ColOrdem; label: string; width?: number }) {
+  function Th({ col, label, width, className }: { col: ColOrdem; label: string; width?: number; className?: string }) {
     const ativo = colOrdem === col
     return (
-      <th style={{ width, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+      <th className={className} style={{ width, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
         onClick={() => toggleOrdem(col)}>
         <span style={{ color: ativo ? 'var(--accent)' : undefined }}>
           {label} {ativo ? (ordemAsc ? '↑' : '↓') : '↕'}
@@ -542,13 +542,13 @@ function ProjetosList({ toast }: Props) {
               <thead>
                 <tr>
                   <Th col="nome" label={t('projetos.colProjeto')} />
-                  <Th col="cliente" label={t('comum.cliente')} width={160} />
-                  <Th col="status" label={t('comum.status')} width={160} />
-                  <Th col="dataInicio" label={t('comum.inicio')} width={90} />
+                  <Th col="cliente" label={t('comum.cliente')} width={160} className="hide-mobile" />
+                  <Th col="status" label={t('comum.status')} width={160} className="hide-mobile" />
+                  <Th col="dataInicio" label={t('comum.inicio')} width={90} className="hide-mobile" />
                   <Th col="horasContratadas" label={t('projetos.colHContratadas')} width={110} />
                   <Th col="horas" label={t('projetos.colHLancadas')} width={100} />
-                  <Th col="valorHora" label={t('projetos.colValorHora')} width={90} />
-                  <th style={{ width: 60 }}>{t('comum.pago')}</th>
+                  <Th col="valorHora" label={t('projetos.colValorHora')} width={90} className="hide-mobile" />
+                  <th className="hide-mobile" style={{ width: 60 }}>{t('comum.pago')}</th>
                   <th style={{ width: 90 }}></th>
                 </tr>
               </thead>
@@ -559,9 +559,9 @@ function ProjetosList({ toast }: Props) {
                       <div style={{ fontWeight: 500 }}>{p.nome}</div>
                       {p.descricao && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{p.descricao}</div>}
                     </td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{nomeCliente(p.clienteId)}</td>
-                    <td><BadgeStatus status={p.status} /></td>
-                    <td className="td-mono">
+                    <td className="hide-mobile" style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{nomeCliente(p.clienteId)}</td>
+                    <td className="hide-mobile"><BadgeStatus status={p.status} /></td>
+                    <td className="td-mono hide-mobile">
                       {p.dataInicio ? new Date(p.dataInicio + 'T00:00:00').toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
                     </td>
                     <td className="td-mono">
@@ -572,10 +572,10 @@ function ProjetosList({ toast }: Props) {
                     <td className="td-mono" style={{ color: 'var(--accent)', fontWeight: 600 }}>
                       {(horasPorProjeto.get(p.id) ?? 0).toFixed(1)}h
                     </td>
-                    <td className="td-mono">
+                    <td className="td-mono hide-mobile">
                       {p.valorHora ? `R$ ${p.valorHora.toFixed(2).replace('.', ',')}` : '—'}
                     </td>
-                    <td>
+                    <td className="hide-mobile">
                       {p.pago
                         ? <span className="badge" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>{t('projetos.badgePago')}</span>
                         : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}

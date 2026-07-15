@@ -25,7 +25,7 @@ export default function Topbar({ onAbrirMenu }: Props) {
     }}>
       {onAbrirMenu ? (
         <button
-          className="btn btn-ghost btn-icon"
+          className="btn btn-ghost btn-icon btn-menu-mobile"
           onClick={onAbrirMenu}
           aria-label="Menu"
           style={{ fontSize: 16 }}

@@ -221,7 +221,7 @@ export default function Relatorios() {
 
       {/* Filtros */}
       <div className="card" style={{ marginBottom: 24 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 16 }}>
           <div className="form-group">
             <label className="form-label">Data início</label>
             <input className="input input-mono" type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
@@ -291,7 +291,7 @@ export default function Relatorios() {
       ) : (
         <>
           {/* Cards resumo faturável x não faturável */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 24 }}>
             {/* Faturável */}
             <div style={{ background: 'var(--bg-2)', border: '1px solid rgba(168,255,62,0.2)', borderRadius: 'var(--radius-lg)', padding: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
@@ -365,7 +365,7 @@ export default function Relatorios() {
           </div>
 
           {/* Cards totais da aba atual */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 24 }}>
             {[
               { label: 'Total HH:MM', value: decimalParaHHMM(totalDecimal) },
               { label: 'Total decimal', value: totalDecimal.toFixed(2).replace('.', ',') + 'h' },
@@ -391,60 +391,63 @@ export default function Relatorios() {
               Por {agrupamento === 'dia' ? 'dia' : agrupamento}
             </h3>
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>{agrupamento === 'dia' ? 'Data' : agrupamento === 'cliente' ? 'Cliente' : 'Projeto'}</th>
-                    {visualizacao === 'todos' && <th style={{ width: 90 }}>Faturável</th>}
-                    <th style={{ width: 100 }}>Lançamentos</th>
-                    <th style={{ width: 100 }}>HH:MM</th>
-                    <th style={{ width: 100 }}>Decimal</th>
-                    <th style={{ width: 140 }}>Valor (R$)</th>
-                    <th style={{ width: 100 }}>%</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {linhasAgrupadas.map((row, i) => {
-                    const p = totalDecimal > 0 ? (row.totalDecimal / totalDecimal) * 100 : 0
-                    return (
-                      <tr key={i} style={{ cursor: 'default' }}>
-                        <td style={{ fontWeight: 500 }}>{row.label}</td>
-                        {visualizacao === 'todos' && (
-                          <td>
-                            {row.naoFaturavel
-                              ? <span className="badge" style={{ background: 'rgba(92,200,255,0.12)', color: 'var(--info)' }}>Não</span>
-                              : <span className="badge badge-ativo">Sim</span>}
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{agrupamento === 'dia' ? 'Data' : agrupamento === 'cliente' ? 'Cliente' : 'Projeto'}</th>
+                      {visualizacao === 'todos' && <th className="hide-mobile" style={{ width: 90 }}>Faturável</th>}
+                      <th className="hide-mobile" style={{ width: 100 }}>Lançamentos</th>
+                      <th style={{ width: 100 }}>HH:MM</th>
+                      <th className="hide-mobile" style={{ width: 100 }}>Decimal</th>
+                      <th style={{ width: 140 }}>Valor (R$)</th>
+                      <th className="hide-mobile" style={{ width: 100 }}>%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {linhasAgrupadas.map((row, i) => {
+                      const p = totalDecimal > 0 ? (row.totalDecimal / totalDecimal) * 100 : 0
+                      return (
+                        <tr key={i} style={{ cursor: 'default' }}>
+                          <td style={{ fontWeight: 500 }}>{row.label}</td>
+                          {visualizacao === 'todos' && (
+                            <td className="hide-mobile">
+                              {row.naoFaturavel
+                                ? <span className="badge" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>Não</span>
+                                : <span className="badge badge-ativo">Sim</span>}
+                            </td>
+                          )}
+                          <td className="td-mono hide-mobile">{row.qtdLancamentos}</td>
+                          <td className="td-mono" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{row.totalHHMM}</td>
+                          <td className="td-mono hide-mobile">{row.totalDecimal.toFixed(2).replace('.', ',')}</td>
+                          <td className="td-mono" style={{ color: row.valorTotal ? 'var(--accent)' : 'var(--text-muted)' }}>
+                            {row.valorTotal != null && row.valorTotal > 0 ? fmtReais(row.valorTotal) : '—'}
                           </td>
-                        )}
-                        <td className="td-mono">{row.qtdLancamentos}</td>
-                        <td className="td-mono" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{row.totalHHMM}</td>
-                        <td className="td-mono">{row.totalDecimal.toFixed(2).replace('.', ',')}</td>
-                        <td className="td-mono" style={{ color: row.valorTotal ? 'var(--accent)' : 'var(--text-muted)' }}>
-                          {row.valorTotal != null && row.valorTotal > 0 ? fmtReais(row.valorTotal) : '—'}
-                        </td>
-                        <td>
-                          <div className="flex-center gap-8">
-                            <div className="progress-bar" style={{ flex: 1, height: 3 }}>
-                              <div className="progress-fill progress-ok" style={{ width: `${p}%` }} />
+                          <td className="hide-mobile">
+                            <div className="flex-center gap-8">
+                              <div className="progress-bar" style={{ flex: 1, height: 3 }}>
+                                <div className="progress-fill progress-ok" style={{ width: `${p}%` }} />
+                              </div>
+                              <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', minWidth: 32 }}>{p.toFixed(0)}%</span>
                             </div>
-                            <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', minWidth: 32 }}>{p.toFixed(0)}%</span>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr style={{ borderTop: '1px solid var(--border-light)' }}>
-                    <td colSpan={visualizacao === 'todos' ? 2 : 1} style={{ padding: '10px 12px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total</td>
-                    <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-secondary)' }}>{lancamentosFiltrados.length}</td>
-                    <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>{decimalParaHHMM(totalDecimal)}</td>
-                    <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>{totalDecimal.toFixed(2).replace('.', ',')}</td>
-                    <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>{totalValor > 0 ? fmtReais(totalValor) : '—'}</td>
-                    <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)' }}>100%</td>
-                  </tr>
-                </tfoot>
-              </table>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ borderTop: '1px solid var(--border-light)' }}>
+                      <td style={{ padding: '10px 12px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total</td>
+                      {visualizacao === 'todos' && <td className="hide-mobile" />}
+                      <td className="td-mono hide-mobile" style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-secondary)' }}>{lancamentosFiltrados.length}</td>
+                      <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>{decimalParaHHMM(totalDecimal)}</td>
+                      <td className="hide-mobile" style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>{totalDecimal.toFixed(2).replace('.', ',')}</td>
+                      <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>{totalValor > 0 ? fmtReais(totalValor) : '—'}</td>
+                      <td className="hide-mobile" style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)' }}>100%</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -459,14 +462,14 @@ export default function Relatorios() {
                   <thead>
                     <tr>
                       <th style={{ width: 88 }}>Data</th>
-                      <th style={{ width: 120 }}>Cliente</th>
+                      <th className="hide-mobile" style={{ width: 120 }}>Cliente</th>
                       <th style={{ width: 150 }}>Projeto</th>
-                      {visualizacao === 'todos' && <th style={{ width: 80 }}>Faturável</th>}
+                      {visualizacao === 'todos' && <th className="hide-mobile" style={{ width: 80 }}>Faturável</th>}
                       <th>Descrição</th>
-                      <th style={{ width: 68 }}>Início</th>
-                      <th style={{ width: 68 }}>Fim</th>
+                      <th className="hide-mobile" style={{ width: 68 }}>Início</th>
+                      <th className="hide-mobile" style={{ width: 68 }}>Fim</th>
                       <th style={{ width: 76 }}>HH:MM</th>
-                      <th style={{ width: 72 }}>Decimal</th>
+                      <th className="hide-mobile" style={{ width: 72 }}>Decimal</th>
                       <th style={{ width: 120 }}>Valor (R$)</th>
                     </tr>
                   </thead>
@@ -479,7 +482,7 @@ export default function Relatorios() {
                       return (
                         <tr key={l.id} style={{ cursor: 'default', opacity: faturavel ? 1 : 0.85 }}>
                           <td className="td-mono">{fmtData(l.data)}</td>
-                          <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l.cliente.nome}</td>
+                          <td className="hide-mobile" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l.cliente.nome}</td>
                           <td style={{ fontSize: 12, fontWeight: 500 }}>
                             {l.projeto.nome}
                             {!faturavel && (
@@ -489,17 +492,17 @@ export default function Relatorios() {
                             )}
                           </td>
                           {visualizacao === 'todos' && (
-                            <td>
+                            <td className="hide-mobile">
                               {faturavel
                                 ? <span className="badge badge-ativo">Sim</span>
-                                : <span className="badge" style={{ background: 'rgba(92,200,255,0.12)', color: 'var(--info)' }}>Não</span>}
+                                : <span className="badge" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>Não</span>}
                             </td>
                           )}
                           <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{l.descricao || '—'}</td>
-                          <td className="td-mono">{l.horaInicio}</td>
-                          <td className="td-mono">{l.horaFim ?? '—'}</td>
+                          <td className="td-mono hide-mobile">{l.horaInicio}</td>
+                          <td className="td-mono hide-mobile">{l.horaFim ?? '—'}</td>
                           <td className="td-mono" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{l.totalHHMM ?? '—'}</td>
-                          <td className="td-mono">{l.totalDecimal != null ? l.totalDecimal.toFixed(2).replace('.', ',') : '—'}</td>
+                          <td className="td-mono hide-mobile">{l.totalDecimal != null ? l.totalDecimal.toFixed(2).replace('.', ',') : '—'}</td>
                           <td className="td-mono" style={{ color: valor ? 'var(--accent)' : 'var(--text-muted)' }}>
                             {valor != null ? fmtReais(valor) : '—'}
                           </td>

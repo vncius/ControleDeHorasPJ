@@ -235,15 +235,15 @@ function LinhaLancamento({ lancamento, escopos, toast, onAtualizar }: LinhaProps
         <td><input className="input input-mono" type="time" value={form.horaInicio} onChange={e => setForm(f => ({ ...f, horaInicio: e.target.value }))} style={{ padding: '5px 8px', fontSize: 12, width: 90 }} /></td>
         <td><input className="input input-mono" type="time" value={form.horaFim} onChange={e => setForm(f => ({ ...f, horaFim: e.target.value }))} style={{ padding: '5px 8px', fontSize: 12, width: 90 }} /></td>
         <td className="td-mono">—</td>
-        <td className="td-mono">—</td>
-        <td>
+        <td className="td-mono hide-mobile">—</td>
+        <td className="hide-mobile">
           <select className="input" value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value as TipoLancamento }))} style={{ padding: '5px 8px', fontSize: 12 }}>
             <option value="Automatico">{t('tipoLanc.Automatico')}</option>
             <option value="Manual">{t('tipoLanc.Manual')}</option>
             <option value="Ajuste">{t('tipoLanc.Ajuste')}</option>
           </select>
         </td>
-        <td>
+        <td className="hide-mobile">
           {escopos.length > 0 && (
             <select className="input" value={form.escopoId} onChange={e => setForm(f => ({ ...f, escopoId: e.target.value }))} style={{ padding: '5px 8px', fontSize: 11 }}>
               <option value="">{t('lanc.principal')}</option>
@@ -287,9 +287,9 @@ function LinhaLancamento({ lancamento, escopos, toast, onAtualizar }: LinhaProps
       <td className="td-mono">{lancamento.horaInicio}</td>
       <td className="td-mono">{lancamento.horaFim ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
       <td className="td-mono" style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{lancamento.totalHHMM ?? '—'}</td>
-      <td className="td-mono">{lancamento.totalDecimal != null ? lancamento.totalDecimal.toFixed(2).replace('.', ',') : '—'}</td>
-      <td><BadgeTipo tipo={lancamento.tipo} /></td>
-      <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+      <td className="td-mono hide-mobile">{lancamento.totalDecimal != null ? lancamento.totalDecimal.toFixed(2).replace('.', ',') : '—'}</td>
+      <td className="hide-mobile"><BadgeTipo tipo={lancamento.tipo} /></td>
+      <td className="hide-mobile" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
         {escopoNome ? escopoNome.substring(0, 14) + (escopoNome.length > 14 ? '…' : '') : '—'}
       </td>
       <td onClick={e => e.stopPropagation()}>
@@ -347,9 +347,9 @@ export default function TabelaLancamentos({ projetoId, lancamentos, escopos, toa
                   <th style={{ width: 80 }}>{t('comum.inicio')}</th>
                   <th style={{ width: 80 }}>{t('comum.fim')}</th>
                   <th style={{ width: 80 }}>{t('comum.hhmm')}</th>
-                  <th style={{ width: 72 }}>{t('comum.decimal')}</th>
-                  <th style={{ width: 100 }}>{t('comum.tipo')}</th>
-                  <th style={{ width: 120 }}>{t('lanc.colEscopo')}</th>
+                  <th className="hide-mobile" style={{ width: 72 }}>{t('comum.decimal')}</th>
+                  <th className="hide-mobile" style={{ width: 100 }}>{t('comum.tipo')}</th>
+                  <th className="hide-mobile" style={{ width: 120 }}>{t('lanc.colEscopo')}</th>
                   <th style={{ width: 110 }}></th>
                 </tr>
               </thead>
@@ -363,8 +363,9 @@ export default function TabelaLancamentos({ projetoId, lancamentos, escopos, toa
                   <tr style={{ borderTop: '1px solid var(--border-light)' }}>
                     <td colSpan={4} style={{ padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('comum.total')}</td>
                     <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent)', fontSize: 13 }}>{totalHHMM}</td>
-                    <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent)', fontSize: 13 }}>{totalDecimal.toFixed(2).replace('.', ',')}</td>
-                    <td colSpan={3} />
+                    <td className="hide-mobile" style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent)', fontSize: 13 }}>{totalDecimal.toFixed(2).replace('.', ',')}</td>
+                    <td className="hide-mobile" colSpan={2} />
+                    <td />
                   </tr>
                 </tfoot>
               )}

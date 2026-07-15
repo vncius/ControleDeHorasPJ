@@ -274,7 +274,7 @@ export default function Dashboard({ toast }: Props) {
         <div style={{
           background: 'var(--accent-dim)', border: '1px solid rgba(168,255,62,0.3)',
           borderRadius: 'var(--radius-lg)', padding: '16px 20px', marginBottom: 28,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
         }}>
           <div className="flex-center gap-12">
             <div className="pulse-dot" />
@@ -347,7 +347,7 @@ export default function Dashboard({ toast }: Props) {
         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
           {t('dashboard.horasFaturaveis')}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: temHorasPagas ? 24 : 32 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: temHorasPagas ? 24 : 32 }}>
           {[
             { label: t('dashboard.hoje'), value: fmt(horasHoje), sub: emAndamentoFat ? t('dashboard.incluiTempoAberto') : t('dashboard.horasFinalizadas') },
             { label: t('dashboard.semana'), value: fmt(horasSemana), sub: t('dashboard.subFaturaveis') },
@@ -369,7 +369,7 @@ export default function Dashboard({ toast }: Props) {
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--info)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
             {t('dashboard.horasProjetosPagos')}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14 }}>
             {[
               { label: t('dashboard.hoje'), value: fmt(horasHojePago), sub: t('dashboard.subProjetoPago') },
               { label: t('dashboard.semana'), value: fmt(horasSemanaPago), sub: t('dashboard.subProjetoPago') },
@@ -387,7 +387,7 @@ export default function Dashboard({ toast }: Props) {
       )}
 
       {/* ── Listas de projetos ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
         {/* Faturáveis */}
         <SecaoProjetos
           titulo={t('dashboard.projetosFaturaveis')}

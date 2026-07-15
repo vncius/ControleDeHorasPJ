@@ -198,6 +198,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 16,
+          flexWrap: 'wrap',
         }}>
           <div className="flex-center gap-12">
             <div className="pulse-dot" />

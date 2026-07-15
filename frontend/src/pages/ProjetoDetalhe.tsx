@@ -360,12 +360,12 @@ export default function ProjetoDetalhe({ toast }: Props) {
 
       {/* Cards métricas */}
       {resumo.horasAbertas ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 32 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 32 }}>
           <MetricCard label={t('detalhe.cardHorasContratadas')} value={t('detalhe.emAbertoValor')} sub={t('detalhe.semLimite')} />
           <MetricCard label={t('detalhe.cardTrabalhadas')} value={`${totalTrabalhado.toFixed(1)}h`} sub={t('detalhe.lancFinalizados')} destaque />
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 32 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 32 }}>
           <MetricCard label={t('detalhe.cardContratadas')} value={`${resumo.horasContratadas.toFixed(0)}h`} sub={t('detalhe.horasBase')} />
           <MetricCard label={t('detalhe.cardExtras')} value={`+${resumo.horasExtrasAprovadas.toFixed(1)}h`} sub={t('detalhe.escoposAprovados')} />
           <MetricCard label={t('detalhe.cardTrabalhadas')} value={`${totalTrabalhado.toFixed(1)}h`} sub={t('detalhe.lancFinalizados')} destaque />
@@ -375,7 +375,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
 
       {/* Cards financeiros */}
       {projeto.valorHora != null && (
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${resumo.horasAbertas ? 2 : 3}, 1fr)`, gap: 14, marginBottom: 32 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 32 }}>
           <MetricCard label={t('detalhe.cardValorHora')} value={fmtReais(projeto.valorHora)} sub={t('detalhe.porHora')} />
           {!resumo.horasAbertas && <MetricCard label={t('detalhe.receitaPrevista')} value={fmtReais(resumo.valorEstimado)} sub={t('detalhe.receitaPrevistaSub')} />}
           <MetricCard label={t('detalhe.receitaExecutada')} value={fmtReais(valorTrabalhado)} sub={t('detalhe.receitaExecutadaSub')} destaque />
@@ -436,8 +436,8 @@ export default function ProjetoDetalhe({ toast }: Props) {
                   <thead>
                     <tr>
                       <th>{t('escopo.colTitulo')}</th>
-                      <th style={{ width: 90 }}>{t('comum.inicio')}</th>
-                      <th style={{ width: 90 }}>{t('comum.fim')}</th>
+                      <th className="hide-mobile" style={{ width: 90 }}>{t('comum.inicio')}</th>
+                      <th className="hide-mobile" style={{ width: 90 }}>{t('comum.fim')}</th>
                       <th style={{ width: 90 }}>{t('escopo.colHoras')}</th>
                       <th style={{ width: 90 }}>{t('comum.status')}</th>
                       <th style={{ width: 80 }}></th>
@@ -450,8 +450,8 @@ export default function ProjetoDetalhe({ toast }: Props) {
                           {e.titulo}
                           {e.descricaoDetalhada && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{e.descricaoDetalhada}</div>}
                         </td>
-                        <td className="td-mono">{fmtDataBR(e.dataInicio)}</td>
-                        <td className="td-mono">{fmtDataBR(e.dataFim)}</td>
+                        <td className="td-mono hide-mobile">{fmtDataBR(e.dataInicio)}</td>
+                        <td className="td-mono hide-mobile">{fmtDataBR(e.dataFim)}</td>
                         <td className="td-mono" style={{ color: e.status === 'Aprovada' ? 'var(--accent)' : 'var(--text-muted)', fontWeight: e.status === 'Aprovada' ? 600 : 400 }}>
                           +{e.horasAdicionais.toFixed(1)}h
                         </td>
@@ -468,7 +468,8 @@ export default function ProjetoDetalhe({ toast }: Props) {
                   {escopos.some(e => e.status === 'Aprovada') && (
                     <tfoot>
                       <tr style={{ borderTop: '1px solid var(--border-light)' }}>
-                        <td colSpan={3} style={{ padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('escopo.totalAprovado')}</td>
+                        <td style={{ padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('escopo.totalAprovado')}</td>
+                        <td className="hide-mobile" colSpan={2} />
                         <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent)', fontSize: 13 }}>+{resumo.horasExtrasAprovadas.toFixed(1)}h</td>
                         <td colSpan={2} />
                       </tr>
