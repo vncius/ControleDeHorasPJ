@@ -10,7 +10,10 @@ import type {
   TipoLancamento,
 } from '../types'
 
-const BASE = '/api'
+// Em produção front e back ficam em domínios/plataformas distintas, então
+// a base da API precisa ser absoluta (VITE_API_URL). Em dev, sem essa
+// variável, cai no caminho relativo que o proxy do Vite resolve.
+const BASE = `${import.meta.env.VITE_API_URL ?? ''}/api`
 
 async function req<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -123,7 +126,7 @@ export const lancamentosApi = {
   listarTudo: () => get<LancamentoHoras[]>('/lancamentos'),
   emAndamento: async (): Promise<LancamentoHoras | null> => {
     try {
-      const res = await fetch('/api/lancamentos/em-andamento', {
+      const res = await fetch(`${BASE}/lancamentos/em-andamento`, {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
       })

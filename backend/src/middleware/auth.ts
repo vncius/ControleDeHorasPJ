@@ -8,10 +8,18 @@ export const NOME_COOKIE_SESSAO = 'sessao'
 
 const SETE_DIAS_MS = 7 * 24 * 60 * 60 * 1000
 
+// Front e back rodam em domínios distintos em produção: o cookie só é
+// enviado entre eles com sameSite 'none', e todo navegador moderno
+// exige 'secure' junto de 'none' (senão descarta o cookie em silêncio).
+// Por isso os dois ficam amarrados ao mesmo NODE_ENV, nunca configurados
+// independentemente. Em dev, front/back são a mesma origem (proxy do
+// Vite), então 'lax' + sem secure continua funcionando em http.
+const producao = process.env.NODE_ENV === 'production'
+
 export const OPCOES_COOKIE_SESSAO = {
   httpOnly: true,
-  sameSite: 'lax' as const,
-  secure: process.env.NODE_ENV === 'production',
+  sameSite: producao ? ('none' as const) : ('lax' as const),
+  secure: producao,
   maxAge: SETE_DIAS_MS,
 }
 
