@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
-import { useTranslation, Trans } from 'react-i18next'
-import { projetosApi, clientesApi, lancamentosApi } from '../services/api'
-import type { Projeto, Cliente, StatusProjeto, LancamentoHoras } from '../types'
+import { useTranslation } from 'react-i18next'
+import { projetosApi, clientesApi, lancamentosApi, escoposApi } from '../services/api'
+import type { Projeto, Cliente, StatusProjeto } from '../types'
 import type { ToastFns } from '../App'
 import { STATUS_COR } from '../constants/statusProjeto'
 import { hojeLocal } from '../utils/tempo'
+import { useFormatarData } from '../contexts/PreferenciasContext'
+import DatePicker from '../components/DatePicker'
+import InputMoeda from '../components/InputMoeda'
 import ProjetoDetalhe from './ProjetoDetalhe'
 
 interface Props { toast: ToastFns }
@@ -86,7 +89,7 @@ export function ProjetoForm({
   const { t } = useTranslation()
   return (
     <div className="modal-overlay" onClick={onFechar}>
-      <div className="modal modal-lg" style={{ maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+      <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2 className="modal-title">{titulo}</h2>
           <button className="btn btn-ghost btn-icon" onClick={onFechar}>✕</button>
@@ -141,21 +144,21 @@ export function ProjetoForm({
             </div>
             <div className="form-group">
               <label className="form-label">{t('formProjeto.valorHoraLabel')}</label>
-              <input className="input input-mono" type="number" placeholder={t('formProjeto.valorHoraPlaceholder')} value={form.valorHora}
-                onChange={e => setForm(f => ({ ...f, valorHora: e.target.value }))} min="0" step="0.01" />
+              <InputMoeda value={form.valorHora}
+                onChange={v => setForm(f => ({ ...f, valorHora: v }))} />
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">{t('formProjeto.dataInicioLabel')}</label>
-              <input className="input input-mono" type="date" value={form.dataInicio}
-                onChange={e => setForm(f => ({ ...f, dataInicio: e.target.value }))} />
+              <DatePicker value={form.dataInicio}
+                onChange={v => setForm(f => ({ ...f, dataInicio: v }))} />
             </div>
             <div className="form-group">
               <label className="form-label">{t('formProjeto.dataFimLabel')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('comum.opcional')}</span></label>
-              <input className="input input-mono" type="date" value={form.dataFim}
-                onChange={e => setForm(f => ({ ...f, dataFim: e.target.value }))} />
+              <DatePicker value={form.dataFim} opcional
+                onChange={v => setForm(f => ({ ...f, dataFim: v }))} />
             </div>
           </div>
 
@@ -167,7 +170,7 @@ export function ProjetoForm({
 
           {/* Pago */}
           <div style={{
-            background: form.pago ? 'rgba(92,200,255,0.06)' : 'var(--bg-3)',
+            background: form.pago ? 'color-mix(in srgb, var(--info) 6%, transparent)' : 'var(--bg-3)',
             border: `1px solid ${form.pago ? 'var(--info-bg)' : 'var(--border)'}`,
             borderRadius: 'var(--radius)', padding: '12px 16px',
           }}>
@@ -187,8 +190,8 @@ export function ProjetoForm({
             {form.pago && (
               <div className="form-group">
                 <label className="form-label">{t('formProjeto.dataPagamentoLabel')}</label>
-                <input className="input input-mono" type="date" value={form.dataPagamento}
-                  onChange={e => setForm(f => ({ ...f, dataPagamento: e.target.value }))} />
+                <DatePicker value={form.dataPagamento}
+                  onChange={v => setForm(f => ({ ...f, dataPagamento: v }))} />
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
                   {t('formProjeto.dataPagamentoAjuda')}
                 </div>
@@ -249,10 +252,12 @@ export function formParaPayload(form: FormState, paraAtualizar = false) {
 type ColOrdem = 'cliente' | 'nome' | 'status' | 'dataInicio' | 'horasContratadas' | 'horas' | 'valorHora'
 
 function ProjetosList({ toast }: Props) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
+  const { formatarDataCurta } = useFormatarData()
   const [projetos, setProjetos] = useState<Projeto[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [horasPorProjeto, setHorasPorProjeto] = useState<Map<string, number>>(new Map())
+  const [extrasPorProjeto, setExtrasPorProjeto] = useState<Map<string, number>>(new Map())
   const [loading, setLoading] = useState(true)
   const STATUS_PADRAO: StatusProjeto[] = [
     'Aguardando início',
@@ -268,28 +273,28 @@ function ProjetosList({ toast }: Props) {
   const [busca, setBusca] = useState('')
   const [colOrdem, setColOrdem] = useState<ColOrdem>('cliente')
   const [ordemAsc, setOrdemAsc] = useState(true)
-  const [modal, setModal] = useState<'novo' | 'editar' | null>(null)
-  const [editando, setEditando] = useState<Projeto | null>(null)
+  const [modalNovo, setModalNovo] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [salvando, setSalvando] = useState(false)
-  const [confirmarExcluir, setConfirmarExcluir] = useState<Projeto | null>(null)
   const nav = useNavigate()
 
   async function carregar() {
     try {
-      const [ps, cs] = await Promise.all([projetosApi.listar(), clientesApi.listar()])
+      const [ps, cs, todosLancamentos, todosEscopos] = await Promise.all([
+        projetosApi.listar(), clientesApi.listar(), lancamentosApi.listarTudo(), escoposApi.listarTudo(),
+      ])
       setProjetos(ps)
       setClientes(cs)
-      // carrega horas por projeto em paralelo
-      const resultados = await Promise.all(ps.map(p => lancamentosApi.listarPorProjeto(p.id)))
       const mapa = new Map<string, number>()
-      resultados.forEach((lista, i) => {
-        const total = (lista as LancamentoHoras[])
-          .filter(l => l.horaFim)
-          .reduce((acc, l) => acc + (l.totalDecimal ?? 0), 0)
-        mapa.set(ps[i].id, Math.round(total * 100) / 100)
+      todosLancamentos.filter(l => l.horaFim).forEach(l => {
+        mapa.set(l.projetoId, Math.round(((mapa.get(l.projetoId) ?? 0) + (l.totalDecimal ?? 0)) * 100) / 100)
       })
       setHorasPorProjeto(mapa)
+      const extras = new Map<string, number>()
+      todosEscopos.filter(e => e.status === 'Aprovada').forEach(e => {
+        extras.set(e.projetoId, (extras.get(e.projetoId) ?? 0) + e.horasAdicionais)
+      })
+      setExtrasPorProjeto(extras)
     } catch {
       toast.error(t('projetos.erroCarregar'))
     } finally {
@@ -304,10 +309,10 @@ function ProjetosList({ toast }: Props) {
     else { setColOrdem(col); setOrdemAsc(true) }
   }
 
-  function Th({ col, label, width }: { col: ColOrdem; label: string; width?: number }) {
+  function Th({ col, label, width, className }: { col: ColOrdem; label: string; width?: number; className?: string }) {
     const ativo = colOrdem === col
     return (
-      <th style={{ width, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+      <th className={className} style={{ width, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
         onClick={() => toggleOrdem(col)}>
         <span style={{ color: ativo ? 'var(--accent)' : undefined }}>
           {label} {ativo ? (ordemAsc ? '↑' : '↓') : '↕'}
@@ -318,14 +323,8 @@ function ProjetosList({ toast }: Props) {
 
   const nomeCliente = (id: string) => clientes.find(c => c.id === id)?.nome ?? '—'
 
-  function abrirNovo() { setForm(EMPTY_FORM); setEditando(null); setModal('novo') }
-  function abrirEditar(p: Projeto, e: React.MouseEvent) {
-    e.stopPropagation()
-    setForm(projetoParaForm(p))
-    setEditando(p)
-    setModal('editar')
-  }
-  function fechar() { setModal(null); setEditando(null); setForm(EMPTY_FORM) }
+  function abrirNovo() { setForm(EMPTY_FORM); setModalNovo(true) }
+  function fechar() { setModalNovo(false); setForm(EMPTY_FORM) }
 
   async function salvar() {
     if (!form.nome.trim()) { toast.error(t('projetos.nomeObrigatorio')); return }
@@ -337,28 +336,12 @@ function ProjetosList({ toast }: Props) {
     }
     setSalvando(true)
     try {
-      if (modal === 'novo') {
-        await projetosApi.criar(formParaPayload(form) as Parameters<typeof projetosApi.criar>[0])
-        toast.success(t('projetos.criado'))
-      } else if (editando) {
-        await projetosApi.atualizar(editando.id, formParaPayload(form, true))
-        toast.success(t('projetos.atualizado'))
-      }
+      await projetosApi.criar(formParaPayload(form) as Parameters<typeof projetosApi.criar>[0])
+      toast.success(t('projetos.criado'))
       fechar(); carregar()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('comum.erroSalvar'))
     } finally { setSalvando(false) }
-  }
-
-  async function excluir(p: Projeto) {
-    try {
-      await projetosApi.excluir(p.id)
-      toast.success(t('projetos.excluido'))
-      setConfirmarExcluir(null); carregar()
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('comum.erroExcluir'))
-      setConfirmarExcluir(null)
-    }
   }
 
   const filtrados = projetos
@@ -542,14 +525,13 @@ function ProjetosList({ toast }: Props) {
               <thead>
                 <tr>
                   <Th col="nome" label={t('projetos.colProjeto')} />
-                  <Th col="cliente" label={t('comum.cliente')} width={160} />
-                  <Th col="status" label={t('comum.status')} width={160} />
-                  <Th col="dataInicio" label={t('comum.inicio')} width={90} />
+                  <Th col="cliente" label={t('comum.cliente')} width={160} className="hide-mobile" />
+                  <Th col="status" label={t('comum.status')} width={160} className="hide-mobile" />
+                  <Th col="dataInicio" label={t('comum.inicio')} width={90} className="hide-mobile" />
                   <Th col="horasContratadas" label={t('projetos.colHContratadas')} width={110} />
                   <Th col="horas" label={t('projetos.colHLancadas')} width={100} />
-                  <Th col="valorHora" label={t('projetos.colValorHora')} width={90} />
-                  <th style={{ width: 60 }}>{t('comum.pago')}</th>
-                  <th style={{ width: 90 }}></th>
+                  <Th col="valorHora" label={t('projetos.colValorHora')} width={90} className="hide-mobile" />
+                  <th className="hide-mobile" style={{ width: 60 }}>{t('comum.pago')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -559,34 +541,33 @@ function ProjetosList({ toast }: Props) {
                       <div style={{ fontWeight: 500 }}>{p.nome}</div>
                       {p.descricao && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{p.descricao}</div>}
                     </td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{nomeCliente(p.clienteId)}</td>
-                    <td><BadgeStatus status={p.status} /></td>
-                    <td className="td-mono">
-                      {p.dataInicio ? new Date(p.dataInicio + 'T00:00:00').toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}
+                    <td className="hide-mobile" style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{nomeCliente(p.clienteId)}</td>
+                    <td className="hide-mobile"><BadgeStatus status={p.status} /></td>
+                    <td className="td-mono hide-mobile">
+                      {formatarDataCurta(p.dataInicio)}
                     </td>
                     <td className="td-mono">
-                      {p.horasContratadas != null
-                        ? `${p.horasContratadas.toFixed(0)}h`
-                        : <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{t('projetos.aberto')}</span>}
+                      {p.horasContratadas != null ? (
+                        <>
+                          {p.horasContratadas.toFixed(0)}h
+                          {(extrasPorProjeto.get(p.id) ?? 0) > 0 && (
+                            <span style={{ color: 'var(--accent)', fontWeight: 600 }}> +{extrasPorProjeto.get(p.id)!.toFixed(0)}h</span>
+                          )}
+                        </>
+                      ) : (
+                        <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{t('projetos.aberto')}</span>
+                      )}
                     </td>
                     <td className="td-mono" style={{ color: 'var(--accent)', fontWeight: 600 }}>
                       {(horasPorProjeto.get(p.id) ?? 0).toFixed(1)}h
                     </td>
-                    <td className="td-mono">
+                    <td className="td-mono hide-mobile">
                       {p.valorHora ? `R$ ${p.valorHora.toFixed(2).replace('.', ',')}` : '—'}
                     </td>
-                    <td>
+                    <td className="hide-mobile">
                       {p.pago
                         ? <span className="badge" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>{t('projetos.badgePago')}</span>
                         : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
-                    </td>
-                    <td onClick={e => e.stopPropagation()}>
-                      <div className="flex-center gap-4">
-                        <button className="btn btn-ghost btn-sm btn-icon" title={t('comum.editar')} onClick={e => abrirEditar(p, e)}>✎</button>
-                        <button className="btn btn-ghost btn-sm btn-icon" title={t('comum.excluir')}
-                          style={{ color: 'var(--danger)' }}
-                          onClick={e => { e.stopPropagation(); setConfirmarExcluir(p) }}>✕</button>
-                      </div>
                     </td>
                   </tr>
                 ))}
@@ -596,29 +577,12 @@ function ProjetosList({ toast }: Props) {
         </div>
       )}
 
-      {modal && (
+      {modalNovo && (
         <ProjetoForm
           form={form} setForm={setForm} clientes={clientes}
           salvando={salvando} onSalvar={salvar} onFechar={fechar}
-          titulo={modal === 'novo' ? t('projetos.novoTitulo') : t('projetos.editarTitulo')}
+          titulo={t('projetos.novoTitulo')}
         />
-      )}
-
-      {confirmarExcluir && (
-        <div className="modal-overlay" onClick={() => setConfirmarExcluir(null)}>
-          <div className="modal" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header"><h2 className="modal-title">{t('projetos.excluirTitulo')}</h2></div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
-              <Trans i18nKey="projetos.confirmarExclusao" values={{ nome: confirmarExcluir.nome }}>
-                <strong style={{ color: 'var(--text-primary)' }} />
-              </Trans>
-            </p>
-            <div className="form-actions">
-              <button className="btn btn-secondary" onClick={() => setConfirmarExcluir(null)}>{t('comum.cancelar')}</button>
-              <button className="btn btn-danger" onClick={() => excluir(confirmarExcluir)}>{t('projetos.excluirTudo')}</button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   )

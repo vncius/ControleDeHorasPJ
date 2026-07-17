@@ -9,6 +9,14 @@ export const escoposService = {
     return escopos.sort((a, b) => new Date(b.dataCriacao).getTime() - new Date(a.dataCriacao).getTime())
   },
 
+  // Todos os escopos do tenant numa única leitura — mesma lógica de
+  // lancamentosService.listarPorTenant, usada por telas que precisariam
+  // de 1 requisição por projeto (lista de Projetos, Relatórios).
+  async listarPorTenant(tenantId: string): Promise<AlteracaoEscopo[]> {
+    const escopos = await escoposRepo.findAllByTenant(tenantId)
+    return escopos.sort((a, b) => new Date(b.dataCriacao).getTime() - new Date(a.dataCriacao).getTime())
+  },
+
   async buscarPorId(tenantId: string, id: string): Promise<AlteracaoEscopo> {
     const escopo = await escoposRepo.findByIdAndTenant(id, tenantId)
     if (!escopo) throw new Error(`Alteração de escopo não encontrada: ${id}`)

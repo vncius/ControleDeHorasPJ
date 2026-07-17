@@ -4,6 +4,7 @@ import { useToast } from './hooks/useToast'
 import type { Toast } from './hooks/useToast'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { PreferenciasProvider } from './contexts/PreferenciasContext'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -51,11 +52,13 @@ function AppRoutes() {
 export default function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
+      <PreferenciasProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </BrowserRouter>
+      </PreferenciasProvider>
     </ThemeProvider>
   )
 }

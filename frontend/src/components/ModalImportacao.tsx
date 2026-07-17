@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { importacaoApi } from '../services/api'
+import { useFormatarData } from '../contexts/PreferenciasContext'
 import type { LinhaImportacao, StatusLinhaImportacao } from '../types'
 import type { ToastFns } from '../App'
 
@@ -33,13 +34,14 @@ function useStatusLabel() {
 }
 
 function statusBg(s: StatusLinhaImportacao) {
-  if (s === 'erro') return 'rgba(255,92,122,0.06)'
-  if (s === 'aviso') return 'rgba(255,209,102,0.06)'
+  if (s === 'erro') return 'color-mix(in srgb, var(--danger) 6%, transparent)'
+  if (s === 'aviso') return 'color-mix(in srgb, var(--warning) 6%, transparent)'
   return 'transparent'
 }
 
 export default function ModalImportacao({ projetoId, toast, onImportado, onFechar }: Props) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
+  const { formatarData } = useFormatarData()
   const statusLabel = useStatusLabel()
   const [etapa, setEtapa] = useState<Etapa>('colar')
   const [texto, setTexto] = useState('')
@@ -197,7 +199,7 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
                       <td style={{ padding: '7px 10px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{l.indice}</td>
                       <td style={{ padding: '7px 10px', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
                         {l.data
-                          ? new Date(l.data + 'T00:00:00').toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: 'numeric' })
+                          ? formatarData(l.data)
                           : <span style={{ color: 'var(--danger)' }}>—</span>}
                       </td>
                       <td style={{ padding: '7px 10px', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -228,8 +230,8 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
             {erros.length > 0 && (
               <div style={{
                 fontSize: 12, color: 'var(--warning)',
-                background: 'rgba(255,209,102,0.06)',
-                border: '1px solid rgba(255,209,102,0.2)',
+                background: 'color-mix(in srgb, var(--warning) 6%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--warning) 20%, transparent)',
                 borderRadius: 'var(--radius)', padding: '10px 14px',
                 marginBottom: 16,
               }}>

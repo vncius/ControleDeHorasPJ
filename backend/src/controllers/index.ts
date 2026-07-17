@@ -79,6 +79,9 @@ export const escoposController = {
   listarPorProjeto(req: Request, res: Response) {
     handle(res, () => escoposService.listarPorProjeto(req.usuario!.email, req.params.projetoId))
   },
+  listarPorTenant(req: Request, res: Response) {
+    handle(res, () => escoposService.listarPorTenant(req.usuario!.email))
+  },
   criar(req: Request, res: Response) {
     handle(
       res,
@@ -103,6 +106,9 @@ export const escoposController = {
 export const lancamentosController = {
   listarPorProjeto(req: Request, res: Response) {
     handle(res, () => lancamentosService.listarPorProjeto(req.usuario!.email, req.params.projetoId))
+  },
+  listarPorTenant(req: Request, res: Response) {
+    handle(res, () => lancamentosService.listarPorTenant(req.usuario!.email))
   },
   buscar(req: Request, res: Response) {
     handle(res, () => lancamentosService.buscarPorId(req.usuario!.email, req.params.id))

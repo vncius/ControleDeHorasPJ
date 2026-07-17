@@ -77,6 +77,7 @@ export interface ResumoProjeto {
   valorEstimado?: number
   valorTrabalhado?: number
   emAndamento: boolean
+  temEscopoPendente: boolean
 }
 
 export interface DashboardData {

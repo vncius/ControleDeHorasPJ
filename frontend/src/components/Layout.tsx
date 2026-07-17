@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { Toast } from '../hooks/useToast'
@@ -13,6 +14,7 @@ export default function Layout({ toasts }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
   const { usuario, logout } = useAuth()
+  const [menuAberto, setMenuAberto] = useState(false)
 
   const NAV = [
     { to: '/', label: t('nav.dashboard'), icon: '◈' },
@@ -20,6 +22,9 @@ export default function Layout({ toasts }: Props) {
     { to: '/projetos', label: t('nav.projetos'), icon: '◫' },
     { to: '/relatorios', label: t('nav.relatorios'), icon: '◧' },
   ]
+
+  // fecha o menu mobile ao trocar de rota
+  useEffect(() => { setMenuAberto(false) }, [location.pathname])
 
   async function handleLogout() {
     await logout()
@@ -29,7 +34,7 @@ export default function Layout({ toasts }: Props) {
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       {/* Sidebar */}
-      <aside style={{
+      <aside className={`sidebar${menuAberto ? ' sidebar-aberta' : ''}`} style={{
         width: 'var(--sidebar-width)',
         background: 'var(--bg-1)',
         borderRight: '1px solid var(--border)',
@@ -136,14 +141,16 @@ export default function Layout({ toasts }: Props) {
         </div>
       </aside>
 
+      {/* Backdrop do menu mobile */}
+      {menuAberto && <div className="sidebar-backdrop" onClick={() => setMenuAberto(false)} />}
+
       {/* Conteúdo principal */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <Topbar />
-        <main style={{
+        <Topbar onAbrirMenu={() => setMenuAberto(v => !v)} />
+        <main className="main-content" style={{
           flex: 1,
           overflow: 'auto',
           background: 'var(--bg-0)',
-          padding: '32px 36px',
         }}>
           <Outlet />
         </main>

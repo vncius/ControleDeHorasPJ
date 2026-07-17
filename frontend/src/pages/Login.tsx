@@ -18,12 +18,14 @@ export default function Login() {
         alignItems: 'center',
         justifyContent: 'center',
         background: 'var(--bg-0)',
+        padding: 20,
       }}
     >
       <div
         className="card"
         style={{
-          width: 360,
+          maxWidth: 360,
+          width: '100%',
           padding: '32px 28px',
           textAlign: 'center',
           animation: 'slideUp 0.25s ease',

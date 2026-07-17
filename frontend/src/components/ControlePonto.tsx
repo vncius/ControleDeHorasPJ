@@ -1,20 +1,22 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { lancamentosApi } from '../services/api'
-import type { LancamentoHoras } from '../types'
+import type { AlteracaoEscopo, LancamentoHoras } from '../types'
 import type { ToastFns } from '../App'
 import { horaAtual, calcularDecorrido } from '../utils/tempo'
 import { useAgoraTick } from '../hooks/useAgoraTick'
 import { useTituloDecorrido } from '../hooks/useTituloDecorrido'
+import ConfirmModal from './ConfirmModal'
 
 interface Props {
   projetoId: string
   lancamentoAberto: LancamentoHoras | null  // lançamento deste projeto
+  escopos: AlteracaoEscopo[]
   toast: ToastFns
   onAtualizar: () => void
 }
 
-export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAtualizar }: Props) {
+export default function ControlePonto({ projetoId, lancamentoAberto, escopos, toast, onAtualizar }: Props) {
   const { t } = useTranslation()
   const [carregando, setCarregando] = useState(false)
 
@@ -22,12 +24,16 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
   const [modalFinalizar, setModalFinalizar] = useState(false)
   const [horaFim, setHoraFim] = useState('')
   const [descricaoFinal, setDescricaoFinal] = useState('')
+  const [escopoIdFinal, setEscopoIdFinal] = useState('')
+  const escoposAprovados = escopos.filter(e => e.status === 'Aprovada')
 
   // lançamento que será finalizado no modal — pode ser deste projeto ou de outro
   const [lancamentoParaFinalizar, setLancamentoParaFinalizar] = useState<LancamentoHoras | null>(null)
 
   // se true: ao finalizar, inicia automaticamente o projetoId atual
   const [iniciarAposFechar, setIniciarAposFechar] = useState(false)
+
+  const [confirmarCancelar, setConfirmarCancelar] = useState(false)
 
   // timer — re-render a cada segundo enquanto houver lançamento aberto
   useAgoraTick(!!lancamentoAberto)
@@ -37,6 +43,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
     setLancamentoParaFinalizar(lancamento)
     setHoraFim(horaAtual())
     setDescricaoFinal(lancamento.descricao ?? '')
+    setEscopoIdFinal(lancamento.escopoId ?? '')
     setIniciarAposFechar(comTroca)
     setModalFinalizar(true)
   }
@@ -79,6 +86,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
       await lancamentosApi.finalizar(lancamentoParaFinalizar.id, {
         horaFim,
         descricao: descricaoFinal || undefined,
+        escopoId: escopoIdFinal || null,
       })
 
       if (iniciarAposFechar) {
@@ -99,11 +107,11 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
 
   async function cancelar() {
     if (!lancamentoAberto) return
-    if (!confirm(t('ponto.confirmarCancelar'))) return
     setCarregando(true)
     try {
       await lancamentosApi.excluir(lancamentoAberto.id)
       toast.success(t('ponto.cancelado'))
+      setConfirmarCancelar(false)
       onAtualizar()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('ponto.erroCancelar'))
@@ -162,6 +170,17 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
                 onChange={e => setHoraFim(e.target.value)} autoFocus />
             </div>
           </div>
+          {escoposAprovados.length > 0 && (
+            <div className="form-group">
+              <label className="form-label">{t('lanc.associarEscopo')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('comum.opcional')}</span></label>
+              <select className="input" value={escopoIdFinal} onChange={e => setEscopoIdFinal(e.target.value)}>
+                <option value="">{t('lanc.escopoPrincipal')}</option>
+                {escoposAprovados.map(e => (
+                  <option key={e.id} value={e.id}>{e.titulo} (+{e.horasAdicionais.toFixed(1)}h)</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="form-group">
             <label className="form-label">{t('comum.descricao')}</label>
             <textarea className="input" rows={3}
@@ -198,6 +217,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 16,
+          flexWrap: 'wrap',
         }}>
           <div className="flex-center gap-12">
             <div className="pulse-dot" />
@@ -215,7 +235,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
             </div>
           </div>
           <div className="flex-center gap-8">
-            <button className="btn btn-ghost btn-sm" onClick={cancelar} disabled={carregando}
+            <button className="btn btn-ghost btn-sm" onClick={() => setConfirmarCancelar(true)} disabled={carregando}
               style={{ color: 'var(--danger)' }}>
               {t('ponto.cancelarBtn')}
             </button>
@@ -226,6 +246,17 @@ export default function ControlePonto({ projetoId, lancamentoAberto, toast, onAt
           </div>
         </div>
         {modalJSX}
+        {confirmarCancelar && (
+          <ConfirmModal
+            titulo={t('ponto.cancelarBtn')}
+            mensagem={t('ponto.confirmarCancelar')}
+            confirmarLabel={t('comum.confirmar')}
+            perigo
+            confirmando={carregando}
+            onConfirmar={cancelar}
+            onFechar={() => setConfirmarCancelar(false)}
+          />
+        )}
       </>
     )
   }

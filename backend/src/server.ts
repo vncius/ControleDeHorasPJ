@@ -8,10 +8,24 @@ import { conectarMongo } from './repositories/mongoClient'
 const app = express()
 const PORT = process.env.PORT ?? 3001
 
+// Hospedagens em nuvem colocam a aplicação atrás de um proxy/load balancer.
+// Sem isso, o Express nunca vê a requisição original como https e o cookie
+// com secure:true (exigido por sameSite:'none') nunca seria considerado seguro.
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1)
+}
+
+// CORS_ORIGIN aceita uma ou mais origins separadas por vírgula, já que
+// front e back ficam em domínios/plataformas distintas em produção.
+const origensPermitidas = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
+  .split(',')
+  .map((origem) => origem.trim())
+  .filter(Boolean)
+
 // ----------------------------------------------------------------
 // Middlewares
 // ----------------------------------------------------------------
-app.use(cors({ origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173', credentials: true }))
+app.use(cors({ origin: origensPermitidas, credentials: true }))
 app.use(express.json())
 app.use(cookieParser())
 

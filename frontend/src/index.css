@@ -30,6 +30,9 @@
   --accent: #a8ff3e;
   --accent-dim: rgba(168, 255, 62, 0.12);
   --accent-hover: #bfff6a;
+  /* texto sobre fundo --accent — preto funciona nos dois temas (ambos os
+     verdes são claros/médios o bastante), por isso não varia por tema */
+  --accent-contrast: #07070d;
 
   /* Status */
   --success: #a8ff3e;
@@ -149,7 +152,7 @@ html, body {
 
 .btn-primary {
   background: var(--accent);
-  color: #07070d;
+  color: var(--accent-contrast);
   border-color: var(--accent);
   font-weight: 600;
 }
@@ -181,10 +184,10 @@ html, body {
 .btn-danger {
   background: var(--danger-dim);
   color: var(--danger);
-  border-color: rgba(255, 92, 122, 0.3);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
 }
 .btn-danger:hover:not(:disabled) {
-  background: rgba(255, 92, 122, 0.2);
+  background: color-mix(in srgb, var(--danger) 20%, transparent);
 }
 
 .btn-sm {
@@ -258,6 +261,12 @@ textarea.input {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .form-actions {
@@ -360,10 +369,16 @@ tbody td {
   padding: 28px;
   width: 100%;
   max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
   animation: slideUp 0.2s ease;
 }
 
 .modal-lg { max-width: 640px; }
+
+@media (max-width: 640px) {
+  .modal { padding: 20px; }
+}
 
 .modal-header {
   display: flex;
@@ -529,12 +544,76 @@ tbody td {
 
 .toast-success {
   background: var(--bg-3);
-  border-color: rgba(168,255,62,0.3);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
   color: var(--accent);
 }
 
 .toast-error {
   background: var(--bg-3);
-  border-color: rgba(255,92,122,0.3);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
   color: var(--danger);
+}
+
+/* ============================================================
+   Responsividade — mobile
+   Bloco único no fim do arquivo para vencer a cascata sem depender
+   de onde cada classe foi definida acima.
+   ============================================================ */
+
+/* sidebar vira drawer off-canvas; some do fluxo, então o conteúdo
+   principal já ocupa a largura toda sem precisar de regra própria */
+.btn-menu-mobile { display: none; }
+
+.main-content { padding: 32px 36px; }
+
+@media (max-width: 768px) {
+  .btn-menu-mobile { display: inline-flex; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 150;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+
+  .sidebar.sidebar-aberta {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.4);
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 140;
+  }
+}
+
+@media (max-width: 640px) {
+  .hide-mobile { display: none; }
+
+  /* alvos de toque maiores e sem zoom automático do iOS (dispara em inputs com fonte < 16px) */
+  .btn-icon { padding: 10px; }
+  .input { font-size: 16px; }
+  .input-mono { font-size: 14px; }
+  input[type='checkbox'] { width: 18px; height: 18px; }
+
+  .page-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .flex-between {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .flex-center {
+    flex-wrap: wrap;
+  }
+
+  .main-content { padding: 16px; }
 }

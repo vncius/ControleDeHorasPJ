@@ -59,6 +59,28 @@ export const lancamentosService = {
       .map((l) => ({ ...l, faturavel: projeto ? lancamentoEhFaturavel(l, projeto) : true }))
   },
 
+  // Todos os lançamentos do tenant numa única leitura — usado por telas que
+  // hoje fariam 1 requisição por projeto (Projetos, Relatórios). Mesmo
+  // enriquecimento de `faturavel` que listarPorProjeto, aplicado com um
+  // Map<projetoId, Projeto> em vez de buscar o projeto um a um.
+  async listarPorTenant(tenantId: string): Promise<LancamentoHoras[]> {
+    const [lancamentos, projetos] = await Promise.all([
+      lancamentosRepo.findAllByTenant(tenantId),
+      projetosRepo.findAllByTenant(tenantId),
+    ])
+    const projetoMap = new Map(projetos.map((p) => [p.id, p]))
+    return lancamentos
+      .sort((a, b) => {
+        const dataDiff = b.data.localeCompare(a.data)
+        if (dataDiff !== 0) return dataDiff
+        return b.horaInicio.localeCompare(a.horaInicio)
+      })
+      .map((l) => {
+        const projeto = projetoMap.get(l.projetoId)
+        return { ...l, faturavel: projeto ? lancamentoEhFaturavel(l, projeto) : true }
+      })
+  },
+
   async buscarPorId(tenantId: string, id: string): Promise<LancamentoHoras> {
     const lancamento = await lancamentosRepo.findByIdAndTenant(id, tenantId)
     if (!lancamento) throw new Error(`Lançamento não encontrado: ${id}`)
@@ -116,6 +138,7 @@ export const lancamentosService = {
       totalHHMM: calculo.hhMM,
       totalDecimal: calculo.decimal,
       descricao,
+      ...(dto.escopoId !== undefined && { escopoId: dto.escopoId ?? undefined }),
       dataAtualizacao: agora(),
     })
     if (!atualizado) throw new Error('Falha ao finalizar lançamento')

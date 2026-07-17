@@ -1,11 +1,14 @@
 import { useEffect, useState, useMemo } from 'react'
-import { clientesApi, projetosApi, lancamentosApi } from '../services/api'
+import { clientesApi, projetosApi, lancamentosApi, escoposApi } from '../services/api'
 import { dataLocalISO, hojeLocal } from '../utils/tempo'
+import { useFormatarData } from '../contexts/PreferenciasContext'
+import DatePicker from '../components/DatePicker'
 import type { Cliente, Projeto, LancamentoHoras } from '../types'
 
 interface LancamentoEnriquecido extends LancamentoHoras {
   projeto: Projeto
   cliente: Cliente
+  escopoTitulo?: string
 }
 
 interface AgrupamentoRow {
@@ -27,10 +30,6 @@ function fmtReais(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function fmtData(iso: string) {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR')
-}
-
 function dataInicioMes(mesesAtras: number): string {
   const d = new Date()
   d.setMonth(d.getMonth() - mesesAtras)
@@ -43,11 +42,12 @@ function dataHoje(): string {
 }
 
 function exportarCSV(lancamentos: LancamentoEnriquecido[], sufixo = '') {
-  const cab = ['Data', 'Cliente', 'Projeto', 'Faturável', 'Descrição', 'Início', 'Fim', 'HH:MM', 'Decimal', 'Tipo', 'Valor (R$)']
+  const cab = ['Data', 'Cliente', 'Projeto', 'Escopo', 'Faturável', 'Descrição', 'Início', 'Fim', 'HH:MM', 'Decimal', 'Tipo', 'Valor (R$)']
   const linhas = lancamentos.map(l => [
-    fmtData(l.data),
+    l.data,
     l.cliente.nome,
     l.projeto.nome,
+    l.escopoTitulo ?? '',
     l.faturavel ? 'Sim' : 'Não',
     `"${l.descricao.replace(/"/g, '""')}"`,
     l.horaInicio,
@@ -72,6 +72,7 @@ function exportarCSV(lancamentos: LancamentoEnriquecido[], sufixo = '') {
 type VisualizacaoFaturavel = 'todos' | 'faturavel' | 'nao_faturavel'
 
 export default function Relatorios() {
+  const { formatarData: fmtData } = useFormatarData()
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [projetos, setProjetos] = useState<Projeto[]>([])
   const [todosLancamentos, setTodosLancamentos] = useState<LancamentoEnriquecido[]>([])
@@ -80,22 +81,26 @@ export default function Relatorios() {
   const [dataFim, setDataFim] = useState(dataHoje())
   const [filtroCliente, setFiltroCliente] = useState('')
   const [filtroProjeto, setFiltroProjeto] = useState('')
-  const [agrupamento, setAgrupamento] = useState<'cliente' | 'projeto' | 'dia'>('projeto')
+  const [agrupamento, setAgrupamento] = useState<'cliente' | 'projeto' | 'escopo' | 'dia'>('projeto')
   const [visualizacao, setVisualizacao] = useState<VisualizacaoFaturavel>('todos')
 
   useEffect(() => {
     async function carregar() {
       try {
-        const [cs, ps] = await Promise.all([clientesApi.listar(), projetosApi.listar()])
+        const [cs, ps, todos, escopos] = await Promise.all([
+          clientesApi.listar(), projetosApi.listar(), lancamentosApi.listarTudo(), escoposApi.listarTudo(),
+        ])
         setClientes(cs)
         setProjetos(ps)
-        const resultados = await Promise.all(ps.map(p => lancamentosApi.listarPorProjeto(p.id)))
+        const projetoMap = new Map(ps.map(p => [p.id, p]))
+        const clienteMap = new Map(cs.map(c => [c.id, c]))
+        const escopoMap = new Map(escopos.map(e => [e.id, e.titulo]))
         const enriquecidos: LancamentoEnriquecido[] = []
-        resultados.forEach((lista, i) => {
-          const projeto = ps[i]
-          const cliente = cs.find(c => c.id === projeto.clienteId)
-          if (!cliente) return
-          lista.filter(l => l.horaFim).forEach(l => enriquecidos.push({ ...l, projeto, cliente }))
+        todos.filter(l => l.horaFim).forEach(l => {
+          const projeto = projetoMap.get(l.projetoId)
+          const cliente = projeto && clienteMap.get(projeto.clienteId)
+          if (!projeto || !cliente) return
+          enriquecidos.push({ ...l, projeto, cliente, escopoTitulo: l.escopoId ? escopoMap.get(l.escopoId) : undefined })
         })
         enriquecidos.sort((a, b) => b.data.localeCompare(a.data) || b.horaInicio.localeCompare(a.horaInicio))
         setTodosLancamentos(enriquecidos)
@@ -167,6 +172,7 @@ export default function Relatorios() {
       let key = '', label = ''
       if (agrupamento === 'cliente') { key = l.cliente.id; label = l.cliente.nome }
       else if (agrupamento === 'projeto') { key = l.projeto.id; label = `${l.projeto.nome} · ${l.cliente.nome}` }
+      else if (agrupamento === 'escopo') { key = l.escopoId ?? '__sem_escopo__'; label = l.escopoTitulo ?? 'Sem escopo' }
       else { key = l.data; label = fmtData(l.data) }
       const ex = mapa.get(key)
       const decimal = (ex?.totalDecimal ?? 0) + (l.totalDecimal ?? 0)
@@ -183,7 +189,7 @@ export default function Relatorios() {
       })
     })
     return Array.from(mapa.values()).sort((a, b) => b.totalDecimal - a.totalDecimal)
-  }, [lancamentosFiltrados, agrupamento])
+  }, [lancamentosFiltrados, agrupamento, fmtData])
 
   function limparFiltros() {
     setDataInicio(dataInicioMes(1))
@@ -221,14 +227,14 @@ export default function Relatorios() {
 
       {/* Filtros */}
       <div className="card" style={{ marginBottom: 24 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 16 }}>
           <div className="form-group">
             <label className="form-label">Data início</label>
-            <input className="input input-mono" type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} />
+            <DatePicker value={dataInicio} onChange={setDataInicio} />
           </div>
           <div className="form-group">
             <label className="form-label">Data fim</label>
-            <input className="input input-mono" type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} />
+            <DatePicker value={dataFim} onChange={setDataFim} />
           </div>
           <div className="form-group">
             <label className="form-label">Cliente</label>
@@ -269,7 +275,7 @@ export default function Relatorios() {
           </div>
           <div className="flex-center gap-8">
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Agrupar por:</span>
-            {(['cliente', 'projeto', 'dia'] as const).map(op => (
+            {(['cliente', 'projeto', 'escopo', 'dia'] as const).map(op => (
               <button key={op} className="btn btn-ghost btn-sm"
                 style={{ fontSize: 12, color: agrupamento === op ? 'var(--accent)' : 'var(--text-muted)', background: agrupamento === op ? 'var(--accent-dim)' : 'transparent' }}
                 onClick={() => setAgrupamento(op)}>
@@ -291,9 +297,9 @@ export default function Relatorios() {
       ) : (
         <>
           {/* Cards resumo faturável x não faturável */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16, marginBottom: 24 }}>
             {/* Faturável */}
-            <div style={{ background: 'var(--bg-2)', border: '1px solid rgba(168,255,62,0.2)', borderRadius: 'var(--radius-lg)', padding: 20 }}>
+            <div style={{ background: 'var(--bg-2)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)', borderRadius: 'var(--radius-lg)', padding: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
                 Faturável
               </div>
@@ -315,7 +321,7 @@ export default function Relatorios() {
             </div>
 
             {/* Não faturável */}
-            <div style={{ background: 'var(--bg-2)', border: '1px solid rgba(92,200,255,0.2)', borderRadius: 'var(--radius-lg)', padding: 20 }}>
+            <div style={{ background: 'var(--bg-2)', border: '1px solid color-mix(in srgb, var(--info) 20%, transparent)', borderRadius: 'var(--radius-lg)', padding: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--info)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
                 Não faturável (projetos pagos)
               </div>
@@ -365,7 +371,7 @@ export default function Relatorios() {
           </div>
 
           {/* Cards totais da aba atual */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 24 }}>
             {[
               { label: 'Total HH:MM', value: decimalParaHHMM(totalDecimal) },
               { label: 'Total decimal', value: totalDecimal.toFixed(2).replace('.', ',') + 'h' },
@@ -391,60 +397,63 @@ export default function Relatorios() {
               Por {agrupamento === 'dia' ? 'dia' : agrupamento}
             </h3>
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>{agrupamento === 'dia' ? 'Data' : agrupamento === 'cliente' ? 'Cliente' : 'Projeto'}</th>
-                    {visualizacao === 'todos' && <th style={{ width: 90 }}>Faturável</th>}
-                    <th style={{ width: 100 }}>Lançamentos</th>
-                    <th style={{ width: 100 }}>HH:MM</th>
-                    <th style={{ width: 100 }}>Decimal</th>
-                    <th style={{ width: 140 }}>Valor (R$)</th>
-                    <th style={{ width: 100 }}>%</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {linhasAgrupadas.map((row, i) => {
-                    const p = totalDecimal > 0 ? (row.totalDecimal / totalDecimal) * 100 : 0
-                    return (
-                      <tr key={i} style={{ cursor: 'default' }}>
-                        <td style={{ fontWeight: 500 }}>{row.label}</td>
-                        {visualizacao === 'todos' && (
-                          <td>
-                            {row.naoFaturavel
-                              ? <span className="badge" style={{ background: 'rgba(92,200,255,0.12)', color: 'var(--info)' }}>Não</span>
-                              : <span className="badge badge-ativo">Sim</span>}
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{agrupamento === 'dia' ? 'Data' : agrupamento === 'cliente' ? 'Cliente' : agrupamento === 'escopo' ? 'Escopo' : 'Projeto'}</th>
+                      {visualizacao === 'todos' && <th className="hide-mobile" style={{ width: 90 }}>Faturável</th>}
+                      <th className="hide-mobile" style={{ width: 100 }}>Lançamentos</th>
+                      <th style={{ width: 100 }}>HH:MM</th>
+                      <th className="hide-mobile" style={{ width: 100 }}>Decimal</th>
+                      <th style={{ width: 140 }}>Valor (R$)</th>
+                      <th className="hide-mobile" style={{ width: 100 }}>%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {linhasAgrupadas.map((row, i) => {
+                      const p = totalDecimal > 0 ? (row.totalDecimal / totalDecimal) * 100 : 0
+                      return (
+                        <tr key={i} style={{ cursor: 'default' }}>
+                          <td style={{ fontWeight: 500 }}>{row.label}</td>
+                          {visualizacao === 'todos' && (
+                            <td className="hide-mobile">
+                              {row.naoFaturavel
+                                ? <span className="badge" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>Não</span>
+                                : <span className="badge badge-ativo">Sim</span>}
+                            </td>
+                          )}
+                          <td className="td-mono hide-mobile">{row.qtdLancamentos}</td>
+                          <td className="td-mono" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{row.totalHHMM}</td>
+                          <td className="td-mono hide-mobile">{row.totalDecimal.toFixed(2).replace('.', ',')}</td>
+                          <td className="td-mono" style={{ color: row.valorTotal ? 'var(--accent)' : 'var(--text-muted)' }}>
+                            {row.valorTotal != null && row.valorTotal > 0 ? fmtReais(row.valorTotal) : '—'}
                           </td>
-                        )}
-                        <td className="td-mono">{row.qtdLancamentos}</td>
-                        <td className="td-mono" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{row.totalHHMM}</td>
-                        <td className="td-mono">{row.totalDecimal.toFixed(2).replace('.', ',')}</td>
-                        <td className="td-mono" style={{ color: row.valorTotal ? 'var(--accent)' : 'var(--text-muted)' }}>
-                          {row.valorTotal != null && row.valorTotal > 0 ? fmtReais(row.valorTotal) : '—'}
-                        </td>
-                        <td>
-                          <div className="flex-center gap-8">
-                            <div className="progress-bar" style={{ flex: 1, height: 3 }}>
-                              <div className="progress-fill progress-ok" style={{ width: `${p}%` }} />
+                          <td className="hide-mobile">
+                            <div className="flex-center gap-8">
+                              <div className="progress-bar" style={{ flex: 1, height: 3 }}>
+                                <div className="progress-fill progress-ok" style={{ width: `${p}%` }} />
+                              </div>
+                              <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', minWidth: 32 }}>{p.toFixed(0)}%</span>
                             </div>
-                            <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', minWidth: 32 }}>{p.toFixed(0)}%</span>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr style={{ borderTop: '1px solid var(--border-light)' }}>
-                    <td colSpan={visualizacao === 'todos' ? 2 : 1} style={{ padding: '10px 12px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total</td>
-                    <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-secondary)' }}>{lancamentosFiltrados.length}</td>
-                    <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>{decimalParaHHMM(totalDecimal)}</td>
-                    <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>{totalDecimal.toFixed(2).replace('.', ',')}</td>
-                    <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>{totalValor > 0 ? fmtReais(totalValor) : '—'}</td>
-                    <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)' }}>100%</td>
-                  </tr>
-                </tfoot>
-              </table>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ borderTop: '1px solid var(--border-light)' }}>
+                      <td style={{ padding: '10px 12px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total</td>
+                      {visualizacao === 'todos' && <td className="hide-mobile" />}
+                      <td className="td-mono hide-mobile" style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-secondary)' }}>{lancamentosFiltrados.length}</td>
+                      <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>{decimalParaHHMM(totalDecimal)}</td>
+                      <td className="hide-mobile" style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>{totalDecimal.toFixed(2).replace('.', ',')}</td>
+                      <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>{totalValor > 0 ? fmtReais(totalValor) : '—'}</td>
+                      <td className="hide-mobile" style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)' }}>100%</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -459,14 +468,15 @@ export default function Relatorios() {
                   <thead>
                     <tr>
                       <th style={{ width: 88 }}>Data</th>
-                      <th style={{ width: 120 }}>Cliente</th>
+                      <th className="hide-mobile" style={{ width: 120 }}>Cliente</th>
                       <th style={{ width: 150 }}>Projeto</th>
-                      {visualizacao === 'todos' && <th style={{ width: 80 }}>Faturável</th>}
+                      {visualizacao === 'todos' && <th className="hide-mobile" style={{ width: 80 }}>Faturável</th>}
                       <th>Descrição</th>
-                      <th style={{ width: 68 }}>Início</th>
-                      <th style={{ width: 68 }}>Fim</th>
+                      <th className="hide-mobile" style={{ width: 110 }}>Escopo</th>
+                      <th className="hide-mobile" style={{ width: 68 }}>Início</th>
+                      <th className="hide-mobile" style={{ width: 68 }}>Fim</th>
                       <th style={{ width: 76 }}>HH:MM</th>
-                      <th style={{ width: 72 }}>Decimal</th>
+                      <th className="hide-mobile" style={{ width: 72 }}>Decimal</th>
                       <th style={{ width: 120 }}>Valor (R$)</th>
                     </tr>
                   </thead>
@@ -479,27 +489,28 @@ export default function Relatorios() {
                       return (
                         <tr key={l.id} style={{ cursor: 'default', opacity: faturavel ? 1 : 0.85 }}>
                           <td className="td-mono">{fmtData(l.data)}</td>
-                          <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l.cliente.nome}</td>
+                          <td className="hide-mobile" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l.cliente.nome}</td>
                           <td style={{ fontSize: 12, fontWeight: 500 }}>
                             {l.projeto.nome}
                             {!faturavel && (
-                              <span style={{ marginLeft: 6, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--info)', background: 'rgba(92,200,255,0.1)', padding: '1px 5px', borderRadius: 3 }}>
+                              <span style={{ marginLeft: 6, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--info)', background: 'color-mix(in srgb, var(--info) 10%, transparent)', padding: '1px 5px', borderRadius: 3 }}>
                                 pago
                               </span>
                             )}
                           </td>
                           {visualizacao === 'todos' && (
-                            <td>
+                            <td className="hide-mobile">
                               {faturavel
                                 ? <span className="badge badge-ativo">Sim</span>
-                                : <span className="badge" style={{ background: 'rgba(92,200,255,0.12)', color: 'var(--info)' }}>Não</span>}
+                                : <span className="badge" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>Não</span>}
                             </td>
                           )}
                           <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{l.descricao || '—'}</td>
-                          <td className="td-mono">{l.horaInicio}</td>
-                          <td className="td-mono">{l.horaFim ?? '—'}</td>
+                          <td className="hide-mobile" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{l.escopoTitulo ?? '—'}</td>
+                          <td className="td-mono hide-mobile">{l.horaInicio}</td>
+                          <td className="td-mono hide-mobile">{l.horaFim ?? '—'}</td>
                           <td className="td-mono" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{l.totalHHMM ?? '—'}</td>
-                          <td className="td-mono">{l.totalDecimal != null ? l.totalDecimal.toFixed(2).replace('.', ',') : '—'}</td>
+                          <td className="td-mono hide-mobile">{l.totalDecimal != null ? l.totalDecimal.toFixed(2).replace('.', ',') : '—'}</td>
                           <td className="td-mono" style={{ color: valor ? 'var(--accent)' : 'var(--text-muted)' }}>
                             {valor != null ? fmtReais(valor) : '—'}
                           </td>

@@ -3,6 +3,7 @@ import { useTranslation, Trans } from 'react-i18next'
 import { clientesApi } from '../services/api'
 import type { Cliente } from '../types'
 import type { ToastFns } from '../App'
+import ConfirmModal from '../components/ConfirmModal'
 
 interface Props { toast: ToastFns }
 
@@ -19,6 +20,7 @@ export default function Clientes({ toast }: Props) {
   const [form, setForm] = useState<FormState>(EMPTY)
   const [salvando, setSalvando] = useState(false)
   const [confirmarExcluir, setConfirmarExcluir] = useState<Cliente | null>(null)
+  const [excluindo, setExcluindo] = useState(false)
 
   async function carregar() {
     try {
@@ -71,6 +73,7 @@ export default function Clientes({ toast }: Props) {
   }
 
   async function excluir(c: Cliente) {
+    setExcluindo(true)
     try {
       await clientesApi.excluir(c.id)
       toast.success(t('clientes.excluido'))
@@ -78,7 +81,8 @@ export default function Clientes({ toast }: Props) {
       carregar()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('comum.erroExcluir'))
-      setConfirmarExcluir(null)
+    } finally {
+      setExcluindo(false)
     }
   }
 
@@ -218,22 +222,19 @@ export default function Clientes({ toast }: Props) {
 
       {/* Modal confirmar exclusão */}
       {confirmarExcluir && (
-        <div className="modal-overlay" onClick={() => setConfirmarExcluir(null)}>
-          <div className="modal" style={{ maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">{t('clientes.excluirTitulo')}</h2>
-            </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
-              <Trans i18nKey="clientes.confirmarExclusao" values={{ nome: confirmarExcluir.nome }}>
-                <strong style={{ color: 'var(--text-primary)' }} />
-              </Trans>
-            </p>
-            <div className="form-actions">
-              <button className="btn btn-secondary" onClick={() => setConfirmarExcluir(null)}>{t('comum.cancelar')}</button>
-              <button className="btn btn-danger" onClick={() => excluir(confirmarExcluir)}>{t('comum.excluir')}</button>
-            </div>
-          </div>
-        </div>
+        <ConfirmModal
+          titulo={t('clientes.excluirTitulo')}
+          mensagem={
+            <Trans i18nKey="clientes.confirmarExclusao" values={{ nome: confirmarExcluir.nome }}>
+              <strong style={{ color: 'var(--text-primary)' }} />
+            </Trans>
+          }
+          confirmarLabel={t('comum.excluir')}
+          perigo
+          confirmando={excluindo}
+          onConfirmar={() => excluir(confirmarExcluir)}
+          onFechar={() => setConfirmarExcluir(null)}
+        />
       )}
     </div>
   )
