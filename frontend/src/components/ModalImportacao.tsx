@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { importacaoApi } from '../services/api'
+import Button from './Button'
 import { useFormatarData } from '../contexts/PreferenciasContext'
 import type { LinhaImportacao, StatusLinhaImportacao } from '../types'
 import type { ToastFns } from '../App'
@@ -55,6 +56,7 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
   const avisos = linhas.filter(l => l.status === 'aviso')
 
   async function preview() {
+    if (carregando) return
     if (!texto.trim()) { toast.error(t('importacao.coleTexto')); return }
     setCarregando(true)
     try {
@@ -69,6 +71,7 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
   }
 
   async function confirmar() {
+    if (importando) return
     if (validas.length === 0) { toast.error(t('importacao.nenhumaValida')); return }
     setImportando(true)
     try {
@@ -150,10 +153,10 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
             </div>
 
             <div className="form-actions" style={{ marginTop: 24 }}>
-              <button className="btn btn-secondary" onClick={onFechar}>{t('comum.cancelar')}</button>
-              <button className="btn btn-primary" onClick={preview} disabled={carregando || !texto.trim()}>
-                {carregando ? t('comum.processando') : t('importacao.preVisualizar')}
-              </button>
+              <button className="btn btn-secondary" onClick={onFechar} disabled={carregando}>{t('comum.cancelar')}</button>
+              <Button className="btn btn-primary" onClick={preview} disabled={!texto.trim()} loading={carregando}>
+                {t('importacao.preVisualizar')}
+              </Button>
             </div>
           </>
         )}
@@ -241,14 +244,15 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
             )}
 
             <div className="form-actions">
-              <button className="btn btn-ghost" onClick={() => setEtapa('colar')}>{t('importacao.voltar')}</button>
-              <button
+              <button className="btn btn-ghost" onClick={() => setEtapa('colar')} disabled={importando}>{t('importacao.voltar')}</button>
+              <Button
                 className="btn btn-primary"
                 onClick={confirmar}
-                disabled={importando || validas.length === 0}
+                disabled={validas.length === 0}
+                loading={importando}
               >
-                {importando ? t('importacao.importando') : t('importacao.importarBtn', { count: validas.length })}
-              </button>
+                {t('importacao.importarBtn', { count: validas.length })}
+              </Button>
             </div>
           </>
         )}

@@ -4,6 +4,7 @@ import { lancamentosApi } from '../services/api'
 import { hojeLocal } from '../utils/tempo'
 import { useFormatarData } from '../contexts/PreferenciasContext'
 import DatePicker from './DatePicker'
+import Button from './Button'
 import type { LancamentoHoras, TipoLancamento, AlteracaoEscopo } from '../types'
 import type { ToastFns } from '../App'
 
@@ -75,6 +76,7 @@ function ModalLancamento({ projetoId, editando, escopos, toast, onSalvar, onFech
   const [processandoAcao, setProcessandoAcao] = useState(false)
 
   async function salvar() {
+    if (salvando) return
     if (!form.horaInicio) { toast.error(t('lanc.horaInicioObrigatoria')); return }
     setSalvando(true)
     try {
@@ -109,6 +111,7 @@ function ModalLancamento({ projetoId, editando, escopos, toast, onSalvar, onFech
   }
 
   async function confirmarAcao() {
+    if (processandoAcao) return
     if (!editando || !confirmando) return
     setProcessandoAcao(true)
     try {
@@ -139,9 +142,9 @@ function ModalLancamento({ projetoId, editando, escopos, toast, onSalvar, onFech
           </p>
           <div className="form-actions">
             <button className="btn btn-secondary" onClick={() => setConfirmando(null)} disabled={processandoAcao}>{t('comum.cancelar')}</button>
-            <button className={confirmando === 'excluir' ? 'btn btn-danger' : 'btn btn-primary'} onClick={confirmarAcao} disabled={processandoAcao}>
-              {processandoAcao ? t('comum.processando') : t('comum.confirmar')}
-            </button>
+            <Button className={confirmando === 'excluir' ? 'btn btn-danger' : 'btn btn-primary'} onClick={confirmarAcao} loading={processandoAcao}>
+              {t('comum.confirmar')}
+            </Button>
           </div>
         </div>
       </div>
@@ -213,9 +216,9 @@ function ModalLancamento({ projetoId, editando, escopos, toast, onSalvar, onFech
               <button className="btn btn-secondary" onClick={() => setConfirmando('duplicar')}>{t('comum.duplicar')}</button>
             )}
             <button className="btn btn-secondary" onClick={onFechar}>{t('comum.cancelar')}</button>
-            <button className="btn btn-primary" onClick={salvar} disabled={salvando}>
-              {salvando ? t('comum.salvando') : editando ? t('comum.salvar') : t('lanc.salvarBtn')}
-            </button>
+            <Button className="btn btn-primary" onClick={salvar} loading={salvando}>
+              {editando ? t('comum.salvar') : t('lanc.salvarBtn')}
+            </Button>
           </div>
         </div>
       </div>

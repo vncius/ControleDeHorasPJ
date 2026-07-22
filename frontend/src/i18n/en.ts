@@ -73,6 +73,7 @@ export default {
     credencialAusente: 'Google credential missing',
     falhaAutenticar: 'Authentication failed',
     erroGoogle: 'Could not authenticate with Google',
+    autenticando: 'Signing in...',
   },
   statusProjeto: {
     aguardandoInicio: 'Awaiting start',

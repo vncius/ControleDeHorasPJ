@@ -9,6 +9,7 @@ export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const [erro, setErro] = useState<string | null>(null)
+  const [autenticando, setAutenticando] = useState(false)
 
   return (
     <div
@@ -59,10 +60,12 @@ export default function Login() {
           {t('login.subtitulo')}
         </p>
 
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', opacity: autenticando ? 0.5 : 1, pointerEvents: autenticando ? 'none' : 'auto' }}>
           <GoogleLogin
             onSuccess={async (credentialResponse) => {
+              if (autenticando) return
               setErro(null)
+              setAutenticando(true)
               try {
                 if (!credentialResponse.credential) {
                   throw new Error(t('login.credencialAusente'))
@@ -71,11 +74,19 @@ export default function Login() {
                 navigate('/', { replace: true })
               } catch (e) {
                 setErro(e instanceof Error ? e.message : t('login.falhaAutenticar'))
+                setAutenticando(false)
               }
             }}
             onError={() => setErro(t('login.erroGoogle'))}
           />
         </div>
+
+        {autenticando && (
+          <div className="flex-center gap-8" style={{ marginTop: 18, justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+            <span className="spinner spinner-sm" />
+            {t('login.autenticando')}
+          </div>
+        )}
 
         {erro && (
           <div

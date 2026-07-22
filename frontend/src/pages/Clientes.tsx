@@ -4,6 +4,7 @@ import { clientesApi } from '../services/api'
 import type { Cliente } from '../types'
 import type { ToastFns } from '../App'
 import ConfirmModal from '../components/ConfirmModal'
+import Button from '../components/Button'
 
 interface Props { toast: ToastFns }
 
@@ -53,6 +54,7 @@ export default function Clientes({ toast }: Props) {
   }
 
   async function salvar() {
+    if (salvando) return
     if (!form.nome.trim()) { toast.error(t('clientes.nomeObrigatorio')); return }
     setSalvando(true)
     try {
@@ -73,6 +75,7 @@ export default function Clientes({ toast }: Props) {
   }
 
   async function excluir(c: Cliente) {
+    if (excluindo) return
     setExcluindo(true)
     try {
       await clientesApi.excluir(c.id)
@@ -211,10 +214,10 @@ export default function Clientes({ toast }: Props) {
             </div>
 
             <div className="form-actions" style={{ marginTop: 24 }}>
-              <button className="btn btn-secondary" onClick={fecharModal}>{t('comum.cancelar')}</button>
-              <button className="btn btn-primary" onClick={salvar} disabled={salvando}>
-                {salvando ? t('comum.salvando') : modal === 'novo' ? t('clientes.criarBtn') : t('comum.salvar')}
-              </button>
+              <button className="btn btn-secondary" onClick={fecharModal} disabled={salvando}>{t('comum.cancelar')}</button>
+              <Button className="btn btn-primary" onClick={salvar} loading={salvando}>
+                {modal === 'novo' ? t('clientes.criarBtn') : t('comum.salvar')}
+              </Button>
             </div>
           </div>
         </div>

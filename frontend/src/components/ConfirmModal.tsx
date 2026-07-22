@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import Button from './Button'
 
 interface Props {
   titulo: string
@@ -21,9 +22,9 @@ export default function ConfirmModal({ titulo, mensagem, confirmarLabel, perigo,
         <div style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>{mensagem}</div>
         <div className="form-actions">
           <button className="btn btn-secondary" onClick={onFechar} disabled={confirmando}>{t('comum.cancelar')}</button>
-          <button className={perigo ? 'btn btn-danger' : 'btn btn-primary'} onClick={onConfirmar} disabled={confirmando}>
-            {confirmando ? t('comum.processando') : (confirmarLabel ?? t('comum.confirmar'))}
-          </button>
+          <Button className={perigo ? 'btn btn-danger' : 'btn btn-primary'} onClick={onConfirmar} loading={confirmando}>
+            {confirmarLabel ?? t('comum.confirmar')}
+          </Button>
         </div>
       </div>
     </div>

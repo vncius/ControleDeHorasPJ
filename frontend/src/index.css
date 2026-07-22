@@ -508,6 +508,18 @@ tbody td {
   animation: spin 0.7s linear infinite;
 }
 
+.spinner-sm {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+}
+
+.btn-primary .spinner-sm,
+.btn-danger .spinner-sm {
+  border-color: color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

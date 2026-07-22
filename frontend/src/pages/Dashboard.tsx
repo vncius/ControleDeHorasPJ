@@ -8,6 +8,7 @@ import { horaAtual, calcularDecorrido, calcularDecorridoDecimal } from '../utils
 import { useAgoraTick } from '../hooks/useAgoraTick'
 import { useTituloDecorrido } from '../hooks/useTituloDecorrido'
 import { useFormatarData } from '../contexts/PreferenciasContext'
+import Button from '../components/Button'
 
 // Mirror de backend/src/utils/faturamento.ts::lancamentoEhFaturavel — fonte
 // única da regra é o backend; esta cópia só decide em qual bucket (fat./pago)
@@ -214,6 +215,7 @@ export default function Dashboard({ toast }: Props) {
   }
 
   async function confirmarFinalizar() {
+    if (finalizando) return
     if (!data?.lancamentoEmAndamento) return
     if (!horaFim) { toast.error(t('dashboard.horaFimObrigatoria')); return }
     setFinalizando(true)
@@ -297,9 +299,9 @@ export default function Dashboard({ toast }: Props) {
           </div>
           <div className="flex-center gap-8">
             <button className="btn btn-secondary btn-sm" onClick={() => nav(`/projetos/${emAndamento.projetoId}`)}>{t('dashboard.verProjeto')}</button>
-            <button className="btn btn-primary btn-sm" onClick={abrirModalFinalizar} disabled={finalizando}>
-              {finalizando ? '...' : t('dashboard.finalizar')}
-            </button>
+            <Button className="btn btn-primary btn-sm" onClick={abrirModalFinalizar} loading={finalizando}>
+              {t('dashboard.finalizar')}
+            </Button>
           </div>
         </div>
       )}
@@ -335,10 +337,10 @@ export default function Dashboard({ toast }: Props) {
               </div>
             </div>
             <div className="form-actions" style={{ marginTop: 24 }}>
-              <button className="btn btn-secondary" onClick={fecharModalFinalizar}>{t('comum.cancelar')}</button>
-              <button className="btn btn-primary" onClick={confirmarFinalizar} disabled={finalizando}>
-                {finalizando ? t('comum.processando') : t('dashboard.finalizarESalvar')}
-              </button>
+              <button className="btn btn-secondary" onClick={fecharModalFinalizar} disabled={finalizando}>{t('comum.cancelar')}</button>
+              <Button className="btn btn-primary" onClick={confirmarFinalizar} loading={finalizando}>
+                {t('dashboard.finalizarESalvar')}
+              </Button>
             </div>
           </div>
         </div>

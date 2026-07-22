@@ -7,6 +7,7 @@ import { horaAtual, calcularDecorrido } from '../utils/tempo'
 import { useAgoraTick } from '../hooks/useAgoraTick'
 import { useTituloDecorrido } from '../hooks/useTituloDecorrido'
 import ConfirmModal from './ConfirmModal'
+import Button from './Button'
 
 interface Props {
   projetoId: string
@@ -55,6 +56,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
   }
 
   async function iniciar() {
+    if (carregando) return
     setCarregando(true)
     try {
       // consulta se há lançamento em andamento globalmente
@@ -79,6 +81,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
   }
 
   async function finalizar() {
+    if (carregando) return
     if (!lancamentoParaFinalizar) return
     if (!horaFim) { toast.error(t('dashboard.horaFimObrigatoria')); return }
     setCarregando(true)
@@ -106,6 +109,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
   }
 
   async function cancelar() {
+    if (carregando) return
     if (!lancamentoAberto) return
     setCarregando(true)
     try {
@@ -191,14 +195,10 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
         </div>
 
         <div className="form-actions" style={{ marginTop: 24 }}>
-          <button className="btn btn-secondary" onClick={fecharModal}>{t('comum.cancelar')}</button>
-          <button className="btn btn-primary" onClick={finalizar} disabled={carregando}>
-            {carregando
-              ? t('comum.processando')
-              : iniciarAposFechar
-                ? t('ponto.encerrarEIniciar')
-                : t('dashboard.finalizarESalvar')}
-          </button>
+          <button className="btn btn-secondary" onClick={fecharModal} disabled={carregando}>{t('comum.cancelar')}</button>
+          <Button className="btn btn-primary" onClick={finalizar} loading={carregando}>
+            {iniciarAposFechar ? t('ponto.encerrarEIniciar') : t('dashboard.finalizarESalvar')}
+          </Button>
         </div>
       </div>
     </div>
@@ -239,10 +239,10 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
               style={{ color: 'var(--danger)' }}>
               {t('ponto.cancelarBtn')}
             </button>
-            <button className="btn btn-primary btn-sm"
+            <Button className="btn btn-primary btn-sm"
               onClick={() => abrirModal(lancamentoAberto, false)} disabled={carregando}>
               {t('ponto.finalizarBtn')}
-            </button>
+            </Button>
           </div>
         </div>
         {modalJSX}
@@ -264,10 +264,10 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
   // ── Parado ──
   return (
     <>
-      <button className="btn btn-primary" onClick={iniciar} disabled={carregando}
+      <Button className="btn btn-primary" onClick={iniciar} loading={carregando}
         style={{ fontSize: 14, padding: '10px 20px' }}>
-        {carregando ? '...' : t('ponto.iniciar')}
-      </button>
+        {t('ponto.iniciar')}
+      </Button>
       {modalJSX}
     </>
   )

@@ -9,6 +9,7 @@ import ControlePonto from '../components/ControlePonto'
 import TabelaLancamentos from '../components/TabelaLancamentos'
 import ModalImportacao from '../components/ModalImportacao'
 import ConfirmModal from '../components/ConfirmModal'
+import Button from '../components/Button'
 import { ProjetoForm, projetoParaForm, formParaPayload } from './Projetos'
 import { STATUS_COR } from '../constants/statusProjeto'
 import { calcularDecorridoDecimal } from '../utils/tempo'
@@ -89,6 +90,7 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
   const [salvando, setSalvando] = useState(false)
 
   async function salvar() {
+    if (salvando) return
     if (!form.titulo.trim()) { toast.error(t('escopo.tituloObrigatorio')); return }
     const horas = parseFloat(form.horasAdicionais)
     if (!horas || horas <= 0) { toast.error(t('escopo.horasInvalidas')); return }
@@ -173,10 +175,10 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
           </div>
         </div>
         <div className="form-actions" style={{ marginTop: 24 }}>
-          <button className="btn btn-secondary" onClick={onFechar}>{t('comum.cancelar')}</button>
-          <button className="btn btn-primary" onClick={salvar} disabled={salvando}>
-            {salvando ? t('comum.salvando') : editando ? t('comum.salvar') : t('escopo.criarBtn')}
-          </button>
+          <button className="btn btn-secondary" onClick={onFechar} disabled={salvando}>{t('comum.cancelar')}</button>
+          <Button className="btn btn-primary" onClick={salvar} loading={salvando}>
+            {editando ? t('comum.salvar') : t('escopo.criarBtn')}
+          </Button>
         </div>
       </div>
     </div>
@@ -260,6 +262,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
   }
 
   async function salvarProjeto() {
+    if (salvandoProjeto) return
     if (!resumo || !formProjeto) return
     if (!formProjeto.nome.trim()) { toast.error(t('projetos.nomeObrigatorio')); return }
     if (!formProjeto.clienteId) { toast.error(t('projetos.selecioneCliente')); return }
@@ -278,6 +281,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
   }
 
   async function confirmarExclusaoEscopo() {
+    if (excluindoEscopo) return
     if (!confirmarExcluirEscopo) return
     setExcluindoEscopo(true)
     try {
@@ -293,6 +297,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
   }
 
   async function confirmarExclusaoProjeto() {
+    if (excluindoProjeto) return
     if (!resumo) return
     setExcluindoProjeto(true)
     try {

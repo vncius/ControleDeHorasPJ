@@ -74,6 +74,7 @@ export default {
     credencialAusente: 'Credencial do Google ausente',
     falhaAutenticar: 'Falha ao autenticar',
     erroGoogle: 'Não foi possível autenticar com o Google',
+    autenticando: 'Entrando...',
   },
   statusProjeto: {
     aguardandoInicio: 'Aguardando início',

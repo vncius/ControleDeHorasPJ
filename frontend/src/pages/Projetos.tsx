@@ -10,6 +10,7 @@ import { useFormatarData } from '../contexts/PreferenciasContext'
 import DatePicker from '../components/DatePicker'
 import InputMoeda from '../components/InputMoeda'
 import ProjetoDetalhe from './ProjetoDetalhe'
+import Button from '../components/Button'
 
 interface Props { toast: ToastFns }
 
@@ -201,10 +202,10 @@ export function ProjetoForm({
         </div>
 
         <div className="form-actions" style={{ marginTop: 24 }}>
-          <button className="btn btn-secondary" onClick={onFechar}>{t('comum.cancelar')}</button>
-          <button className="btn btn-primary" onClick={onSalvar} disabled={salvando}>
-            {salvando ? t('comum.salvando') : t('comum.salvar')}
-          </button>
+          <button className="btn btn-secondary" onClick={onFechar} disabled={salvando}>{t('comum.cancelar')}</button>
+          <Button className="btn btn-primary" onClick={onSalvar} loading={salvando}>
+            {t('comum.salvar')}
+          </Button>
         </div>
       </div>
     </div>
@@ -327,6 +328,7 @@ function ProjetosList({ toast }: Props) {
   function fechar() { setModalNovo(false); setForm(EMPTY_FORM) }
 
   async function salvar() {
+    if (salvando) return
     if (!form.nome.trim()) { toast.error(t('projetos.nomeObrigatorio')); return }
     if (!form.clienteId) { toast.error(t('projetos.selecioneCliente')); return }
     if (!form.dataInicio) { toast.error(t('projetos.dataInicioObrigatoria')); return }

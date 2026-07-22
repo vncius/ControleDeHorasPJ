@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { Toast } from '../hooks/useToast'
 import { useAuth } from '../contexts/AuthContext'
 import Topbar from './Topbar'
+import Button from './Button'
 
 interface Props {
   toasts: Toast[]
@@ -15,6 +16,7 @@ export default function Layout({ toasts }: Props) {
   const navigate = useNavigate()
   const { usuario, logout } = useAuth()
   const [menuAberto, setMenuAberto] = useState(false)
+  const [saindo, setSaindo] = useState(false)
 
   const NAV = [
     { to: '/', label: t('nav.dashboard'), icon: '◈' },
@@ -27,8 +29,14 @@ export default function Layout({ toasts }: Props) {
   useEffect(() => { setMenuAberto(false) }, [location.pathname])
 
   async function handleLogout() {
-    await logout()
-    navigate('/login', { replace: true })
+    if (saindo) return
+    setSaindo(true)
+    try {
+      await logout()
+      navigate('/login', { replace: true })
+    } finally {
+      setSaindo(false)
+    }
   }
 
   return (
@@ -121,13 +129,14 @@ export default function Layout({ toasts }: Props) {
               }} title={usuario.email}>
                 {usuario.email}
               </span>
-              <button
+              <Button
                 onClick={handleLogout}
+                loading={saindo}
                 className="btn btn-ghost btn-sm"
                 style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}
               >
                 {t('nav.sair')}
-              </button>
+              </Button>
             </div>
           )}
           <div style={{
