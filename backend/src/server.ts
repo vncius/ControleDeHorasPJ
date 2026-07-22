@@ -1,3 +1,9 @@
+// Toda a lógica de data/hora do app (utils/tempo.ts, dashboardService) assume
+// fuso America/Sao_Paulo via horário local do processo. Fixar aqui evita que o
+// cálculo de "hoje", hora atual e horas em andamento saia errado quando a
+// hospedagem (ex.: Render) roda o container em UTC por padrão.
+process.env.TZ = 'America/Sao_Paulo'
+
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
