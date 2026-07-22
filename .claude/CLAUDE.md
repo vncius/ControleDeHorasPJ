@@ -42,7 +42,7 @@ Os dados **reais** de clientes, projetos e faturamento do usuário vivem hoje no
 
 - Um projeto real (banco Mongo) tem `status: "Pausado"` — valor legado que não existe mais no tipo `StatusProjeto` atual. Não normaliza sozinho porque a chave não é "encerrado"; se for tocar em migração de dados, considerar isso.
 - Sessão sem refresh/rotação: o cookie JWT dura 7 dias fixos, sem renovação automática nem revogação individual.
-- Acesso é controlado por allowlist manual (`ALLOWED_EMAILS` em `backend/.env`) — não há autocadastro aberto nem fluxo de convite; adicionar alguém é editar essa variável.
+- Acesso não usa allowlist própria — qualquer login Google com `email_verified` é aceito e vira tenant. Quem pode logar de fato é controlado no Google Cloud Console (OAuth consent screen: test users em modo "Testing", ou restrição de domínio em modo "Internal").
 - `findAll`/`findBy`/`findOneBy` em `mongoRepository.ts` fazem fetch completo da coleção (predicado em JS, não query nativa) — trade-off consciente documentado no topo do arquivo e no README.
 
 ## Estado da refatoração em andamento
@@ -55,7 +55,7 @@ A sequência de 9 melhorias arquiteturais planejadas foi **concluída**:
 4. ✅ Remoção de duplicação de `STATUS_COR` e helpers de hora no frontend
 5. ✅ Consolidação de documentação + este arquivo
 6. ✅ Conversão de `repositories`/`services` para `async/await` (preparação para Mongo)
-7. ✅ Login com Google (OAuth), restrito por allowlist de e-mails
+7. ✅ Login com Google (OAuth); controle de quem pode logar delegado ao Google Cloud Console
 8. ✅ Isolamento multi-tenant (`tenantId` em todas as entidades, checagem centralizada no repository)
 9. ✅ Migração de JSON para MongoDB Atlas (`mongoRepository.ts`/`mongoClient.ts`, banco `horas-pj`), incluindo exclusão em cascata de projeto transacional (`withTransaction`)
 

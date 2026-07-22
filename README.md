@@ -118,7 +118,6 @@ npm run dev
 | `MONGODB_DB_NAME` | backend | `horas-pj` | Nome do banco usado dentro do cluster |
 | `GOOGLE_CLIENT_ID` | backend | — (obrigatória) | Client ID do OAuth do Google |
 | `JWT_SECRET` | backend | — (obrigatória) | Segredo para assinar o cookie de sessão |
-| `ALLOWED_EMAILS` | backend | — (obrigatória) | Lista de e-mails (separados por vírgula) autorizados a logar |
 | `CORS_ORIGIN` | backend | `http://localhost:5173` | Origem permitida pelo CORS |
 
 Ver `backend/.env.example` para o formato completo. Sem `MONGODB_URI` válida, o servidor não sobe — a conexão é estabelecida antes de `app.listen`.
@@ -384,17 +383,17 @@ percentual = totalTrabalhado / totalDisponivel * 100
 - **`mongoRepository.update`** traduz chaves com valor `undefined` no partial para `$unset`, permitindo remoção de campos opcionais (ex.: `horasContratadas: null` do frontend vira `undefined` no service e some do documento)
 - **`pago: false`** é o valor padrão para novos projetos
 - O frontend envia `horasContratadas: null` (não `undefined`) para sinalizar remoção do campo — ver `Omit<Partial<Projeto>, 'horasContratadas'> & { horasContratadas?: number | null }` em `frontend/src/services/api.ts`
-- Autenticação via Google OAuth + sessão própria (JWT em cookie httpOnly); acesso restrito por allowlist de e-mails (`ALLOWED_EMAILS`)
+- Autenticação via Google OAuth + sessão própria (JWT em cookie httpOnly); quem pode logar é controlado no Google Cloud Console, não por allowlist própria
 - Isolamento multi-tenant por e-mail: cada usuário aprovado enxerga só os próprios dados (`tenantId` em toda entidade — ver seção seguinte)
 - Sem variáveis de ambiente obrigatórias além das de autenticação (ver `.env.example`)
 
 ## Autenticação e multi-tenant
 
-- Login com Google (Google Identity Services) — o backend valida o ID token via `google-auth-library` e só aceita e-mails presentes em `ALLOWED_EMAILS` (lista separada por vírgula, em `backend/.env`).
+- Login com Google (Google Identity Services) — o backend valida o ID token via `google-auth-library` (assinatura, audience, `email_verified`) e confia em qualquer e-mail que passe nessa verificação. Não há allowlist própria no código: quem pode logar é controlado no **Google Cloud Console** (OAuth consent screen do projeto) — app em modo "Testing" com uma lista de test users, ou app "Internal" restrito a um Workspace, conforme o caso.
 - Após o login, o backend emite sua própria sessão (JWT assinado, cookie `sessao` httpOnly) — o token do Google não é reutilizado nas chamadas seguintes.
-- Cada e-mail aprovado é um **tenant** isolado (`tenantId` = o próprio e-mail). Todas as entidades (`Cliente`, `Projeto`, `AlteracaoEscopo`, `LancamentoHoras`, `PreferenciasProjeto`) carregam esse campo, e toda leitura/escrita é filtrada por ele — a checagem de posse é centralizada em `mongoRepository.ts` (`findAllByTenant`/`findByIdAndTenant`/`updateForTenant`/`deleteForTenant`/`existsForTenant`), nunca reimplementada manualmente nos services.
-- Não existe conceito de "organização"/equipe — é um tenant por e-mail. Um novo e-mail aprovado começa com workspace vazio; os dados existentes antes desta mudança pertencem a `v.vieira.go@gmail.com`.
-- Para aprovar um novo usuário: adicione o e-mail em `ALLOWED_EMAILS` (`backend/.env`) — não precisa de nenhuma outra configuração, o tenant é criado implicitamente no primeiro uso.
+- Cada e-mail que loga com sucesso é um **tenant** isolado (`tenantId` = o próprio e-mail). Todas as entidades (`Cliente`, `Projeto`, `AlteracaoEscopo`, `LancamentoHoras`, `PreferenciasProjeto`) carregam esse campo, e toda leitura/escrita é filtrada por ele — a checagem de posse é centralizada em `mongoRepository.ts` (`findAllByTenant`/`findByIdAndTenant`/`updateForTenant`/`deleteForTenant`/`existsForTenant`), nunca reimplementada manualmente nos services.
+- Não existe conceito de "organização"/equipe — é um tenant por e-mail. Um novo e-mail começa com workspace vazio; os dados existentes antes desta mudança pertencem a `v.vieira.go@gmail.com`.
+- Para liberar um novo usuário: adicione o e-mail como test user (ou dentro do Workspace, se "Internal") no OAuth consent screen do Google Cloud Console — nada muda no backend, o tenant é criado implicitamente no primeiro login.
 
 ## Limitações conhecidas / roadmap
 

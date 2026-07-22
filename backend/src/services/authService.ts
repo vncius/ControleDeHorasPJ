@@ -2,13 +2,10 @@ import { OAuth2Client } from 'google-auth-library'
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
-function obterAllowlist(): string[] {
-  return (process.env.ALLOWED_EMAILS ?? '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-}
-
+// Quem pode logar é controlado no Google Cloud Console (OAuth consent screen
+// — app em modo "Testing" com lista de test users, ou app "Internal" restrito
+// ao Workspace), não mais por uma allowlist própria aqui: um ID token válido
+// e com e-mail verificado já implica que o Google autorizou o login.
 export const authService = {
   async loginComGoogle(idToken: string): Promise<{ email: string; nome?: string }> {
     let payload
@@ -27,12 +24,6 @@ export const authService = {
     }
 
     const email = payload.email!.trim().toLowerCase()
-    const allowlist = obterAllowlist()
-
-    if (!allowlist.includes(email)) {
-      throw new Error('E-mail não autorizado')
-    }
-
     return { email, nome: payload.name }
   },
 }

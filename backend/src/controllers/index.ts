@@ -198,8 +198,7 @@ export const authController = {
       res.json({ email, nome })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro interno'
-      const status = message === 'E-mail não autorizado' ? 403 : 401
-      res.status(status).json({ erro: message })
+      res.status(401).json({ erro: message })
     }
   },
 
