@@ -1,6 +1,6 @@
 import { lancamentosRepo, projetosRepo, clientesRepo } from '../repositories'
 import { DashboardData, Projeto, LancamentoHoras } from '../types'
-import { hoje, dataLocalISO, somarHoras } from '../utils/tempo'
+import { hoje, dataLocalISO, somarHoras, instanteDe } from '../utils/tempo'
 import { STATUS_ENCERRADO, projetoEhFaturavel, lancamentoEhFaturavel } from '../utils/faturamento'
 import { projetosService } from './projetosService'
 
@@ -21,10 +21,7 @@ function dataInicioMes(): string {
 // iniciado ontem à noite (virada de meia-noite) continua contando, em vez
 // de sumir dos totais.
 function horasEmAndamento(horaInicio: string, data: string): number {
-  const [h, m] = horaInicio.split(':').map(Number)
-  const inicio = new Date(data + 'T00:00:00')
-  inicio.setHours(h, m, 0, 0)
-  const diffMs = Math.max(0, Date.now() - inicio.getTime())
+  const diffMs = Math.max(0, Date.now() - instanteDe(data, horaInicio).getTime())
   return Math.round((diffMs / 3600000) * 100) / 100
 }
 

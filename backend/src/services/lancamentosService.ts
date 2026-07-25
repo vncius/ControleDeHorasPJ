@@ -13,6 +13,7 @@ import {
   calcularDiferenca,
   isDataValida,
   isHoraValida,
+  isInstanteFuturo,
 } from '../utils/tempo'
 import { lancamentoEhFaturavel } from '../utils/faturamento'
 
@@ -152,6 +153,11 @@ export const lancamentosService = {
     if (!(await projetosRepo.existsForTenant(dto.projetoId, tenantId))) throw new Error('Projeto não encontrado')
     if (!isDataValida(dto.data)) throw new Error('Data inválida (esperado YYYY-MM-DD)')
     if (!isHoraValida(dto.horaInicio)) throw new Error('Hora início inválida (esperado HH:MM)')
+    if (!dto.horaFim && isInstanteFuturo(dto.data, dto.horaInicio)) {
+      throw new Error(
+        'Início no futuro: um lançamento em andamento não pode começar depois de agora. Se corrigiu a hora para antes da meia-noite, ajuste também a data.'
+      )
+    }
 
     const partial: Partial<Pick<LancamentoHoras, 'totalHHMM' | 'totalDecimal' | 'horaFim'>> = {}
 
@@ -188,6 +194,13 @@ export const lancamentosService = {
 
     const horaInicio = dto.horaInicio ?? lancamento.horaInicio
     const horaFim = dto.horaFim !== undefined ? dto.horaFim : lancamento.horaFim
+    const data = dto.data ?? lancamento.data
+
+    if (!horaFim && isInstanteFuturo(data, horaInicio)) {
+      throw new Error(
+        'Início no futuro: um lançamento em andamento não pode começar depois de agora. Se corrigiu a hora para antes da meia-noite, ajuste também a data.'
+      )
+    }
 
     const partial: Partial<LancamentoHoras> = {
       ...(dto.escopoId !== undefined && { escopoId: dto.escopoId ?? undefined }),

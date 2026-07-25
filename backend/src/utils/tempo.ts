@@ -77,6 +77,26 @@ export function horaAtual(): string {
 }
 
 /**
+ * Constrói o instante (Date) de uma data "YYYY-MM-DD" + hora "HH:MM", no
+ * fuso local do processo.
+ */
+export function instanteDe(data: string, hora: string): Date {
+  const [h, m] = hora.split(':').map(Number)
+  const instante = new Date(data + 'T00:00:00')
+  instante.setHours(h, m, 0, 0)
+  return instante
+}
+
+/**
+ * true se data+hora cai no futuro em relação a agora. Usado para barrar
+ * início de lançamento em andamento no futuro (ex.: hora corrigida para
+ * antes da meia-noite sem também voltar a data um dia).
+ */
+export function isInstanteFuturo(data: string, hora: string): boolean {
+  return instanteDe(data, hora).getTime() > Date.now()
+}
+
+/**
  * Verifica se uma string está no formato YYYY-MM-DD
  */
 export function isDataValida(data: string): boolean {
