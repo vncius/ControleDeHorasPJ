@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { Toast } from '../hooks/useToast'
 import { useAuth } from '../contexts/AuthContext'
 import Topbar from './Topbar'
-import Button from './Button'
 
 interface Props {
   toasts: Toast[]
@@ -13,10 +12,8 @@ interface Props {
 export default function Layout({ toasts }: Props) {
   const { t } = useTranslation()
   const location = useLocation()
-  const navigate = useNavigate()
-  const { usuario, logout } = useAuth()
+  const { usuario } = useAuth()
   const [menuAberto, setMenuAberto] = useState(false)
-  const [saindo, setSaindo] = useState(false)
 
   const NAV = [
     { to: '/', label: t('nav.dashboard'), icon: '◈' },
@@ -27,17 +24,6 @@ export default function Layout({ toasts }: Props) {
 
   // fecha o menu mobile ao trocar de rota
   useEffect(() => { setMenuAberto(false) }, [location.pathname])
-
-  async function handleLogout() {
-    if (saindo) return
-    setSaindo(true)
-    try {
-      await logout()
-      navigate('/login', { replace: true })
-    } finally {
-      setSaindo(false)
-    }
-  }
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
@@ -114,29 +100,14 @@ export default function Layout({ toasts }: Props) {
         }}>
           {usuario && (
             <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 8,
+              fontSize: 11,
+              color: 'var(--text-secondary)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
               marginBottom: 10,
-            }}>
-              <span style={{
-                fontSize: 11,
-                color: 'var(--text-secondary)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }} title={usuario.email}>
-                {usuario.email}
-              </span>
-              <Button
-                onClick={handleLogout}
-                loading={saindo}
-                className="btn btn-ghost btn-sm"
-                style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}
-              >
-                {t('nav.sair')}
-              </Button>
+            }} title={usuario.email}>
+              {usuario.email}
             </div>
           )}
           <div style={{

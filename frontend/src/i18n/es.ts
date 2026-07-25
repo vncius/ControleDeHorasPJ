@@ -54,10 +54,6 @@ export default {
     temaEscuro: 'Cambiar a tema oscuro',
   },
   config: {
-    titulo: 'Configuración',
-    tema: 'Tema',
-    temaClaro: 'Claro',
-    temaEscuro: 'Oscuro',
     formatoData: 'Formato de fecha',
     formatoAuto: 'Automático (idioma)',
   },
