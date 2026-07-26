@@ -55,7 +55,7 @@ export default {
   },
   config: {
     formatoData: 'Formato de fecha',
-    formatoAuto: 'Automático (idioma)',
+    formatoAuto: 'Automático',
   },
   datePicker: {
     hoje: 'Hoy',

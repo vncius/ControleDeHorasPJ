@@ -205,6 +205,40 @@ html, body {
   border-radius: var(--radius);
 }
 
+/* ── Topbar: seletores discretos (idioma / formato de data) ── */
+.topbar-select-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 36px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.topbar-select-wrap:hover {
+  background: var(--bg-3);
+  color: var(--text-primary);
+}
+.topbar-select-wrap svg {
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+.topbar-select {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+}
+
 /* ── Inputs ── */
 .input {
   width: 100%;
