@@ -116,6 +116,10 @@ html, body {
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  /* herdado por padrão — evita que nomes/emails/URLs sem espaço (que o
+     wrap normal não consegue quebrar) estourem o container e puxem a
+     página inteira para scroll horizontal em telas estreitas */
+  overflow-wrap: break-word;
 }
 
 #root {

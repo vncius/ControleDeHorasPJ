@@ -254,7 +254,7 @@ export default function Relatorios() {
           </div>
         </div>
 
-        <div className="flex-between">
+        <div className="flex-between" style={{ flexWrap: 'wrap', rowGap: 8 }}>
           <div className="flex-center gap-8">
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Período:</span>
             {[
