@@ -642,6 +642,36 @@ tbody td {
   }
 }
 
+/* ── Detalhe do projeto — header ── */
+.detalhe-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.detalhe-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* larguras médias (ex.: monitor vertical, janela em split-screen) — o
+   header horizontal espreme a descrição contra os botões antes mesmo
+   do breakpoint mobile; empilha cedo em vez de esperar até 640px. */
+@media (max-width: 1024px) {
+  .detalhe-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .detalhe-header-actions {
+    justify-content: flex-start;
+  }
+}
+
 @media (max-width: 640px) {
   .hide-mobile { display: none; }
 

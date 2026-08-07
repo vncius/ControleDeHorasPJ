@@ -362,13 +362,13 @@ export default function ProjetoDetalhe({ toast }: Props) {
           style={{ marginBottom: 12, color: 'var(--text-muted)' }}>
           {t('detalhe.voltarProjetos')}
         </button>
-        <div className="flex-between">
+        <div className="detalhe-header">
           <div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{cliente.nome}</div>
             <h1 className="page-title">{projeto.nome}</h1>
             {projeto.descricao && <p className="page-subtitle" style={{ marginTop: 4 }}>{projeto.descricao}</p>}
           </div>
-          <div className="flex-center gap-8">
+          <div className="detalhe-header-actions">
             <span className="badge" style={{ background: statusCor.bg, color: statusCor.color, fontSize: 11 }}>
               {t(STATUS_PROJETO_I18N_KEY[projeto.status] ?? projeto.status)}
             </span>
