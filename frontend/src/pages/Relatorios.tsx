@@ -69,6 +69,63 @@ function exportarCSV(lancamentos: LancamentoEnriquecido[], sufixo = '') {
   URL.revokeObjectURL(url)
 }
 
+async function exportarPDF(
+  lancamentos: LancamentoEnriquecido[],
+  projeto: Projeto,
+  cliente: Cliente,
+  dataInicio: string,
+  dataFim: string,
+  fmtData: (d: string) => string,
+) {
+  // carregado sob demanda: jspdf/jspdf-autotable só são baixados quando o PDF é gerado
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ])
+
+  const totalDecimal = lancamentos.reduce((a, l) => a + (l.totalDecimal ?? 0), 0)
+  const doc = new jsPDF()
+
+  doc.setFontSize(16)
+  doc.text('Relat\u00F3rio de Horas Trabalhadas', 14, 18)
+
+  doc.setFontSize(11)
+  doc.text(`Projeto: ${projeto.nome}`, 14, 28)
+  doc.text(`Cliente: ${cliente.nome}`, 14, 35)
+  doc.text(`Per\u00EDodo: ${fmtData(dataInicio)} a ${fmtData(dataFim)}`, 14, 42)
+
+  autoTable(doc, {
+    startY: 50,
+    head: [['Data', 'Descri\u00E7\u00E3o', 'In\u00EDcio', 'Fim', 'Horas']],
+    body: lancamentos.map(l => [
+      fmtData(l.data),
+      l.descricao || '\u2014',
+      l.horaInicio,
+      l.horaFim ?? '\u2014',
+      l.totalHHMM ?? '\u2014',
+    ]),
+    foot: [['', '', '', 'Total', decimalParaHHMM(totalDecimal)]],
+    styles: { fontSize: 9, cellPadding: 4 },
+    headStyles: { fillColor: [30, 30, 30] },
+    footStyles: { fillColor: [235, 235, 235], textColor: [0, 0, 0], fontStyle: 'bold' },
+    columnStyles: { 1: { cellWidth: 'auto' } },
+  })
+
+  const paginas = doc.getNumberOfPages()
+  for (let i = 1; i <= paginas; i++) {
+    doc.setPage(i)
+    doc.setFontSize(8)
+    doc.setTextColor(140)
+    doc.text(
+      `Gerado em ${new Date().toLocaleString('pt-BR')} \u00B7 p\u00E1gina ${i}/${paginas}`,
+      14,
+      doc.internal.pageSize.getHeight() - 8,
+    )
+  }
+
+  doc.save(`relatorio-horas-${projeto.nome.replace(/\s+/g, '-')}-${dataHoje()}.pdf`)
+}
+
 type VisualizacaoFaturavel = 'todos' | 'faturavel' | 'nao_faturavel'
 
 export default function Relatorios() {
@@ -143,6 +200,10 @@ export default function Relatorios() {
     [projetos, filtroCliente]
   )
 
+  // relatório em PDF (formalização de horas) exige um único projeto selecionado
+  const projetoParaPDF = filtroProjeto ? projetos.find(p => p.id === filtroProjeto) : undefined
+  const clienteParaPDF = projetoParaPDF ? clientes.find(c => c.id === projetoParaPDF.clienteId) : undefined
+
   const totalDecimal = useMemo(
     () => lancamentosFiltrados.reduce((a, l) => a + (l.totalDecimal ?? 0), 0),
     [lancamentosFiltrados]
@@ -216,13 +277,23 @@ export default function Relatorios() {
             {lancamentosFiltrados.length} lançamento{lancamentosFiltrados.length !== 1 ? 's' : ''} no período
           </p>
         </div>
-        <button
-          className="btn btn-primary"
-          onClick={() => exportarCSV(lancamentosFiltrados, sufixoCSV)}
-          disabled={lancamentosFiltrados.length === 0}
-        >
-          ↓ Exportar CSV
-        </button>
+        <div className="flex-center gap-8">
+          <button
+            className="btn btn-secondary"
+            onClick={() => projetoParaPDF && clienteParaPDF && exportarPDF(lancamentosFiltrados, projetoParaPDF, clienteParaPDF, dataInicio, dataFim, fmtData)}
+            disabled={!projetoParaPDF || !clienteParaPDF || lancamentosFiltrados.length === 0}
+            title={!projetoParaPDF ? 'Selecione um projeto para gerar o PDF de formalização de horas' : undefined}
+          >
+            ↓ Exportar PDF
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={() => exportarCSV(lancamentosFiltrados, sufixoCSV)}
+            disabled={lancamentosFiltrados.length === 0}
+          >
+            ↓ Exportar CSV
+          </button>
+        </div>
       </div>
 
       {/* Filtros */}
