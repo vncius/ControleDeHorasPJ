@@ -290,6 +290,9 @@ export default {
     encerrandoIniciado: 'Finishing: started at {{hora}}',
     encerrarEIniciar: '⇄ Finish and start new',
     trocaConcluida: 'Previous work finished and new one started!',
+    modalDescricaoTitulo: 'Work description',
+    novaDescricao: 'New description',
+    reutilizarDescricao: 'Reuse description',
   },
   lanc: {
     manual: '+ Manual entry',

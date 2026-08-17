@@ -291,6 +291,9 @@ export default {
     encerrandoIniciado: 'Encerrando: iniciado às {{hora}}',
     encerrarEIniciar: '⇄ Encerrar e iniciar novo',
     trocaConcluida: 'Trabalho anterior encerrado e novo iniciado!',
+    modalDescricaoTitulo: 'Descrição do trabalho',
+    novaDescricao: 'Nova descrição',
+    reutilizarDescricao: 'Reutilizar descrição',
   },
   lanc: {
     manual: '+ Lançamento manual',

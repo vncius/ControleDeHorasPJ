@@ -36,6 +36,12 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
 
   const [confirmarCancelar, setConfirmarCancelar] = useState(false)
 
+  // modal de escolha de descrição ao iniciar (reutilizar a última ou escrever uma nova)
+  const [modalDescricao, setModalDescricao] = useState(false)
+  const [descricaoAnteriorSugerida, setDescricaoAnteriorSugerida] = useState('')
+  const [escrevendoNovaDescricao, setEscrevendoNovaDescricao] = useState(false)
+  const [novaDescricaoIniciar, setNovaDescricaoIniciar] = useState('')
+
   // timer — re-render a cada segundo enquanto houver lançamento aberto
   useAgoraTick(!!lancamentoAberto)
   useTituloDecorrido(lancamentoAberto?.horaInicio, lancamentoAberto?.data)
@@ -69,9 +75,39 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
         return
       }
 
-      // sem conflito — inicia normalmente
+      // sem conflito — se há descrição anterior, pergunta se reutiliza ou escreve uma nova
+      const { descricao } = await lancamentosApi.ultimaDescricao(projetoId)
+      if (descricao) {
+        setDescricaoAnteriorSugerida(descricao)
+        setEscrevendoNovaDescricao(false)
+        setNovaDescricaoIniciar('')
+        setModalDescricao(true)
+        return
+      }
+
       await lancamentosApi.iniciar(projetoId)
       toast.success(t('ponto.iniciado'))
+      onAtualizar()
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('ponto.erroIniciar'))
+    } finally {
+      setCarregando(false)
+    }
+  }
+
+  function fecharModalDescricao() {
+    setModalDescricao(false)
+    setEscrevendoNovaDescricao(false)
+    setNovaDescricaoIniciar('')
+  }
+
+  async function iniciarComDescricao(descricao: string) {
+    if (carregando) return
+    setCarregando(true)
+    try {
+      await lancamentosApi.iniciar(projetoId, descricao || undefined)
+      toast.success(t('ponto.iniciado'))
+      fecharModalDescricao()
       onAtualizar()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('ponto.erroIniciar'))
@@ -204,6 +240,62 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
     </div>
   )
 
+  // ── Modal de escolha de descrição ao iniciar ──
+  const modalDescricaoJSX = modalDescricao && (
+    <div className="modal-overlay" onClick={fecharModalDescricao}>
+      <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2 className="modal-title">{t('ponto.modalDescricaoTitulo')}</h2>
+          <button className="btn btn-ghost btn-icon" onClick={fecharModalDescricao}>✕</button>
+        </div>
+
+        {!escrevendoNovaDescricao ? (
+          <>
+            <div style={{
+              background: 'var(--bg-3)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius)',
+              padding: '10px 14px',
+              marginBottom: 20,
+              fontSize: 13,
+              color: 'var(--text-secondary)',
+            }}>
+              {descricaoAnteriorSugerida}
+            </div>
+            <div className="form-actions">
+              <button className="btn btn-secondary" onClick={() => setEscrevendoNovaDescricao(true)} disabled={carregando}>
+                {t('ponto.novaDescricao')}
+              </button>
+              <Button className="btn btn-primary"
+                onClick={() => iniciarComDescricao(descricaoAnteriorSugerida)} loading={carregando}>
+                {t('ponto.reutilizarDescricao')}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="form-group" style={{ marginBottom: 20 }}>
+              <label className="form-label">{t('comum.descricao')}</label>
+              <textarea className="input" rows={3} autoFocus
+                placeholder={t('dashboard.oQueFoiFeito')}
+                value={novaDescricaoIniciar}
+                onChange={e => setNovaDescricaoIniciar(e.target.value)} />
+            </div>
+            <div className="form-actions">
+              <button className="btn btn-secondary" onClick={() => setEscrevendoNovaDescricao(false)} disabled={carregando}>
+                {t('comum.voltar')}
+              </button>
+              <Button className="btn btn-primary"
+                onClick={() => iniciarComDescricao(novaDescricaoIniciar)} loading={carregando}>
+                {t('ponto.iniciar')}
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+
   // ── Em andamento neste projeto ──
   if (lancamentoAberto) {
     return (
@@ -269,6 +361,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
         {t('ponto.iniciar')}
       </Button>
       {modalJSX}
+      {modalDescricaoJSX}
     </>
   )
 }
