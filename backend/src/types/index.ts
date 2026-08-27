@@ -28,13 +28,15 @@ export interface Projeto {
   horasContratadas?: number     // undefined = horas em aberto
   valorHora?: number
   status: StatusProjeto
-  pago: boolean
-  dataPagamento?: string        // YYYY-MM-DD — linha de corte de faturabilidade
   dataInicio: string            // YYYY-MM-DD obrigatório
   dataFim?: string
   dataCriacao: string
   observacoes?: string
 }
+
+// 'Não pago' (nenhuma hora coberta) | 'Parcial' (cobre parte do trabalhado) |
+// 'Pago' (cobre tudo que já foi trabalhado) — ver utils/faturamento.ts
+export type StatusPagamentoProjeto = 'Não pago' | 'Parcial' | 'Pago'
 
 export type StatusEscopo = 'Pendente' | 'Aprovada' | 'Cancelada'
 
@@ -49,6 +51,24 @@ export interface AlteracaoEscopo {
   // controle de período próprio
   dataInicio?: string           // YYYY-MM-DD início do escopo
   dataFim?: string              // YYYY-MM-DD fim do escopo
+  dataCriacao: string
+  observacoes?: string
+}
+
+// Um pagamento cobre uma parte (ou o todo) das horas trabalhadas de um
+// projeto — a NF é emitida pelo total de horas do período de apuração
+// (16 a 15), não por projeto/demanda, então um projeto pode ter vários
+// pagamentos parciais ao longo do tempo.
+export interface Pagamento {
+  id: string
+  tenantId: string
+  projetoId: string
+  horasCobertas: number          // unidade principal (nem todo projeto tem valorHora)
+  valor?: number                 // valor da NF — opcional/informativo
+  dataPagamento: string          // YYYY-MM-DD
+  periodoApuracaoInicio: string  // YYYY-MM-DD
+  periodoApuracaoFim: string     // YYYY-MM-DD
+  numeroNF?: string
   dataCriacao: string
   observacoes?: string
 }
@@ -117,8 +137,6 @@ export interface CriarProjetoDTO {
   horasContratadas?: number
   valorHora?: number
   status?: StatusProjeto
-  pago?: boolean
-  dataPagamento?: string
   dataInicio: string
   dataFim?: string
   observacoes?: string
@@ -131,10 +149,29 @@ export interface AtualizarProjetoDTO {
   horasContratadas?: number | null
   valorHora?: number
   status?: StatusProjeto
-  pago?: boolean
-  dataPagamento?: string | null
   dataInicio?: string
   dataFim?: string
+  observacoes?: string
+}
+
+export interface CriarPagamentoDTO {
+  projetoId: string
+  horasCobertas: number
+  valor?: number
+  dataPagamento: string
+  periodoApuracaoInicio: string
+  periodoApuracaoFim: string
+  numeroNF?: string
+  observacoes?: string
+}
+
+export interface AtualizarPagamentoDTO {
+  horasCobertas?: number
+  valor?: number
+  dataPagamento?: string
+  periodoApuracaoInicio?: string
+  periodoApuracaoFim?: string
+  numeroNF?: string
   observacoes?: string
 }
 
@@ -199,6 +236,8 @@ export interface ResumoProjeto {
   valorTrabalhado?: number
   emAndamento: boolean
   temEscopoPendente: boolean       // há alteração de escopo aguardando aprovação
+  totalHorasCobertas: number       // soma de Pagamento.horasCobertas do projeto
+  statusPagamento: StatusPagamentoProjeto
 }
 
 export interface DashboardData {

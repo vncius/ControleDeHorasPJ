@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import { clientesService } from '../services/clientesService'
 import { projetosService } from '../services/projetosService'
 import { escoposService } from '../services/escoposService'
+import { pagamentosService } from '../services/pagamentosService'
 import { lancamentosService } from '../services/lancamentosService'
 import { dashboardService } from '../services/dashboardService'
 import { importacaoService } from '../services/importacaoService'
@@ -96,6 +97,34 @@ export const escoposController = {
     handle(res, async () => {
       await escoposService.excluir(req.usuario!.email, req.params.id)
       return { mensagem: 'Escopo excluído com sucesso' }
+    })
+  },
+}
+
+// ----------------------------------------------------------------
+// PAGAMENTOS
+// ----------------------------------------------------------------
+export const pagamentosController = {
+  listarPorProjeto(req: Request, res: Response) {
+    handle(res, () => pagamentosService.listarPorProjeto(req.usuario!.email, req.params.projetoId))
+  },
+  listarPorTenant(req: Request, res: Response) {
+    handle(res, () => pagamentosService.listarPorTenant(req.usuario!.email))
+  },
+  criar(req: Request, res: Response) {
+    handle(
+      res,
+      () => pagamentosService.criar(req.usuario!.email, { ...req.body, projetoId: req.params.projetoId }),
+      201
+    )
+  },
+  atualizar(req: Request, res: Response) {
+    handle(res, () => pagamentosService.atualizar(req.usuario!.email, req.params.id, req.body))
+  },
+  excluir(req: Request, res: Response) {
+    handle(res, async () => {
+      await pagamentosService.excluir(req.usuario!.email, req.params.id)
+      return { mensagem: 'Pagamento excluído com sucesso' }
     })
   },
 }

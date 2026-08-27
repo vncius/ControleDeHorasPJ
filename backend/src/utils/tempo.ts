@@ -118,4 +118,24 @@ export function somarHoras(decimais: (number | undefined)[]): number {
 }
 
 // Regra de faturabilidade movida para utils/faturamento.ts (fonte única,
-// considera status do projeto + pago sem dataPagamento + corte por data).
+// considera status do projeto + soma de pagamentos vs. horas trabalhadas).
+
+/**
+ * Período de apuração fixo: do dia 16 de um mês ao dia 15 do mês seguinte.
+ * Dado uma data qualquer, devolve o {inicio, fim} do período que a contém.
+ * dia 16 pertence ao período que começa nele; dia 15 pertence ao período
+ * que termina nele (não ao que começa no dia 16 seguinte).
+ */
+export function periodoApuracao(data: string): { inicio: string; fim: string } {
+  const [ano, mes, dia] = data.split('-').map(Number)
+  if (dia >= 16) {
+    return {
+      inicio: `${ano}-${String(mes).padStart(2, '0')}-16`,
+      fim: dataLocalISO(new Date(ano, mes, 15)),
+    }
+  }
+  return {
+    inicio: dataLocalISO(new Date(ano, mes - 2, 16)),
+    fim: `${ano}-${String(mes).padStart(2, '0')}-15`,
+  }
+}

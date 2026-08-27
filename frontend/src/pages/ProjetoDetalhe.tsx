@@ -2,8 +2,8 @@ import { useEffect, useState, useCallback } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { projetosApi, clientesApi, escoposApi, lancamentosApi } from '../services/api'
-import type { ResumoProjeto, AlteracaoEscopo, LancamentoHoras, StatusEscopo, Cliente } from '../types'
+import { projetosApi, clientesApi, escoposApi, lancamentosApi, pagamentosApi } from '../services/api'
+import type { ResumoProjeto, AlteracaoEscopo, LancamentoHoras, StatusEscopo, Cliente, Pagamento } from '../types'
 import type { ToastFns } from '../App'
 import ControlePonto from '../components/ControlePonto'
 import TabelaLancamentos from '../components/TabelaLancamentos'
@@ -11,8 +11,8 @@ import ModalImportacao from '../components/ModalImportacao'
 import ConfirmModal from '../components/ConfirmModal'
 import Button from '../components/Button'
 import { ProjetoForm, projetoParaForm, formParaPayload } from './Projetos'
-import { STATUS_COR } from '../constants/statusProjeto'
-import { calcularDecorridoDecimal } from '../utils/tempo'
+import { STATUS_COR, STATUS_PAGAMENTO_COR, STATUS_PAGAMENTO_I18N_KEY } from '../constants/statusProjeto'
+import { calcularDecorridoDecimal, periodoApuracao, hojeLocal } from '../utils/tempo'
 import { useAgoraTick } from '../hooks/useAgoraTick'
 import { useFormatarData } from '../contexts/PreferenciasContext'
 import DatePicker from '../components/DatePicker'
@@ -185,6 +185,138 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
   )
 }
 
+// ── Modal de Pagamento ───────────────────────────────────────────
+
+interface ModalPagamentoProps {
+  projetoId: string
+  editando: Pagamento | null
+  toast: ToastFns
+  onSalvar: () => void
+  onFechar: () => void
+}
+
+function ModalPagamento({ projetoId, editando, toast, onSalvar, onFechar }: ModalPagamentoProps) {
+  const { t } = useTranslation()
+  const periodoPadrao = periodoApuracao(editando?.dataPagamento ?? hojeLocal())
+  const [form, setForm] = useState({
+    horasCobertas: editando ? String(editando.horasCobertas) : '',
+    valor: editando?.valor != null ? String(editando.valor) : '',
+    dataPagamento: editando?.dataPagamento ?? hojeLocal(),
+    periodoApuracaoInicio: editando?.periodoApuracaoInicio ?? periodoPadrao.inicio,
+    periodoApuracaoFim: editando?.periodoApuracaoFim ?? periodoPadrao.fim,
+    numeroNF: editando?.numeroNF ?? '',
+    observacoes: editando?.observacoes ?? '',
+  })
+  const [salvando, setSalvando] = useState(false)
+
+  function usarPeriodoDe(data: string) {
+    const p = periodoApuracao(data)
+    setForm(f => ({ ...f, periodoApuracaoInicio: p.inicio, periodoApuracaoFim: p.fim }))
+  }
+
+  async function salvar() {
+    if (salvando) return
+    const horas = parseFloat(form.horasCobertas)
+    if (!horas || horas <= 0) { toast.error(t('pagamento.horasInvalidas')); return }
+    if (!form.dataPagamento) { toast.error(t('pagamento.dataObrigatoria')); return }
+    if (!form.periodoApuracaoInicio || !form.periodoApuracaoFim) { toast.error(t('pagamento.periodoObrigatorio')); return }
+    if (form.periodoApuracaoFim < form.periodoApuracaoInicio) { toast.error(t('pagamento.periodoInvalido')); return }
+    setSalvando(true)
+    try {
+      const payload = {
+        horasCobertas: horas,
+        valor: form.valor ? parseFloat(form.valor) : undefined,
+        dataPagamento: form.dataPagamento,
+        periodoApuracaoInicio: form.periodoApuracaoInicio,
+        periodoApuracaoFim: form.periodoApuracaoFim,
+        numeroNF: form.numeroNF || undefined,
+        observacoes: form.observacoes || undefined,
+      }
+      if (editando) {
+        await pagamentosApi.atualizar(editando.id, payload)
+        toast.success(t('pagamento.atualizado'))
+      } else {
+        await pagamentosApi.criar(projetoId, payload)
+        toast.success(t('pagamento.criado'))
+      }
+      onSalvar()
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('comum.erroSalvar'))
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onFechar}>
+      <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2 className="modal-title">{editando ? t('pagamento.modalEditar') : t('pagamento.modalNovo')}</h2>
+          <button className="btn btn-ghost btn-icon" onClick={onFechar}>✕</button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">{t('pagamento.horasCobertas')}</label>
+              <input className="input input-mono" type="number" min="0" step="0.5"
+                placeholder={t('pagamento.horasPlaceholder')}
+                value={form.horasCobertas} onChange={e => setForm(f => ({ ...f, horasCobertas: e.target.value }))} autoFocus />
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('pagamento.valorLabel')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('comum.opcional')}</span></label>
+              <input className="input input-mono" type="number" min="0" step="0.01"
+                placeholder={t('pagamento.valorPlaceholder')}
+                value={form.valor} onChange={e => setForm(f => ({ ...f, valor: e.target.value }))} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">{t('pagamento.dataPagamentoLabel')}</label>
+              <DatePicker value={form.dataPagamento}
+                onChange={v => { setForm(f => ({ ...f, dataPagamento: v })); usarPeriodoDe(v) }} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('pagamento.numeroNFLabel')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('comum.opcional')}</span></label>
+              <input className="input" placeholder={t('pagamento.numeroNFPlaceholder')}
+                value={form.numeroNF} onChange={e => setForm(f => ({ ...f, numeroNF: e.target.value }))} />
+            </div>
+          </div>
+          <div>
+            <div className="flex-between" style={{ marginBottom: 8 }}>
+              <label className="form-label" style={{ marginBottom: 0 }}>{t('pagamento.periodoApuracao')}</label>
+              <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}
+                onClick={() => usarPeriodoDe(form.dataPagamento)}>
+                {t('pagamento.usarPeriodoDoData')}
+              </button>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <DatePicker value={form.periodoApuracaoInicio}
+                  onChange={v => setForm(f => ({ ...f, periodoApuracaoInicio: v }))} />
+              </div>
+              <div className="form-group">
+                <DatePicker value={form.periodoApuracaoFim}
+                  onChange={v => setForm(f => ({ ...f, periodoApuracaoFim: v }))} />
+              </div>
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">{t('comum.observacoes')}</label>
+            <textarea className="input" rows={2} placeholder={t('comum.observacoesPlaceholder')}
+              value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
+          </div>
+        </div>
+        <div className="form-actions" style={{ marginTop: 24 }}>
+          <button className="btn btn-secondary" onClick={onFechar} disabled={salvando}>{t('comum.cancelar')}</button>
+          <Button className="btn btn-primary" onClick={salvar} loading={salvando}>
+            {editando ? t('comum.salvar') : t('pagamento.criarBtn')}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Página principal ─────────────────────────────────────────────
 
 export default function ProjetoDetalhe({ toast }: Props) {
@@ -199,16 +331,21 @@ export default function ProjetoDetalhe({ toast }: Props) {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [escopos, setEscopos] = useState<AlteracaoEscopo[]>([])
   const [lancamentos, setLancamentos] = useState<LancamentoHoras[]>([])
+  const [pagamentos, setPagamentos] = useState<Pagamento[]>([])
   const [loading, setLoading] = useState(true)
   const [modalEscopo, setModalEscopo] = useState(false)
   const [modalImportacao, setModalImportacao] = useState(false)
   const [modalEditarProjeto, setModalEditarProjeto] = useState(false)
+  const [modalPagamento, setModalPagamento] = useState(false)
   const [formProjeto, setFormProjeto] = useState<ReturnType<typeof projetoParaForm> | null>(null)
   const [salvandoProjeto, setSalvandoProjeto] = useState(false)
   const [escopoEditando, setEscopoEditando] = useState<AlteracaoEscopo | null>(null)
-  const [abaAtiva, setAbaAtiva] = useState<'lancamentos' | 'escopos'>('lancamentos')
+  const [pagamentoEditando, setPagamentoEditando] = useState<Pagamento | null>(null)
+  const [abaAtiva, setAbaAtiva] = useState<'lancamentos' | 'escopos' | 'pagamentos'>('lancamentos')
   const [confirmarExcluirEscopo, setConfirmarExcluirEscopo] = useState<AlteracaoEscopo | null>(null)
   const [excluindoEscopo, setExcluindoEscopo] = useState(false)
+  const [confirmarExcluirPagamento, setConfirmarExcluirPagamento] = useState<Pagamento | null>(null)
+  const [excluindoPagamento, setExcluindoPagamento] = useState(false)
   const [confirmarExcluirProjeto, setConfirmarExcluirProjeto] = useState(false)
   const [excluindoProjeto, setExcluindoProjeto] = useState(false)
 
@@ -222,16 +359,18 @@ export default function ProjetoDetalhe({ toast }: Props) {
   const carregar = useCallback(async () => {
     if (!id) return
     try {
-      const [r, e, l, cs] = await Promise.all([
+      const [r, e, l, cs, pg] = await Promise.all([
         projetosApi.resumo(id),
         escoposApi.listar(id),
         lancamentosApi.listarPorProjeto(id),
         clientesApi.listar(),
+        pagamentosApi.listar(id),
       ])
       setResumo(r)
       setEscopos(e)
       setLancamentos(l)
       setClientes(cs)
+      setPagamentos(pg)
     } catch {
       toast.error(t('detalhe.erroCarregar'))
     } finally {
@@ -293,6 +432,22 @@ export default function ProjetoDetalhe({ toast }: Props) {
       toast.error(err instanceof Error ? err.message : t('comum.erroExcluir'))
     } finally {
       setExcluindoEscopo(false)
+    }
+  }
+
+  async function confirmarExclusaoPagamento() {
+    if (excluindoPagamento) return
+    if (!confirmarExcluirPagamento) return
+    setExcluindoPagamento(true)
+    try {
+      await pagamentosApi.excluir(confirmarExcluirPagamento.id)
+      toast.success(t('pagamento.excluido'))
+      setConfirmarExcluirPagamento(null)
+      carregar()
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t('comum.erroExcluir'))
+    } finally {
+      setExcluindoPagamento(false)
     }
   }
 
@@ -372,6 +527,9 @@ export default function ProjetoDetalhe({ toast }: Props) {
             <span className="badge" style={{ background: statusCor.bg, color: statusCor.color, fontSize: 11 }}>
               {t(STATUS_PROJETO_I18N_KEY[projeto.status] ?? projeto.status)}
             </span>
+            <span className="badge" style={{ background: STATUS_PAGAMENTO_COR[resumo.statusPagamento].bg, color: STATUS_PAGAMENTO_COR[resumo.statusPagamento].color, fontSize: 11 }}>
+              {t(STATUS_PAGAMENTO_I18N_KEY[resumo.statusPagamento])}
+            </span>
             <button className="btn btn-secondary btn-sm" onClick={abrirEditarProjeto}>{t('detalhe.editar')}</button>
             <button className="btn btn-secondary btn-sm" onClick={() => setModalImportacao(true)}>{t('detalhe.importar')}</button>
             <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setConfirmarExcluirProjeto(true)}>{t('comum.excluir')}</button>
@@ -434,7 +592,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
 
       {/* Abas */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
-        {(['lancamentos', 'escopos'] as const).map(aba => (
+        {(['lancamentos', 'escopos', 'pagamentos'] as const).map(aba => (
           <button key={aba} onClick={() => setAbaAtiva(aba)} style={{
             padding: '8px 16px', background: 'transparent', border: 'none',
             borderBottom: abaAtiva === aba ? '2px solid var(--accent)' : '2px solid transparent',
@@ -442,7 +600,11 @@ export default function ProjetoDetalhe({ toast }: Props) {
             fontSize: 13, fontWeight: abaAtiva === aba ? 600 : 400,
             fontFamily: 'var(--font-ui)', cursor: 'pointer', marginBottom: -1, transition: 'all 0.15s',
           }}>
-            {aba === 'lancamentos' ? t('detalhe.abaLancamentos', { count: lancamentos.length }) : t('detalhe.abaEscopos', { count: escopos.length })}
+            {aba === 'lancamentos'
+              ? t('detalhe.abaLancamentos', { count: lancamentos.length })
+              : aba === 'escopos'
+                ? t('detalhe.abaEscopos', { count: escopos.length })
+                : t('pagamento.aba', { count: pagamentos.length })}
           </button>
         ))}
       </div>
@@ -550,7 +712,101 @@ export default function ProjetoDetalhe({ toast }: Props) {
         </div>
       )}
 
+      {/* Aba Pagamentos */}
+      {abaAtiva === 'pagamentos' && (
+        <div>
+          <div className="flex-between" style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              {t('pagamento.titulo')}
+            </h3>
+            <button className="btn btn-secondary btn-sm" onClick={() => { setPagamentoEditando(null); setModalPagamento(true) }}>
+              {t('pagamento.novo')}
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 20 }}>
+            <MetricCard label={t('pagamento.cardTrabalhado')} value={`${totalTrabalhado.toFixed(1)}h`} />
+            <MetricCard label={t('pagamento.cardCoberto')} value={`${resumo.totalHorasCobertas.toFixed(1)}h`} destaque />
+            <MetricCard
+              label={t('pagamento.cardSaldo')}
+              value={`${Math.max(0, totalTrabalhado - resumo.totalHorasCobertas).toFixed(1)}h`}
+              sub={t('pagamento.cardSaldoSub')}
+            />
+          </div>
+
+          {pagamentos.length === 0 ? (
+            <div className="card">
+              <div className="empty-state" style={{ padding: '32px 24px' }}>
+                <div className="empty-state-icon">$</div>
+                <div>{t('pagamento.nenhum')}</div>
+                <button className="btn btn-secondary btn-sm" style={{ marginTop: 16 }} onClick={() => { setPagamentoEditando(null); setModalPagamento(true) }}>{t('pagamento.adicionarPrimeiro')}</button>
+              </div>
+            </div>
+          ) : (
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ width: 100 }}>{t('pagamento.colData')}</th>
+                      <th style={{ width: 100 }}>{t('pagamento.colHoras')}</th>
+                      <th className="hide-mobile" style={{ width: 120 }}>{t('pagamento.colValor')}</th>
+                      <th className="hide-mobile">{t('pagamento.colPeriodo')}</th>
+                      <th className="hide-mobile" style={{ width: 110 }}>{t('pagamento.colNF')}</th>
+                      <th style={{ width: 80 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagamentos.map(p => (
+                      <tr key={p.id} onClick={() => { setPagamentoEditando(p); setModalPagamento(true) }}>
+                        <td className="td-mono">{fmtDataBR(p.dataPagamento)}</td>
+                        <td className="td-mono" style={{ color: 'var(--accent)', fontWeight: 600 }}>{p.horasCobertas.toFixed(1)}h</td>
+                        <td className="td-mono hide-mobile">{fmtReais(p.valor)}</td>
+                        <td className="hide-mobile" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                          {fmtDataBR(p.periodoApuracaoInicio)} → {fmtDataBR(p.periodoApuracaoFim)}
+                        </td>
+                        <td className="hide-mobile" style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.numeroNF ?? '—'}</td>
+                        <td onClick={ev => ev.stopPropagation()}>
+                          <div className="flex-center gap-4">
+                            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => { setPagamentoEditando(p); setModalPagamento(true) }}>✎</button>
+                            <button className="btn btn-ghost btn-sm btn-icon" style={{ color: 'var(--danger)' }} onClick={() => setConfirmarExcluirPagamento(p)}>✕</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ borderTop: '1px solid var(--border-light)' }}>
+                      <td style={{ padding: '10px 12px', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('comum.total')}</td>
+                      <td style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent)', fontSize: 13 }}>{resumo.totalHorasCobertas.toFixed(1)}h</td>
+                      <td className="hide-mobile" colSpan={3} />
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Modais */}
+      {modalPagamento && (
+        <ModalPagamento projetoId={projeto.id} editando={pagamentoEditando} toast={toast}
+          onSalvar={() => { setModalPagamento(false); setPagamentoEditando(null); carregar() }}
+          onFechar={() => { setModalPagamento(false); setPagamentoEditando(null) }} />
+      )}
+      {confirmarExcluirPagamento && (
+        <ConfirmModal
+          titulo={t('pagamento.excluirTitulo')}
+          mensagem={t('pagamento.confirmarExclusao', { horas: confirmarExcluirPagamento.horasCobertas.toFixed(1) })}
+          confirmarLabel={t('comum.excluir')}
+          perigo
+          confirmando={excluindoPagamento}
+          onConfirmar={confirmarExclusaoPagamento}
+          onFechar={() => setConfirmarExcluirPagamento(null)}
+        />
+      )}
       {modalEscopo && (
         <ModalEscopo projetoId={projeto.id} editando={escopoEditando} toast={toast}
           onSalvar={() => { setModalEscopo(false); setEscopoEditando(null); carregar() }}

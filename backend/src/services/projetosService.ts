@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid'
-import { projetosRepo, clientesRepo, escoposRepo, lancamentosRepo } from '../repositories'
+import { projetosRepo, clientesRepo, escoposRepo, lancamentosRepo, pagamentosRepo } from '../repositories'
 import { withTransaction } from '../repositories/mongoClient'
 import {
   Projeto,
@@ -8,6 +8,7 @@ import {
   ResumoProjeto,
 } from '../types'
 import { agora, somarHoras, isDataValida } from '../utils/tempo'
+import { calcularStatusPagamento } from '../utils/faturamento'
 
 export const projetosService = {
   async listar(tenantId: string, clienteId?: string): Promise<Projeto[]> {
@@ -47,8 +48,6 @@ export const projetosService = {
       horasContratadas: dto.horasContratadas,
       valorHora: dto.valorHora,
       status: dto.status ?? 'Aguardando início',
-      pago: dto.pago ?? false,
-      dataPagamento: dto.dataPagamento,
       dataInicio: dto.dataInicio,
       dataFim: dto.dataFim,
       dataCriacao: agora(),
@@ -85,8 +84,6 @@ export const projetosService = {
       ...horasUpdate,
       ...(dto.valorHora !== undefined && { valorHora: dto.valorHora }),
       ...(dto.status && { status: dto.status }),
-      ...(dto.pago !== undefined && { pago: dto.pago }),
-      ...(dto.dataPagamento !== undefined && { dataPagamento: dto.dataPagamento ?? undefined }),
       ...(dto.dataInicio && { dataInicio: dto.dataInicio }),
       ...(dto.dataFim !== undefined && { dataFim: dto.dataFim || undefined }),
       ...(dto.observacoes !== undefined && { observacoes: dto.observacoes?.trim() }),
@@ -105,6 +102,10 @@ export const projetosService = {
       const lancamentos = await lancamentosRepo.findBy((l) => l.tenantId === tenantId && l.projetoId === id, session)
       for (const l of lancamentos) {
         await lancamentosRepo.deleteForTenant(l.id, tenantId, session)
+      }
+      const pagamentos = await pagamentosRepo.findBy((p) => p.tenantId === tenantId && p.projetoId === id, session)
+      for (const p of pagamentos) {
+        await pagamentosRepo.deleteForTenant(p.id, tenantId, session)
       }
       await projetosRepo.deleteForTenant(id, tenantId, session)
     })
@@ -128,6 +129,9 @@ export const projetosService = {
     const lancamentos = await lancamentosRepo.findBy((l) => l.tenantId === tenantId && l.projetoId === projetoId)
     const finalizados = lancamentos.filter((l) => l.horaFim !== undefined)
     const emAndamento = lancamentos.some((l) => l.horaFim === undefined)
+
+    const pagamentos = await pagamentosRepo.findBy((p) => p.tenantId === tenantId && p.projetoId === projetoId)
+    const totalHorasCobertas = Math.round(pagamentos.reduce((acc, p) => acc + p.horasCobertas, 0) * 100) / 100
 
     const totalTrabalhado = Math.round(somarHoras(finalizados.map((l) => l.totalDecimal)) * 100) / 100
     // horas em lançamentos vinculados a escopos
@@ -164,6 +168,8 @@ export const projetosService = {
       valorTrabalhado,
       emAndamento,
       temEscopoPendente,
+      totalHorasCobertas,
+      statusPagamento: calcularStatusPagamento(totalHorasCobertas, totalTrabalhado),
     }
   },
 }

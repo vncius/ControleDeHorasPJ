@@ -3,6 +3,7 @@ import {
   clientesController,
   projetosController,
   escoposController,
+  pagamentosController,
   lancamentosController,
   dashboardController,
   importacaoController,
@@ -62,6 +63,21 @@ router.post(
 )
 router.put('/escopos/:id', escoposController.atualizar.bind(escoposController))
 router.delete('/escopos/:id', escoposController.excluir.bind(escoposController))
+
+// ----------------------------------------------------------------
+// Pagamentos (por projeto)
+// ----------------------------------------------------------------
+router.get('/pagamentos', pagamentosController.listarPorTenant.bind(pagamentosController))
+router.get(
+  '/projetos/:projetoId/pagamentos',
+  pagamentosController.listarPorProjeto.bind(pagamentosController)
+)
+router.post(
+  '/projetos/:projetoId/pagamentos',
+  pagamentosController.criar.bind(pagamentosController)
+)
+router.put('/pagamentos/:id', pagamentosController.atualizar.bind(pagamentosController))
+router.delete('/pagamentos/:id', pagamentosController.excluir.bind(pagamentosController))
 
 // ----------------------------------------------------------------
 // Lançamentos

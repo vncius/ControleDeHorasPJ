@@ -1,9 +1,9 @@
 import { useEffect, useState, useMemo } from 'react'
-import { clientesApi, projetosApi, lancamentosApi, escoposApi } from '../services/api'
-import { dataLocalISO, hojeLocal } from '../utils/tempo'
+import { clientesApi, projetosApi, lancamentosApi, escoposApi, pagamentosApi } from '../services/api'
+import { dataLocalISO, hojeLocal, periodoApuracao } from '../utils/tempo'
 import { useFormatarData } from '../contexts/PreferenciasContext'
 import DatePicker from '../components/DatePicker'
-import type { Cliente, Projeto, LancamentoHoras } from '../types'
+import type { Cliente, Projeto, LancamentoHoras, Pagamento } from '../types'
 
 interface LancamentoEnriquecido extends LancamentoHoras {
   projeto: Projeto
@@ -128,11 +128,87 @@ async function exportarPDF(
 
 type VisualizacaoFaturavel = 'todos' | 'faturavel' | 'nao_faturavel'
 
+// ── Relatório por período de apuração (16 a 15) ───────────────────
+
+interface LinhaPeriodoApuracao {
+  projeto: Projeto
+  cliente: Cliente
+  totalHistorico: number
+  totalJaPago: number
+  totalNoPeriodo: number
+  saldoAFaturar: number
+}
+
+function diaAnterior(data: string): string {
+  const [ano, mes, dia] = data.split('-').map(Number)
+  const d = new Date(ano, mes - 1, dia)
+  d.setDate(d.getDate() - 1)
+  return dataLocalISO(d)
+}
+
+async function exportarPDFPeriodo(
+  linhas: LinhaPeriodoApuracao[],
+  periodoInicio: string,
+  periodoFim: string,
+  fmtData: (d: string) => string,
+) {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ])
+
+  const somar = (campo: keyof Pick<LinhaPeriodoApuracao, 'totalHistorico' | 'totalJaPago' | 'totalNoPeriodo' | 'saldoAFaturar'>) =>
+    linhas.reduce((a, l) => a + l[campo], 0)
+
+  const doc = new jsPDF()
+  doc.setFontSize(16)
+  doc.text('Relatório de Horas por Período de Apuração', 14, 18)
+  doc.setFontSize(11)
+  doc.text(`Período: ${fmtData(periodoInicio)} a ${fmtData(periodoFim)}`, 14, 28)
+
+  autoTable(doc, {
+    startY: 36,
+    head: [['Projeto', 'Cliente', 'Histórico', 'Já pago', 'No período', 'Saldo a faturar']],
+    body: linhas.map(l => [
+      l.projeto.nome,
+      l.cliente.nome,
+      `${l.totalHistorico.toFixed(1)}h`,
+      `${l.totalJaPago.toFixed(1)}h`,
+      `${l.totalNoPeriodo.toFixed(1)}h`,
+      `${l.saldoAFaturar.toFixed(1)}h`,
+    ]),
+    foot: [['', 'Total',
+      `${somar('totalHistorico').toFixed(1)}h`,
+      `${somar('totalJaPago').toFixed(1)}h`,
+      `${somar('totalNoPeriodo').toFixed(1)}h`,
+      `${somar('saldoAFaturar').toFixed(1)}h`,
+    ]],
+    styles: { fontSize: 9, cellPadding: 4 },
+    headStyles: { fillColor: [30, 30, 30] },
+    footStyles: { fillColor: [235, 235, 235], textColor: [0, 0, 0], fontStyle: 'bold' },
+  })
+
+  const paginas = doc.getNumberOfPages()
+  for (let i = 1; i <= paginas; i++) {
+    doc.setPage(i)
+    doc.setFontSize(8)
+    doc.setTextColor(140)
+    doc.text(
+      `Gerado em ${new Date().toLocaleString('pt-BR')} · página ${i}/${paginas}`,
+      14,
+      doc.internal.pageSize.getHeight() - 8,
+    )
+  }
+
+  doc.save(`relatorio-periodo-${periodoInicio}-a-${periodoFim}.pdf`)
+}
+
 export default function Relatorios() {
   const { formatarData: fmtData } = useFormatarData()
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [projetos, setProjetos] = useState<Projeto[]>([])
   const [todosLancamentos, setTodosLancamentos] = useState<LancamentoEnriquecido[]>([])
+  const [pagamentos, setPagamentos] = useState<Pagamento[]>([])
   const [loading, setLoading] = useState(true)
   const [dataInicio, setDataInicio] = useState(dataInicioMes(1))
   const [dataFim, setDataFim] = useState(dataHoje())
@@ -140,15 +216,20 @@ export default function Relatorios() {
   const [filtroProjeto, setFiltroProjeto] = useState('')
   const [agrupamento, setAgrupamento] = useState<'cliente' | 'projeto' | 'escopo' | 'dia'>('projeto')
   const [visualizacao, setVisualizacao] = useState<VisualizacaoFaturavel>('todos')
+  const [visaoRelatorio, setVisaoRelatorio] = useState<'detalhado' | 'periodo'>('detalhado')
+  const periodoAtual = useMemo(() => periodoApuracao(hojeLocal()), [])
+  const [periodoRelInicio, setPeriodoRelInicio] = useState(periodoAtual.inicio)
+  const [periodoRelFim, setPeriodoRelFim] = useState(periodoAtual.fim)
 
   useEffect(() => {
     async function carregar() {
       try {
-        const [cs, ps, todos, escopos] = await Promise.all([
-          clientesApi.listar(), projetosApi.listar(), lancamentosApi.listarTudo(), escoposApi.listarTudo(),
+        const [cs, ps, todos, escopos, pgs] = await Promise.all([
+          clientesApi.listar(), projetosApi.listar(), lancamentosApi.listarTudo(), escoposApi.listarTudo(), pagamentosApi.listarTudo(),
         ])
         setClientes(cs)
         setProjetos(ps)
+        setPagamentos(pgs)
         const projetoMap = new Map(ps.map(p => [p.id, p]))
         const clienteMap = new Map(cs.map(c => [c.id, c]))
         const escopoMap = new Map(escopos.map(e => [e.id, e.titulo]))
@@ -199,6 +280,30 @@ export default function Relatorios() {
     () => !filtroCliente ? projetos : projetos.filter(p => p.clienteId === filtroCliente),
     [projetos, filtroCliente]
   )
+
+  // linhas do relatório por período de apuração: um projeto por linha, com
+  // histórico completo trabalhado, já pago (pagamentos de períodos
+  // anteriores ao selecionado), trabalhado no período selecionado e saldo
+  // que ainda falta cobrir (histórico − já pago).
+  const linhasPeriodoApuracao = useMemo((): LinhaPeriodoApuracao[] => {
+    return projetosFiltrados
+      .map(p => {
+        const cliente = clientes.find(c => c.id === p.clienteId)
+        if (!cliente) return null
+        const lancamentosProjeto = todosLancamentos.filter(l => l.projeto.id === p.id)
+        const totalHistorico = lancamentosProjeto.reduce((a, l) => a + (l.totalDecimal ?? 0), 0)
+        const totalNoPeriodo = lancamentosProjeto
+          .filter(l => l.data >= periodoRelInicio && l.data <= periodoRelFim)
+          .reduce((a, l) => a + (l.totalDecimal ?? 0), 0)
+        const totalJaPago = pagamentos
+          .filter(pg => pg.projetoId === p.id && pg.periodoApuracaoFim < periodoRelInicio)
+          .reduce((a, pg) => a + pg.horasCobertas, 0)
+        const saldoAFaturar = Math.max(0, totalHistorico - totalJaPago)
+        return { projeto: p, cliente, totalHistorico, totalJaPago, totalNoPeriodo, saldoAFaturar }
+      })
+      .filter((l): l is LinhaPeriodoApuracao => l !== null && l.totalHistorico > 0)
+      .sort((a, b) => b.saldoAFaturar - a.saldoAFaturar)
+  }, [projetosFiltrados, clientes, todosLancamentos, pagamentos, periodoRelInicio, periodoRelFim])
 
   // relatório em PDF (formalização de horas) exige um único projeto selecionado
   const projetoParaPDF = filtroProjeto ? projetos.find(p => p.id === filtroProjeto) : undefined
@@ -277,25 +382,158 @@ export default function Relatorios() {
             {lancamentosFiltrados.length} lançamento{lancamentosFiltrados.length !== 1 ? 's' : ''} no período
           </p>
         </div>
-        <div className="flex-center gap-8">
-          <button
-            className="btn btn-secondary"
-            onClick={() => projetoParaPDF && clienteParaPDF && exportarPDF(lancamentosFiltrados, projetoParaPDF, clienteParaPDF, dataInicio, dataFim, fmtData)}
-            disabled={!projetoParaPDF || !clienteParaPDF || lancamentosFiltrados.length === 0}
-            title={!projetoParaPDF ? 'Selecione um projeto para gerar o PDF de formalização de horas' : undefined}
-          >
-            ↓ Exportar PDF
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={() => exportarCSV(lancamentosFiltrados, sufixoCSV)}
-            disabled={lancamentosFiltrados.length === 0}
-          >
-            ↓ Exportar CSV
-          </button>
-        </div>
+        {visaoRelatorio === 'detalhado' && (
+          <div className="flex-center gap-8">
+            <button
+              className="btn btn-secondary"
+              onClick={() => projetoParaPDF && clienteParaPDF && exportarPDF(lancamentosFiltrados, projetoParaPDF, clienteParaPDF, dataInicio, dataFim, fmtData)}
+              disabled={!projetoParaPDF || !clienteParaPDF || lancamentosFiltrados.length === 0}
+              title={!projetoParaPDF ? 'Selecione um projeto para gerar o PDF de formalização de horas' : undefined}
+            >
+              ↓ Exportar PDF
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => exportarCSV(lancamentosFiltrados, sufixoCSV)}
+              disabled={lancamentosFiltrados.length === 0}
+            >
+              ↓ Exportar CSV
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* Abas de visão */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
+        {([
+          { key: 'detalhado', label: 'Lançamentos detalhados' },
+          { key: 'periodo', label: 'Por período de apuração' },
+        ] as { key: typeof visaoRelatorio; label: string }[]).map(tab => (
+          <button key={tab.key} onClick={() => setVisaoRelatorio(tab.key)} style={{
+            padding: '8px 16px', background: 'transparent', border: 'none',
+            borderBottom: visaoRelatorio === tab.key ? '2px solid var(--accent)' : '2px solid transparent',
+            color: visaoRelatorio === tab.key ? 'var(--accent)' : 'var(--text-muted)',
+            fontSize: 13, fontWeight: visaoRelatorio === tab.key ? 600 : 400,
+            fontFamily: 'var(--font-ui)', cursor: 'pointer', marginBottom: -1, transition: 'all 0.15s',
+          }}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {visaoRelatorio === 'periodo' && (
+        <>
+          <div className="card" style={{ marginBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 16 }}>
+              <div className="form-group">
+                <label className="form-label">Início do período</label>
+                <DatePicker value={periodoRelInicio} onChange={setPeriodoRelInicio} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Fim do período</label>
+                <DatePicker value={periodoRelFim} onChange={setPeriodoRelFim} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Cliente</label>
+                <select className="input" value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)}>
+                  <option value="">Todos os clientes</option>
+                  {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex-center gap-8">
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Atalhos:</span>
+              <button className="btn btn-ghost btn-sm"
+                style={{ fontSize: 12, color: periodoRelInicio === periodoAtual.inicio ? 'var(--accent)' : 'var(--text-muted)', background: periodoRelInicio === periodoAtual.inicio ? 'var(--accent-dim)' : 'transparent' }}
+                onClick={() => { setPeriodoRelInicio(periodoAtual.inicio); setPeriodoRelFim(periodoAtual.fim) }}>
+                Período atual ({fmtData(periodoAtual.inicio)} – {fmtData(periodoAtual.fim)})
+              </button>
+              {(() => {
+                const anterior = periodoApuracao(diaAnterior(periodoAtual.inicio))
+                return (
+                  <button className="btn btn-ghost btn-sm"
+                    style={{ fontSize: 12, color: periodoRelInicio === anterior.inicio ? 'var(--accent)' : 'var(--text-muted)', background: periodoRelInicio === anterior.inicio ? 'var(--accent-dim)' : 'transparent' }}
+                    onClick={() => { setPeriodoRelInicio(anterior.inicio); setPeriodoRelFim(anterior.fim) }}>
+                    Período anterior ({fmtData(anterior.inicio)} – {fmtData(anterior.fim)})
+                  </button>
+                )
+              })()}
+            </div>
+          </div>
+
+          <div className="page-header" style={{ marginBottom: 16 }}>
+            <p className="page-subtitle" style={{ margin: 0 }}>
+              {linhasPeriodoApuracao.length} projeto{linhasPeriodoApuracao.length !== 1 ? 's' : ''} com horas no período selecionado
+            </p>
+            <button
+              className="btn btn-secondary"
+              onClick={() => exportarPDFPeriodo(linhasPeriodoApuracao, periodoRelInicio, periodoRelFim, fmtData)}
+              disabled={linhasPeriodoApuracao.length === 0}
+            >
+              ↓ Exportar PDF
+            </button>
+          </div>
+
+          {linhasPeriodoApuracao.length === 0 ? (
+            <div className="card">
+              <div className="empty-state">
+                <div className="empty-state-icon">◧</div>
+                <div>Nenhum projeto com horas lançadas até este período</div>
+              </div>
+            </div>
+          ) : (
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Projeto</th>
+                      <th className="hide-mobile" style={{ width: 140 }}>Cliente</th>
+                      <th style={{ width: 100 }}>Histórico</th>
+                      <th className="hide-mobile" style={{ width: 100 }}>Já pago</th>
+                      <th style={{ width: 100 }}>No período</th>
+                      <th style={{ width: 120 }}>Saldo a faturar</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {linhasPeriodoApuracao.map(l => (
+                      <tr key={l.projeto.id} style={{ cursor: 'default' }}>
+                        <td style={{ fontWeight: 500 }}>{l.projeto.nome}</td>
+                        <td className="hide-mobile" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l.cliente.nome}</td>
+                        <td className="td-mono">{l.totalHistorico.toFixed(1)}h</td>
+                        <td className="td-mono hide-mobile">{l.totalJaPago.toFixed(1)}h</td>
+                        <td className="td-mono" style={{ color: 'var(--accent)', fontWeight: 600 }}>{l.totalNoPeriodo.toFixed(1)}h</td>
+                        <td className="td-mono" style={{ color: l.saldoAFaturar > 0 ? 'var(--warning)' : 'var(--text-muted)', fontWeight: 600 }}>{l.saldoAFaturar.toFixed(1)}h</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ borderTop: '1px solid var(--border-light)' }}>
+                      <td style={{ padding: '10px 12px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total</td>
+                      <td className="hide-mobile" />
+                      <td className="td-mono" style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700 }}>
+                        {linhasPeriodoApuracao.reduce((a, l) => a + l.totalHistorico, 0).toFixed(1)}h
+                      </td>
+                      <td className="td-mono hide-mobile" style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700 }}>
+                        {linhasPeriodoApuracao.reduce((a, l) => a + l.totalJaPago, 0).toFixed(1)}h
+                      </td>
+                      <td className="td-mono" style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>
+                        {linhasPeriodoApuracao.reduce((a, l) => a + l.totalNoPeriodo, 0).toFixed(1)}h
+                      </td>
+                      <td className="td-mono" style={{ padding: '10px 12px', fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--warning)' }}>
+                        {linhasPeriodoApuracao.reduce((a, l) => a + l.saldoAFaturar, 0).toFixed(1)}h
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {visaoRelatorio === 'detalhado' && (
+      <>
       {/* Filtros */}
       <div className="card" style={{ marginBottom: 24 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 16 }}>
@@ -319,7 +557,7 @@ export default function Relatorios() {
             <select className="input" value={filtroProjeto} onChange={e => setFiltroProjeto(e.target.value)} disabled={projetosFiltrados.length === 0}>
               <option value="">Todos os projetos</option>
               {projetosFiltrados.map(p => (
-                <option key={p.id} value={p.id}>{p.nome}{p.pago ? ' ✓ pago' : ''}</option>
+                <option key={p.id} value={p.id}>{p.nome}</option>
               ))}
             </select>
           </div>
@@ -594,6 +832,8 @@ export default function Relatorios() {
             </div>
           </div>
         </>
+      )}
+      </>
       )}
     </div>
   )

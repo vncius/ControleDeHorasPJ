@@ -8,17 +8,16 @@ import { horaAtual, calcularDecorrido, calcularDecorridoDecimal } from '../utils
 import { useAgoraTick } from '../hooks/useAgoraTick'
 import { useTituloDecorrido } from '../hooks/useTituloDecorrido'
 import { useFormatarData } from '../contexts/PreferenciasContext'
+import { STATUS_PAGAMENTO_COR, STATUS_PAGAMENTO_I18N_KEY } from '../constants/statusProjeto'
 import Button from '../components/Button'
 
-// Mirror de backend/src/utils/faturamento.ts::lancamentoEhFaturavel — fonte
-// única da regra é o backend; esta cópia só decide em qual bucket (fat./pago)
-// somar o tempo ao vivo entre um fetch e outro. O próximo fetch reconcilia.
-function emAndamentoEhFaturavel(l: NonNullable<DashboardData['lancamentoEmAndamento']>): boolean {
-  const p = l.projeto
-  if (p.status === 'Finalizado' || p.status === 'Cancelado') return false
-  if (p.pago && !p.dataPagamento) return false
-  if (!p.dataPagamento) return true
-  return l.data < p.dataPagamento
+// Fonte única da regra é o backend (utils/faturamento.ts); esta conta só
+// decide em qual bucket (faturável/pago) somar o tempo ao vivo entre um
+// fetch e outro — o próximo fetch reconcilia com o valor real do backend.
+function emAndamentoEhFaturavel(l: NonNullable<DashboardData['lancamentoEmAndamento']>, resumo?: ResumoProjeto): boolean {
+  if (l.projeto.status === 'Finalizado' || l.projeto.status === 'Cancelado') return false
+  if (!resumo) return true
+  return resumo.totalHorasCobertas < resumo.totalTrabalhado
 }
 
 // regra única: exibido = finalizados (resumo) + decorrido do lançamento aberto
@@ -42,9 +41,11 @@ function progressClass(p: number) {
 interface Props { toast: ToastFns }
 
 // ── Card de projeto reutilizável ─────────────────────────────────
-function CardProjeto({ r, pago, onClick }: { r: ResumoProjeto; pago?: boolean; onClick: () => void }) {
+function CardProjeto({ r, onClick }: { r: ResumoProjeto; onClick: () => void }) {
   const { t } = useTranslation()
   const { formatarData: fmtData } = useFormatarData()
+  const pago = r.statusPagamento === 'Pago'
+  const corStatusPagamento = STATUS_PAGAMENTO_COR[r.statusPagamento]
   return (
     <div
       className="card"
@@ -68,7 +69,7 @@ function CardProjeto({ r, pago, onClick }: { r: ResumoProjeto; pago?: boolean; o
           </div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{r.cliente.nome}</div>
         </div>
-        {!r.horasAbertas && !pago && (
+        {!r.horasAbertas && r.statusPagamento === 'Não pago' && (
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: r.saldo < 0 ? 'var(--danger)' : 'var(--accent)', fontWeight: 600 }}>
               {r.saldo >= 0 ? '+' : ''}{r.saldo.toFixed(1)}h
@@ -76,8 +77,8 @@ function CardProjeto({ r, pago, onClick }: { r: ResumoProjeto; pago?: boolean; o
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{t('dashboard.saldo')}</div>
           </div>
         )}
-        {pago && (
-          <span className="badge" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>{t('dashboard.badgePago')}</span>
+        {r.statusPagamento !== 'Não pago' && (
+          <span className="badge" style={{ background: corStatusPagamento.bg, color: corStatusPagamento.color }}>{t(STATUS_PAGAMENTO_I18N_KEY[r.statusPagamento])}</span>
         )}
       </div>
       <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginBottom: 8 }}>
@@ -121,11 +122,10 @@ function CardProjeto({ r, pago, onClick }: { r: ResumoProjeto; pago?: boolean; o
 
 // ── Seção de projetos com filtro ─────────────────────────────────
 function SecaoProjetos({
-  titulo, projetos, pago, cor, nav,
+  titulo, projetos, cor, nav,
 }: {
   titulo: string
   projetos: ResumoProjeto[]
-  pago?: boolean
   cor: string
   nav: (path: string) => void
 }) {
@@ -162,7 +162,7 @@ function SecaoProjetos({
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {filtrados.map(r => (
-            <CardProjeto key={r.projeto.id} r={r} pago={pago} onClick={() => nav(`/projetos/${r.projeto.id}`)} />
+            <CardProjeto key={r.projeto.id} r={r} onClick={() => nav(`/projetos/${r.projeto.id}`)} />
           ))}
         </div>
       )}
@@ -241,7 +241,10 @@ export default function Dashboard({ toast }: Props) {
   const deltaDesdeFetch = emAndamento && fetchedAtRef.current
     ? Math.max(0, (Date.now() - fetchedAtRef.current) / 3600000)
     : 0
-  const emAndamentoFat = emAndamento ? emAndamentoEhFaturavel(emAndamento) : false
+  const resumoEmAndamento = emAndamento
+    ? [...data.resumosProjetos, ...data.resumosProjetosPagos].find(r => r.projeto.id === emAndamento.projetoId)
+    : undefined
+  const emAndamentoFat = emAndamento ? emAndamentoEhFaturavel(emAndamento, resumoEmAndamento) : false
   // cards de projeto não têm o aberto embutido em nenhum momento — soma o decorrido inteiro
   const decorridoAoVivo = emAndamento ? calcularDecorridoDecimal(emAndamento.horaInicio, emAndamento.data) : 0
 
@@ -288,7 +291,7 @@ export default function Dashboard({ toast }: Props) {
                 {emAndamento.projeto.nome} · {emAndamento.cliente.nome}
                 &nbsp;· {t('dashboard.iniciadoAs', { hora: emAndamento.horaInicio })}
                 &nbsp;·&nbsp;<span style={{ color: 'var(--accent)' }}>{t('ponto.decorrido', { tempo: calcularDecorrido(emAndamento.horaInicio, emAndamento.data) })}</span>
-                {emAndamento.projeto.pago && (
+                {resumoEmAndamento?.statusPagamento === 'Pago' && (
                   <span style={{ marginLeft: 8, color: 'var(--info)' }}>{t('dashboard.tagPago')}</span>
                 )}
               </div>
@@ -447,7 +450,6 @@ export default function Dashboard({ toast }: Props) {
             <SecaoProjetos
               titulo={t('dashboard.pagosTitulo')}
               projetos={data.resumosProjetosPagos}
-              pago
               cor="var(--info)"
               nav={nav}
             />

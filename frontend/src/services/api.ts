@@ -2,6 +2,7 @@ import type {
   Cliente,
   Projeto,
   AlteracaoEscopo,
+  Pagamento,
   LancamentoHoras,
   ResumoProjeto,
   DashboardData,
@@ -115,6 +116,40 @@ export const escoposApi = {
     }
   ) => put<AlteracaoEscopo>(`/escopos/${id}`, body),
   excluir: (id: string) => del<{ mensagem: string }>(`/escopos/${id}`),
+}
+
+// ----------------------------------------------------------------
+// Pagamentos
+// ----------------------------------------------------------------
+export const pagamentosApi = {
+  listar: (projetoId: string) =>
+    get<Pagamento[]>(`/projetos/${projetoId}/pagamentos`),
+  listarTudo: () => get<Pagamento[]>('/pagamentos'),
+  criar: (
+    projetoId: string,
+    body: {
+      horasCobertas: number
+      valor?: number
+      dataPagamento: string
+      periodoApuracaoInicio: string
+      periodoApuracaoFim: string
+      numeroNF?: string
+      observacoes?: string
+    }
+  ) => post<Pagamento>(`/projetos/${projetoId}/pagamentos`, body),
+  atualizar: (
+    id: string,
+    body: {
+      horasCobertas?: number
+      valor?: number
+      dataPagamento?: string
+      periodoApuracaoInicio?: string
+      periodoApuracaoFim?: string
+      numeroNF?: string
+      observacoes?: string
+    }
+  ) => put<Pagamento>(`/pagamentos/${id}`, body),
+  excluir: (id: string) => del<{ mensagem: string }>(`/pagamentos/${id}`),
 }
 
 // ----------------------------------------------------------------

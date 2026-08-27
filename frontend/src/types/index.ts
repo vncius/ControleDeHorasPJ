@@ -22,13 +22,15 @@ export interface Projeto {
   horasContratadas?: number
   valorHora?: number
   status: StatusProjeto
-  pago: boolean
-  dataPagamento?: string
   dataInicio: string
   dataFim?: string
   dataCriacao: string
   observacoes?: string
 }
+
+// 'Não pago' (nenhuma hora coberta) | 'Parcial' (cobre parte do trabalhado) |
+// 'Pago' (cobre tudo que já foi trabalhado) — ver utils/faturamento.ts
+export type StatusPagamentoProjeto = 'Não pago' | 'Parcial' | 'Pago'
 
 export type StatusEscopo = 'Pendente' | 'Aprovada' | 'Cancelada'
 
@@ -41,6 +43,23 @@ export interface AlteracaoEscopo {
   status: StatusEscopo
   dataInicio?: string
   dataFim?: string
+  dataCriacao: string
+  observacoes?: string
+}
+
+// Um pagamento cobre uma parte (ou o todo) das horas trabalhadas de um
+// projeto — a NF é emitida pelo total de horas do período de apuração
+// (16 a 15), não por projeto/demanda, então um projeto pode ter vários
+// pagamentos parciais ao longo do tempo.
+export interface Pagamento {
+  id: string
+  projetoId: string
+  horasCobertas: number
+  valor?: number
+  dataPagamento: string
+  periodoApuracaoInicio: string
+  periodoApuracaoFim: string
+  numeroNF?: string
   dataCriacao: string
   observacoes?: string
 }
@@ -78,6 +97,8 @@ export interface ResumoProjeto {
   valorTrabalhado?: number
   emAndamento: boolean
   temEscopoPendente: boolean
+  totalHorasCobertas: number
+  statusPagamento: StatusPagamentoProjeto
 }
 
 export interface DashboardData {

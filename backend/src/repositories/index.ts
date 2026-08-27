@@ -5,6 +5,7 @@ import {
   AlteracaoEscopo,
   LancamentoHoras,
   PreferenciasProjeto,
+  Pagamento,
 } from '../types'
 
 // Cada repository é apenas uma instância tipada do Mongo repository.
@@ -19,3 +20,5 @@ export const escoposRepo = new MongoRepository<AlteracaoEscopo>('alteracoesEscop
 export const lancamentosRepo = new MongoRepository<LancamentoHoras>('lancamentosHoras')
 
 export const preferenciasRepo = new MongoRepository<PreferenciasProjeto>('preferenciasProjeto')
+
+export const pagamentosRepo = new MongoRepository<Pagamento>('pagamentos')

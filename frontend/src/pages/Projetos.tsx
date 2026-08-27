@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { projetosApi, clientesApi, lancamentosApi, escoposApi } from '../services/api'
+import { projetosApi, clientesApi, lancamentosApi, escoposApi, pagamentosApi } from '../services/api'
 import type { Projeto, Cliente, StatusProjeto } from '../types'
 import type { ToastFns } from '../App'
-import { STATUS_COR } from '../constants/statusProjeto'
+import { STATUS_COR, STATUS_PAGAMENTO_COR, STATUS_PAGAMENTO_I18N_KEY } from '../constants/statusProjeto'
+import { calcularStatusPagamento } from '../utils/faturamento'
 import { hojeLocal } from '../utils/tempo'
 import { useFormatarData } from '../contexts/PreferenciasContext'
 import DatePicker from '../components/DatePicker'
@@ -53,8 +54,6 @@ interface FormState {
   horasContratadas: string
   valorHora: string
   status: StatusProjeto
-  pago: boolean
-  dataPagamento: string
   dataInicio: string
   dataFim: string
   observacoes: string
@@ -68,8 +67,6 @@ const EMPTY_FORM: FormState = {
   horasContratadas: '',
   valorHora: '',
   status: 'Aguardando início',
-  pago: false,
-  dataPagamento: '',
   dataInicio: hojeLocal(),
   dataFim: '',
   observacoes: '',
@@ -168,37 +165,6 @@ export function ProjetoForm({
             <textarea className="input" placeholder={t('comum.observacoesPlaceholder')} value={form.observacoes}
               onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
           </div>
-
-          {/* Pago */}
-          <div style={{
-            background: form.pago ? 'color-mix(in srgb, var(--info) 6%, transparent)' : 'var(--bg-3)',
-            border: `1px solid ${form.pago ? 'var(--info-bg)' : 'var(--border)'}`,
-            borderRadius: 'var(--radius)', padding: '12px 16px',
-          }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: form.pago ? 12 : 0 }}>
-              <input type="checkbox" checked={form.pago}
-                onChange={e => setForm(f => ({ ...f, pago: e.target.checked, dataPagamento: e.target.checked ? f.dataPagamento : '' }))}
-                style={{ accentColor: 'var(--info)', width: 16, height: 16 }} />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: form.pago ? 'var(--info)' : 'var(--text-primary)' }}>
-                  {t('formProjeto.pagoTitulo')}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                  {t('formProjeto.pagoAjuda')}
-                </div>
-              </div>
-            </label>
-            {form.pago && (
-              <div className="form-group">
-                <label className="form-label">{t('formProjeto.dataPagamentoLabel')}</label>
-                <DatePicker value={form.dataPagamento}
-                  onChange={v => setForm(f => ({ ...f, dataPagamento: v }))} />
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                  {t('formProjeto.dataPagamentoAjuda')}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         <div className="form-actions" style={{ marginTop: 24 }}>
@@ -222,8 +188,6 @@ export function projetoParaForm(p: Projeto): FormState {
     horasContratadas: p.horasContratadas != null ? String(p.horasContratadas) : '',
     valorHora: p.valorHora ? String(p.valorHora) : '',
     status: p.status,
-    pago: p.pago ?? false,
-    dataPagamento: p.dataPagamento ?? '',
     dataInicio: p.dataInicio ?? '',
     dataFim: p.dataFim ?? '',
     observacoes: p.observacoes ?? '',
@@ -239,8 +203,6 @@ export function formParaPayload(form: FormState, paraAtualizar = false) {
     descricao: form.descricao || undefined,
     valorHora: form.valorHora ? parseFloat(form.valorHora) : undefined,
     status: form.status,
-    pago: form.pago,
-    dataPagamento: form.dataPagamento || undefined,
     dataInicio: form.dataInicio,
     dataFim: form.dataFim || undefined,
     observacoes: form.observacoes || undefined,
@@ -259,6 +221,7 @@ function ProjetosList({ toast }: Props) {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [horasPorProjeto, setHorasPorProjeto] = useState<Map<string, number>>(new Map())
   const [extrasPorProjeto, setExtrasPorProjeto] = useState<Map<string, number>>(new Map())
+  const [horasCobertasPorProjeto, setHorasCobertasPorProjeto] = useState<Map<string, number>>(new Map())
   const [loading, setLoading] = useState(true)
   const STATUS_PADRAO: StatusProjeto[] = [
     'Aguardando início',
@@ -281,8 +244,8 @@ function ProjetosList({ toast }: Props) {
 
   async function carregar() {
     try {
-      const [ps, cs, todosLancamentos, todosEscopos] = await Promise.all([
-        projetosApi.listar(), clientesApi.listar(), lancamentosApi.listarTudo(), escoposApi.listarTudo(),
+      const [ps, cs, todosLancamentos, todosEscopos, todosPagamentos] = await Promise.all([
+        projetosApi.listar(), clientesApi.listar(), lancamentosApi.listarTudo(), escoposApi.listarTudo(), pagamentosApi.listarTudo(),
       ])
       setProjetos(ps)
       setClientes(cs)
@@ -296,6 +259,11 @@ function ProjetosList({ toast }: Props) {
         extras.set(e.projetoId, (extras.get(e.projetoId) ?? 0) + e.horasAdicionais)
       })
       setExtrasPorProjeto(extras)
+      const cobertas = new Map<string, number>()
+      todosPagamentos.forEach(p => {
+        cobertas.set(p.projetoId, (cobertas.get(p.projetoId) ?? 0) + p.horasCobertas)
+      })
+      setHorasCobertasPorProjeto(cobertas)
     } catch {
       toast.error(t('projetos.erroCarregar'))
     } finally {
@@ -533,7 +501,7 @@ function ProjetosList({ toast }: Props) {
                   <Th col="horasContratadas" label={t('projetos.colHContratadas')} width={110} />
                   <Th col="horas" label={t('projetos.colHLancadas')} width={100} />
                   <Th col="valorHora" label={t('projetos.colValorHora')} width={90} className="hide-mobile" />
-                  <th className="hide-mobile" style={{ width: 60 }}>{t('comum.pago')}</th>
+                  <th className="hide-mobile" style={{ width: 90 }}>{t('comum.pago')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -567,9 +535,14 @@ function ProjetosList({ toast }: Props) {
                       {p.valorHora ? `R$ ${p.valorHora.toFixed(2).replace('.', ',')}` : '—'}
                     </td>
                     <td className="hide-mobile">
-                      {p.pago
-                        ? <span className="badge" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>{t('projetos.badgePago')}</span>
-                        : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
+                      {(() => {
+                        const statusPagamento = calcularStatusPagamento(
+                          horasCobertasPorProjeto.get(p.id) ?? 0,
+                          horasPorProjeto.get(p.id) ?? 0
+                        )
+                        const { bg, color } = STATUS_PAGAMENTO_COR[statusPagamento]
+                        return <span className="badge" style={{ background: bg, color, fontSize: 10, whiteSpace: 'nowrap' }}>{t(STATUS_PAGAMENTO_I18N_KEY[statusPagamento])}</span>
+                      })()}
                     </td>
                   </tr>
                 ))}

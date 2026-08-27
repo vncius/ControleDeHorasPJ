@@ -36,3 +36,23 @@ export function calcularDecorrido(horaInicio: string, data?: string): string {
 export function calcularDecorridoDecimal(horaInicio: string, data?: string): number {
   return decorridoMs(horaInicio, data) / 3600000
 }
+
+/**
+ * Período de apuração fixo: do dia 16 de um mês ao dia 15 do mês seguinte.
+ * Mirror de backend/src/utils/tempo.ts::periodoApuracao (sem runtime
+ * compartilhado entre front e back) — dia 16 pertence ao período que
+ * começa nele; dia 15 pertence ao período que termina nele.
+ */
+export function periodoApuracao(data: string): { inicio: string; fim: string } {
+  const [ano, mes, dia] = data.split('-').map(Number)
+  if (dia >= 16) {
+    return {
+      inicio: `${ano}-${String(mes).padStart(2, '0')}-16`,
+      fim: dataLocalISO(new Date(ano, mes, 15)),
+    }
+  }
+  return {
+    inicio: dataLocalISO(new Date(ano, mes - 2, 16)),
+    fim: `${ano}-${String(mes).padStart(2, '0')}-15`,
+  }
+}

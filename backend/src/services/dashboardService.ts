@@ -1,7 +1,7 @@
-import { lancamentosRepo, projetosRepo, clientesRepo } from '../repositories'
+import { lancamentosRepo, projetosRepo, clientesRepo, pagamentosRepo } from '../repositories'
 import { DashboardData, Projeto, LancamentoHoras } from '../types'
 import { hoje, dataLocalISO, somarHoras, instanteDe } from '../utils/tempo'
-import { STATUS_ENCERRADO, projetoEhFaturavel, lancamentoEhFaturavel } from '../utils/faturamento'
+import { STATUS_ENCERRADO, projetoTemSaldoAFaturar, marcarLancamentosFaturaveis } from '../utils/faturamento'
 import { projetosService } from './projetosService'
 
 function dataInicioSemana(): string {
@@ -25,11 +25,31 @@ function horasEmAndamento(horaInicio: string, data: string): number {
   return Math.round((diffMs / 3600000) * 100) / 100
 }
 
-// Um lançamento é faturável segundo a regra única de utils/faturamento.ts
-function lancamentoFaturavel(l: LancamentoHoras, projetoMap: Map<string, Projeto>): boolean {
-  const projeto = projetoMap.get(l.projetoId)
-  if (!projeto) return false
-  return lancamentoEhFaturavel(l, projeto)
+// Marca faturável de cada lançamento agrupando por projeto e aplicando a
+// regra única de utils/faturamento.ts (FIFO de horas cobertas por pagamento).
+function construirFaturavelMap(
+  lancamentos: LancamentoHoras[],
+  projetoMap: Map<string, Projeto>,
+  horasCobertasPorProjeto: Map<string, number>
+): Map<string, boolean> {
+  const lancamentosPorProjeto = new Map<string, LancamentoHoras[]>()
+  lancamentos.forEach((l) => {
+    const lista = lancamentosPorProjeto.get(l.projetoId) ?? []
+    lista.push(l)
+    lancamentosPorProjeto.set(l.projetoId, lista)
+  })
+
+  const faturavelMap = new Map<string, boolean>()
+  for (const [projetoId, lista] of lancamentosPorProjeto) {
+    const projeto = projetoMap.get(projetoId)
+    if (!projeto) {
+      lista.forEach((l) => faturavelMap.set(l.id, false))
+      continue
+    }
+    const marcados = marcarLancamentosFaturaveis(lista, projeto, horasCobertasPorProjeto.get(projetoId) ?? 0)
+    marcados.forEach((v, k) => faturavelMap.set(k, v))
+  }
+  return faturavelMap
 }
 
 export const dashboardService = {
@@ -38,10 +58,28 @@ export const dashboardService = {
     const inicioSemana = dataInicioSemana()
     const inicioMes = dataInicioMes()
 
-    const todosLancamentos = await lancamentosRepo.findAllByTenant(tenantId)
-    const todosProjetos = await projetosRepo.findAllByTenant(tenantId)
+    const [todosLancamentos, todosProjetos, todosPagamentos] = await Promise.all([
+      lancamentosRepo.findAllByTenant(tenantId),
+      projetosRepo.findAllByTenant(tenantId),
+      pagamentosRepo.findAllByTenant(tenantId),
+    ])
 
     const projetoMap = new Map(todosProjetos.map(p => [p.id, p]))
+
+    const horasCobertasPorProjeto = new Map<string, number>()
+    todosPagamentos.forEach(p => {
+      horasCobertasPorProjeto.set(p.projetoId, (horasCobertasPorProjeto.get(p.projetoId) ?? 0) + p.horasCobertas)
+    })
+
+    const totalTrabalhadoPorProjeto = new Map<string, number>()
+    todosLancamentos.filter(l => l.horaFim && l.totalDecimal !== undefined).forEach(l => {
+      totalTrabalhadoPorProjeto.set(l.projetoId, (totalTrabalhadoPorProjeto.get(l.projetoId) ?? 0) + (l.totalDecimal ?? 0))
+    })
+
+    const faturavelMap = construirFaturavelMap(todosLancamentos, projetoMap, horasCobertasPorProjeto)
+    function lancamentoFaturavel(l: LancamentoHoras): boolean {
+      return faturavelMap.get(l.id) ?? false
+    }
 
     // Projetos que aparecem nos totais: tudo exceto Finalizado e Cancelado
     const projetosAtivos = todosProjetos.filter(
@@ -52,9 +90,7 @@ export const dashboardService = {
     // lançamento em aberto
     const [emAndamento] = await lancamentosRepo.findBy((l) => l.tenantId === tenantId && !l.horaFim)
     const horasAberto = emAndamento ? horasEmAndamento(emAndamento.horaInicio, emAndamento.data) : 0
-    const abertoFaturavel = emAndamento
-      ? lancamentoFaturavel(emAndamento, projetoMap)
-      : false
+    const abertoFaturavel = emAndamento ? lancamentoFaturavel(emAndamento) : false
 
     // lançamentos finalizados de projetos não encerrados num período
     function filtrarPeriodo(dataMin: string) {
@@ -64,11 +100,11 @@ export const dashboardService = {
     }
 
     function somarFat(lista: LancamentoHoras[]) {
-      return somarHoras(lista.filter(l => lancamentoFaturavel(l, projetoMap)).map(l => l.totalDecimal))
+      return somarHoras(lista.filter(l => lancamentoFaturavel(l)).map(l => l.totalDecimal))
     }
 
     function somarNaoFat(lista: LancamentoHoras[]) {
-      return somarHoras(lista.filter(l => !lancamentoFaturavel(l, projetoMap)).map(l => l.totalDecimal))
+      return somarHoras(lista.filter(l => !lancamentoFaturavel(l)).map(l => l.totalDecimal))
     }
 
     const listaHoje   = filtrarPeriodo(dataHoje)
@@ -92,10 +128,14 @@ export const dashboardService = {
     }
 
     // Separação para os cards de projetos:
-    // faturáveis = não pago + não encerrado
-    // não faturáveis = pago + não encerrado (ainda em andamento mas já recebido)
-    const projFaturaveis  = projetosAtivos.filter(p => projetoEhFaturavel(p))
-    const projNaoFaturaveis = projetosAtivos.filter(p => !projetoEhFaturavel(p))
+    // com saldo a faturar = ainda não totalmente pago + não encerrado
+    // sem saldo a faturar = já totalmente pago + não encerrado (ainda em andamento mas já recebido)
+    const projFaturaveis = projetosAtivos.filter(p =>
+      projetoTemSaldoAFaturar(p, horasCobertasPorProjeto.get(p.id) ?? 0, totalTrabalhadoPorProjeto.get(p.id) ?? 0)
+    )
+    const projNaoFaturaveis = projetosAtivos.filter(p =>
+      !projetoTemSaldoAFaturar(p, horasCobertasPorProjeto.get(p.id) ?? 0, totalTrabalhadoPorProjeto.get(p.id) ?? 0)
+    )
 
     const resumosProjetos       = await Promise.all(projFaturaveis.map(p => projetosService.calcularResumo(tenantId, p.id)))
     const resumosProjetosPagos  = await Promise.all(projNaoFaturaveis.map(p => projetosService.calcularResumo(tenantId, p.id)))

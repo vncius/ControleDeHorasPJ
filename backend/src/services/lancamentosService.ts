@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid'
-import { lancamentosRepo, projetosRepo, preferenciasRepo } from '../repositories'
+import { lancamentosRepo, projetosRepo, preferenciasRepo, pagamentosRepo } from '../repositories'
 import {
   LancamentoHoras,
   CriarLancamentoDTO,
@@ -15,7 +15,12 @@ import {
   isHoraValida,
   isInstanteFuturo,
 } from '../utils/tempo'
-import { lancamentoEhFaturavel } from '../utils/faturamento'
+import { marcarLancamentosFaturaveis } from '../utils/faturamento'
+
+async function somarHorasCobertas(tenantId: string, projetoId: string): Promise<number> {
+  const pagamentos = await pagamentosRepo.findBy((p) => p.tenantId === tenantId && p.projetoId === projetoId)
+  return pagamentos.reduce((acc, p) => acc + p.horasCobertas, 0)
+}
 
 // ----------------------------------------------------------------
 // helpers internos
@@ -51,35 +56,58 @@ export const lancamentosService = {
   async listarPorProjeto(tenantId: string, projetoId: string): Promise<LancamentoHoras[]> {
     const projeto = await projetosRepo.findByIdAndTenant(projetoId, tenantId)
     const lancamentos = await lancamentosRepo.findBy((l) => l.tenantId === tenantId && l.projetoId === projetoId)
+    const faturavelMap = projeto
+      ? marcarLancamentosFaturaveis(lancamentos, projeto, await somarHorasCobertas(tenantId, projetoId))
+      : new Map<string, boolean>()
     return lancamentos
       .sort((a, b) => {
         const dataDiff = b.data.localeCompare(a.data)
         if (dataDiff !== 0) return dataDiff
         return b.horaInicio.localeCompare(a.horaInicio)
       })
-      .map((l) => ({ ...l, faturavel: projeto ? lancamentoEhFaturavel(l, projeto) : true }))
+      .map((l) => ({ ...l, faturavel: faturavelMap.get(l.id) ?? true }))
   },
 
   // Todos os lançamentos do tenant numa única leitura — usado por telas que
   // hoje fariam 1 requisição por projeto (Projetos, Relatórios). Mesmo
-  // enriquecimento de `faturavel` que listarPorProjeto, aplicado com um
-  // Map<projetoId, Projeto> em vez de buscar o projeto um a um.
+  // enriquecimento de `faturavel` que listarPorProjeto, agrupando lançamentos
+  // e pagamentos por projeto em vez de buscar um a um.
   async listarPorTenant(tenantId: string): Promise<LancamentoHoras[]> {
-    const [lancamentos, projetos] = await Promise.all([
+    const [lancamentos, projetos, pagamentos] = await Promise.all([
       lancamentosRepo.findAllByTenant(tenantId),
       projetosRepo.findAllByTenant(tenantId),
+      pagamentosRepo.findAllByTenant(tenantId),
     ])
     const projetoMap = new Map(projetos.map((p) => [p.id, p]))
+    const horasCobertasPorProjeto = new Map<string, number>()
+    pagamentos.forEach((p) => {
+      horasCobertasPorProjeto.set(p.projetoId, (horasCobertasPorProjeto.get(p.projetoId) ?? 0) + p.horasCobertas)
+    })
+    const lancamentosPorProjeto = new Map<string, LancamentoHoras[]>()
+    lancamentos.forEach((l) => {
+      const lista = lancamentosPorProjeto.get(l.projetoId) ?? []
+      lista.push(l)
+      lancamentosPorProjeto.set(l.projetoId, lista)
+    })
+
+    const faturavelMap = new Map<string, boolean>()
+    for (const [projetoId, lista] of lancamentosPorProjeto) {
+      const projeto = projetoMap.get(projetoId)
+      if (!projeto) {
+        lista.forEach((l) => faturavelMap.set(l.id, true))
+        continue
+      }
+      const marcados = marcarLancamentosFaturaveis(lista, projeto, horasCobertasPorProjeto.get(projetoId) ?? 0)
+      marcados.forEach((v, k) => faturavelMap.set(k, v))
+    }
+
     return lancamentos
       .sort((a, b) => {
         const dataDiff = b.data.localeCompare(a.data)
         if (dataDiff !== 0) return dataDiff
         return b.horaInicio.localeCompare(a.horaInicio)
       })
-      .map((l) => {
-        const projeto = projetoMap.get(l.projetoId)
-        return { ...l, faturavel: projeto ? lancamentoEhFaturavel(l, projeto) : true }
-      })
+      .map((l) => ({ ...l, faturavel: faturavelMap.get(l.id) ?? true }))
   },
 
   async buscarPorId(tenantId: string, id: string): Promise<LancamentoHoras> {
