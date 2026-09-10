@@ -214,6 +214,8 @@ export default {
     valorHoraPlaceholder: 'Ex: 150.00',
     dataInicioLabel: 'Data de início *',
     dataFimLabel: 'Data de fim',
+    consideradoPagoCheck: 'Considerar como pago',
+    consideradoPagoHint: 'Trata o projeto como pago independentemente dos pagamentos registrados. Ao marcar e salvar, é criado um pagamento cobrindo o saldo em aberto, com período de apuração do primeiro ao último lançamento do projeto. Desmarcar remove o pagamento gerado — os registrados manualmente continuam.',
   },
   detalhe: {
     carregando: 'Carregando projeto...',
@@ -310,6 +312,8 @@ export default {
     criarBtn: 'Registrar pagamento',
     atualizado: 'Pagamento atualizado!',
     criado: 'Pagamento registrado!',
+    badgeAutomatico: 'automático',
+    consideradoPagoBanner: 'Projeto marcado como considerado pago — as horas não contam mais como faturáveis, independentemente dos pagamentos abaixo.',
   },
   ponto: {
     iniciar: '▶ Iniciar trabalho',

@@ -46,6 +46,7 @@ export const pagamentosService = {
       numeroNF: dto.numeroNF?.trim(),
       dataCriacao: agora(),
       observacoes: dto.observacoes?.trim(),
+      ...(dto.geradoPorRegularizacao && { geradoPorRegularizacao: true }),
     }
     return pagamentosRepo.create(pagamento)
   },

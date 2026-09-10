@@ -26,10 +26,14 @@ export interface Projeto {
   dataFim?: string
   dataCriacao: string
   observacoes?: string
+  // Regularização de projeto histórico: quando true, o projeto é tratado
+  // como pago independentemente dos pagamentos registrados
+  consideradoPago?: boolean
 }
 
 // 'Não pago' (nenhuma hora coberta) | 'Parcial' (cobre parte do trabalhado) |
-// 'Pago' (cobre tudo que já foi trabalhado) — ver utils/faturamento.ts
+// 'Pago' (cobre tudo que já foi trabalhado, ou projeto marcado como
+// consideradoPago) — ver utils/faturamento.ts
 export type StatusPagamentoProjeto = 'Não pago' | 'Parcial' | 'Pago'
 
 export type StatusEscopo = 'Pendente' | 'Aprovada' | 'Cancelada'
@@ -62,6 +66,8 @@ export interface Pagamento {
   numeroNF?: string
   dataCriacao: string
   observacoes?: string
+  // true = criado automaticamente pela regularização (Projeto.consideradoPago)
+  geradoPorRegularizacao?: boolean
 }
 
 export type TipoLancamento = 'Automatico' | 'Manual' | 'Ajuste' | 'Importado'

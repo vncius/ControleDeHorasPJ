@@ -213,6 +213,8 @@ export default {
     valorHoraPlaceholder: 'E.g.: 150.00',
     dataInicioLabel: 'Start date *',
     dataFimLabel: 'End date',
+    consideradoPagoCheck: 'Treat as paid',
+    consideradoPagoHint: 'Treats the project as paid regardless of the recorded payments. When you check this and save, a payment covering the outstanding balance is created, with a billing period running from the first to the last entry of the project. Unchecking it removes the generated payment — manually recorded ones are kept.',
   },
   detalhe: {
     carregando: 'Loading project...',
@@ -309,6 +311,8 @@ export default {
     criarBtn: 'Record payment',
     atualizado: 'Payment updated!',
     criado: 'Payment recorded!',
+    badgeAutomatico: 'automatic',
+    consideradoPagoBanner: 'Project marked as treated as paid — its hours no longer count as billable, regardless of the payments below.',
   },
   ponto: {
     iniciar: '▶ Start working',

@@ -20,6 +20,7 @@ npm run build      # build de produção real (já pegou bugs que o dev server n
 - Nomes de entidades e campos são em **português** (`Cliente`, `Projeto`, `AlteracaoEscopo`/"escopo", `LancamentoHoras`, `pago`, `faturavel`, `horasAbertas`, `dataPagamento`) — não traduza para inglês.
 - Datas de projeto/lançamento: string `YYYY-MM-DD`. Datas de auditoria (`dataCriacao` etc.): ISO 8601 completo. Horas: string `HH:MM`.
 - `horasContratadas` ausente = "horas abertas" (projeto sem limite contratado) — é um estado de negócio válido, não um bug.
+- `Projeto.consideradoPago` = regularização de projeto histórico: o projeto conta como pago independentemente dos pagamentos registrados. Marcar via `PUT /api/projetos/:id` gera um pagamento cobrindo o saldo em aberto, com período de apuração do primeiro ao último lançamento (`gerarPagamentoDeRegularizacao` em `projetosService`); desmarcar remove os pagamentos com `geradoPorRegularizacao: true` (os registrados manualmente ficam intactos).
 - `tenantId` (= e-mail do usuário autenticado) existe em toda entidade persistida. Nunca aceite `tenantId` vindo do corpo da requisição/query string — sempre de `req.usuario.email` (preenchido pelo `requireAuth`).
 
 ## Onde estão as regras de negócio (não duplicar)

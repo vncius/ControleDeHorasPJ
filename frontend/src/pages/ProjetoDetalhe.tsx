@@ -724,6 +724,13 @@ export default function ProjetoDetalhe({ toast }: Props) {
             </button>
           </div>
 
+          {projeto.consideradoPago && (
+            <div style={{ background: 'var(--accent-dim)', border: '1px solid var(--status-ativo-bg)', borderRadius: 'var(--radius)', padding: '10px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--accent)' }}>
+              <span style={{ fontSize: 14 }}>✓</span>
+              <span>{t('pagamento.consideradoPagoBanner')}</span>
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 20 }}>
             <MetricCard label={t('pagamento.cardTrabalhado')} value={`${totalTrabalhado.toFixed(1)}h`} />
             <MetricCard label={t('pagamento.cardCoberto')} value={`${resumo.totalHorasCobertas.toFixed(1)}h`} destaque />
@@ -764,6 +771,11 @@ export default function ProjetoDetalhe({ toast }: Props) {
                         <td className="td-mono hide-mobile">{fmtReais(p.valor)}</td>
                         <td className="hide-mobile" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                           {fmtDataBR(p.periodoApuracaoInicio)} → {fmtDataBR(p.periodoApuracaoFim)}
+                          {p.geradoPorRegularizacao && (
+                            <span className="badge" style={{ background: 'var(--bg-3)', color: 'var(--text-muted)', fontSize: 10, marginLeft: 8 }}>
+                              {t('pagamento.badgeAutomatico')}
+                            </span>
+                          )}
                         </td>
                         <td className="hide-mobile" style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.numeroNF ?? '—'}</td>
                         <td onClick={ev => ev.stopPropagation()}>
@@ -823,6 +835,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
           setForm={atualizarFormProjeto}
           clientes={clientes}
           salvando={salvandoProjeto}
+          mostrarConsideradoPago
           onSalvar={salvarProjeto}
           onFechar={() => setModalEditarProjeto(false)}
           titulo="Editar projeto"

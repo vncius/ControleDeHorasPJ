@@ -9,6 +9,57 @@ import {
 } from '../types'
 import { agora, somarHoras, isDataValida } from '../utils/tempo'
 import { calcularStatusPagamento } from '../utils/faturamento'
+import { pagamentosService } from './pagamentosService'
+
+const OBSERVACAO_REGULARIZACAO =
+  'Pagamento gerado automaticamente ao marcar o projeto como considerado pago.'
+
+/**
+ * Regularização de projeto histórico (Projeto.consideradoPago).
+ *
+ * Ao marcar, gera um pagamento cobrindo o saldo de horas ainda não coberto,
+ * usando como período de apuração a data do primeiro e a do último lançamento
+ * do projeto (as datas reais de pagamento desses projetos históricos não estão
+ * disponíveis); a mesma data final vira a data de pagamento. Sem lançamentos
+ * ou sem saldo em aberto, nada é criado.
+ */
+async function gerarPagamentoDeRegularizacao(tenantId: string, projetoId: string): Promise<void> {
+  const lancamentos = (await lancamentosRepo.findAllByTenant(tenantId)).filter((l) => l.projetoId === projetoId)
+  if (lancamentos.length === 0) return
+
+  const datas = lancamentos.map((l) => l.data).sort()
+  const primeira = datas[0]
+  const ultima = datas[datas.length - 1]
+
+  const totalTrabalhado = somarHoras(lancamentos.filter((l) => l.horaFim).map((l) => l.totalDecimal))
+  const pagamentos = await pagamentosService.listarPorProjeto(tenantId, projetoId)
+  const totalHorasCobertas = pagamentos.reduce((acc, p) => acc + p.horasCobertas, 0)
+
+  const horasCobertas = Math.round((totalTrabalhado - totalHorasCobertas) * 100) / 100
+  if (horasCobertas <= 0) return
+
+  await pagamentosService.criar(tenantId, {
+    projetoId,
+    horasCobertas,
+    dataPagamento: ultima,
+    periodoApuracaoInicio: primeira,
+    periodoApuracaoFim: ultima,
+    observacoes: OBSERVACAO_REGULARIZACAO,
+    geradoPorRegularizacao: true,
+  })
+}
+
+/**
+ * Contrapartida de gerarPagamentoDeRegularizacao: ao desmarcar a opção, os
+ * pagamentos criados por ela somem. Pagamentos registrados manualmente ficam
+ * intactos — só os marcados com `geradoPorRegularizacao` são removidos.
+ */
+async function removerPagamentosDeRegularizacao(tenantId: string, projetoId: string): Promise<void> {
+  const pagamentos = await pagamentosService.listarPorProjeto(tenantId, projetoId)
+  for (const p of pagamentos.filter((p) => p.geradoPorRegularizacao)) {
+    await pagamentosService.excluir(tenantId, p.id)
+  }
+}
 
 export const projetosService = {
   async listar(tenantId: string, clienteId?: string): Promise<Projeto[]> {
@@ -52,6 +103,7 @@ export const projetosService = {
       dataFim: dto.dataFim,
       dataCriacao: agora(),
       observacoes: dto.observacoes?.trim(),
+      consideradoPago: dto.consideradoPago ?? false,
     }
     return projetosRepo.create(projeto)
   },
@@ -68,6 +120,14 @@ export const projetosService = {
     const dataInicio = dto.dataInicio ?? atual.dataInicio
     const dataFim = dto.dataFim !== undefined ? dto.dataFim : atual.dataFim
     if (dataFim && dataFim < dataInicio) throw new Error('Data de fim não pode ser anterior à data de início')
+
+    // Ao MARCAR "considerar como pago", o saldo em aberto vira um pagamento de
+    // regularização. Roda antes do update: se falhar, a flag não fica ligada
+    // sem o pagamento correspondente (e o pagamento sozinho, se o update
+    // falhar depois, já deixa o projeto como pago pela regra normal).
+    if (dto.consideradoPago === true && !atual.consideradoPago) {
+      await gerarPagamentoDeRegularizacao(tenantId, id)
+    }
 
     // horasContratadas: null = remover limite, undefined = não alterar, número = atualizar
     const horasUpdate: Partial<Projeto> = {}
@@ -87,8 +147,18 @@ export const projetosService = {
       ...(dto.dataInicio && { dataInicio: dto.dataInicio }),
       ...(dto.dataFim !== undefined && { dataFim: dto.dataFim || undefined }),
       ...(dto.observacoes !== undefined && { observacoes: dto.observacoes?.trim() }),
+      ...(dto.consideradoPago !== undefined && { consideradoPago: dto.consideradoPago }),
     })
     if (!atualizado) throw new Error('Falha ao atualizar projeto')
+
+    // Ao DESMARCAR, o caminho inverso: os pagamentos gerados pela
+    // regularização são removidos. Aqui a ordem é depois do update — se a
+    // remoção falhar, a flag já está desligada e os pagamentos continuam
+    // registrados (dá para excluir na mão), em vez do contrário.
+    if (dto.consideradoPago === false && atual.consideradoPago) {
+      await removerPagamentosDeRegularizacao(tenantId, id)
+    }
+
     return atualizado
   },
 
@@ -169,7 +239,7 @@ export const projetosService = {
       emAndamento,
       temEscopoPendente,
       totalHorasCobertas,
-      statusPagamento: calcularStatusPagamento(totalHorasCobertas, totalTrabalhado),
+      statusPagamento: calcularStatusPagamento(projeto, totalHorasCobertas, totalTrabalhado),
     }
   },
 }

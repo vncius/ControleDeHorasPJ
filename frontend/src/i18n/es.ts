@@ -213,6 +213,8 @@ export default {
     valorHoraPlaceholder: 'Ej: 150.00',
     dataInicioLabel: 'Fecha de inicio *',
     dataFimLabel: 'Fecha de fin',
+    consideradoPagoCheck: 'Considerar como pagado',
+    consideradoPagoHint: 'Trata el proyecto como pagado independientemente de los pagos registrados. Al marcar y guardar, se crea un pago que cubre el saldo pendiente, con período de facturación desde el primer hasta el último registro del proyecto. Desmarcarlo elimina el pago generado — los registrados manualmente se mantienen.',
   },
   detalhe: {
     carregando: 'Cargando proyecto...',
@@ -309,6 +311,8 @@ export default {
     criarBtn: 'Registrar pago',
     atualizado: '¡Pago actualizado!',
     criado: '¡Pago registrado!',
+    badgeAutomatico: 'automático',
+    consideradoPagoBanner: 'Proyecto marcado como considerado pagado — sus horas ya no cuentan como facturables, independientemente de los pagos siguientes.',
   },
   ponto: {
     iniciar: '▶ Iniciar trabajo',

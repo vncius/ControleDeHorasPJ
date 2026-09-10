@@ -79,6 +79,7 @@ export const projetosApi = {
     valorHora?: number
     status?: StatusProjeto
     observacoes?: string
+    consideradoPago?: boolean
   }) => post<Projeto>('/projetos', body),
   atualizar: (id: string, body: Omit<Partial<Projeto>, 'horasContratadas'> & { horasContratadas?: number | null }) =>
     put<Projeto>(`/projetos/${id}`, body),

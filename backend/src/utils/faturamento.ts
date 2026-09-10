@@ -7,25 +7,32 @@ export const STATUS_ENCERRADO = new Set<StatusProjeto>(['Finalizado', 'Cancelado
  * Status de pagamento do projeto a partir da soma de Pagamento.horasCobertas
  * comparada ao total de horas já trabalhadas (lançadas). Fonte única desta
  * regra — usada pelo resumo de projeto, dashboard e relatórios.
+ *
+ * `consideradoPago` (regularização de projeto histórico) vence a comparação:
+ * o projeto é dado como pago independentemente dos pagamentos registrados.
  */
 export function calcularStatusPagamento(
+  projeto: Pick<Projeto, 'consideradoPago'>,
   totalHorasCobertas: number,
   totalTrabalhado: number
 ): StatusPagamentoProjeto {
+  if (projeto.consideradoPago) return 'Pago'
   if (totalHorasCobertas <= 0) return 'Não pago'
   if (totalHorasCobertas >= totalTrabalhado) return 'Pago'
   return 'Parcial'
 }
 
 /**
- * Um projeto ainda tem saldo a faturar se não está encerrado e as horas
- * cobertas por pagamentos não alcançam o total já trabalhado.
+ * Um projeto ainda tem saldo a faturar se não está encerrado, não foi
+ * marcado como considerado pago e as horas cobertas por pagamentos não
+ * alcançam o total já trabalhado.
  */
 export function projetoTemSaldoAFaturar(
   projeto: Projeto,
   totalHorasCobertas: number,
   totalTrabalhado: number
 ): boolean {
+  if (projeto.consideradoPago) return false
   if (STATUS_ENCERRADO.has(projeto.status)) return false
   return totalHorasCobertas < totalTrabalhado
 }
@@ -44,7 +51,7 @@ export function marcarLancamentosFaturaveis<
 >(lancamentos: T[], projeto: Projeto, totalHorasCobertas: number): Map<string, boolean> {
   const resultado = new Map<string, boolean>()
 
-  if (STATUS_ENCERRADO.has(projeto.status)) {
+  if (projeto.consideradoPago || STATUS_ENCERRADO.has(projeto.status)) {
     lancamentos.forEach((l) => resultado.set(l.id, false))
     return resultado
   }

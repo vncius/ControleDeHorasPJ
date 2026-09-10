@@ -57,6 +57,7 @@ interface FormState {
   dataInicio: string
   dataFim: string
   observacoes: string
+  consideradoPago: boolean
 }
 
 const EMPTY_FORM: FormState = {
@@ -70,11 +71,12 @@ const EMPTY_FORM: FormState = {
   dataInicio: hojeLocal(),
   dataFim: '',
   observacoes: '',
+  consideradoPago: false,
 }
 
 // Componente de form reutilizável — usado em Projetos e ProjetoDetalhe
 export function ProjetoForm({
-  form, setForm, clientes, salvando, onSalvar, onFechar, titulo,
+  form, setForm, clientes, salvando, onSalvar, onFechar, titulo, mostrarConsideradoPago = false,
 }: {
   form: FormState
   setForm: React.Dispatch<React.SetStateAction<FormState>>
@@ -83,6 +85,9 @@ export function ProjetoForm({
   onSalvar: () => void
   onFechar: () => void
   titulo: string
+  // Só faz sentido na edição: num projeto novo não há lançamentos para
+  // regularizar, então a opção fica fora do modal de criação.
+  mostrarConsideradoPago?: boolean
 }) {
   const { t } = useTranslation()
   return (
@@ -165,6 +170,20 @@ export function ProjetoForm({
             <textarea className="input" placeholder={t('comum.observacoesPlaceholder')} value={form.observacoes}
               onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} />
           </div>
+
+          {mostrarConsideradoPago && (
+            <div className="form-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)' }}>
+                <input type="checkbox" checked={form.consideradoPago}
+                  onChange={e => setForm(f => ({ ...f, consideradoPago: e.target.checked }))}
+                  style={{ accentColor: 'var(--accent)', width: 14, height: 14 }} />
+                {t('formProjeto.consideradoPagoCheck')}
+              </label>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
+                {t('formProjeto.consideradoPagoHint')}
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="form-actions" style={{ marginTop: 24 }}>
@@ -191,6 +210,7 @@ export function projetoParaForm(p: Projeto): FormState {
     dataInicio: p.dataInicio ?? '',
     dataFim: p.dataFim ?? '',
     observacoes: p.observacoes ?? '',
+    consideradoPago: p.consideradoPago === true,
   }
 }
 
@@ -206,6 +226,7 @@ export function formParaPayload(form: FormState, paraAtualizar = false) {
     dataInicio: form.dataInicio,
     dataFim: form.dataFim || undefined,
     observacoes: form.observacoes || undefined,
+    consideradoPago: form.consideradoPago,
   }
   if (paraAtualizar) return { ...base, horasContratadas: horas }
   return { ...base, horasContratadas: horas ?? undefined }
@@ -537,6 +558,7 @@ function ProjetosList({ toast }: Props) {
                     <td className="hide-mobile">
                       {(() => {
                         const statusPagamento = calcularStatusPagamento(
+                          p,
                           horasCobertasPorProjeto.get(p.id) ?? 0,
                           horasPorProjeto.get(p.id) ?? 0
                         )

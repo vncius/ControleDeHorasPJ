@@ -32,10 +32,16 @@ export interface Projeto {
   dataFim?: string
   dataCriacao: string
   observacoes?: string
+  // Regularização de projeto histórico: quando true, o projeto é tratado
+  // como pago independentemente dos pagamentos registrados — ver
+  // utils/faturamento.ts. Marcar gera um pagamento de regularização
+  // cobrindo o saldo em aberto (projetosService.atualizar).
+  consideradoPago?: boolean
 }
 
 // 'Não pago' (nenhuma hora coberta) | 'Parcial' (cobre parte do trabalhado) |
-// 'Pago' (cobre tudo que já foi trabalhado) — ver utils/faturamento.ts
+// 'Pago' (cobre tudo que já foi trabalhado, ou projeto marcado como
+// consideradoPago) — ver utils/faturamento.ts
 export type StatusPagamentoProjeto = 'Não pago' | 'Parcial' | 'Pago'
 
 export type StatusEscopo = 'Pendente' | 'Aprovada' | 'Cancelada'
@@ -71,6 +77,9 @@ export interface Pagamento {
   numeroNF?: string
   dataCriacao: string
   observacoes?: string
+  // true = pagamento criado automaticamente pela regularização
+  // (Projeto.consideradoPago). Desmarcar a opção remove só estes.
+  geradoPorRegularizacao?: boolean
 }
 
 export type TipoLancamento = 'Automatico' | 'Manual' | 'Ajuste' | 'Importado'
@@ -140,6 +149,7 @@ export interface CriarProjetoDTO {
   dataInicio: string
   dataFim?: string
   observacoes?: string
+  consideradoPago?: boolean
 }
 
 export interface AtualizarProjetoDTO {
@@ -152,6 +162,7 @@ export interface AtualizarProjetoDTO {
   dataInicio?: string
   dataFim?: string
   observacoes?: string
+  consideradoPago?: boolean
 }
 
 export interface CriarPagamentoDTO {
@@ -163,6 +174,7 @@ export interface CriarPagamentoDTO {
   periodoApuracaoFim: string
   numeroNF?: string
   observacoes?: string
+  geradoPorRegularizacao?: boolean
 }
 
 export interface AtualizarPagamentoDTO {
