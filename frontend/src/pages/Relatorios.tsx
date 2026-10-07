@@ -295,10 +295,16 @@ export default function Relatorios() {
         const totalNoPeriodo = lancamentosProjeto
           .filter(l => l.data >= periodoRelInicio && l.data <= periodoRelFim)
           .reduce((a, l) => a + (l.totalDecimal ?? 0), 0)
+        // pagamentos de períodos de apuração anteriores ao selecionado, mais os
+        // de regularização — estes não representam um período real, e sim todo
+        // o histórico do projeto, então contam independentemente da data.
         const totalJaPago = pagamentos
-          .filter(pg => pg.projetoId === p.id && pg.periodoApuracaoFim < periodoRelInicio)
+          .filter(pg => pg.projetoId === p.id &&
+            (pg.geradoPorRegularizacao || pg.periodoApuracaoFim < periodoRelInicio))
           .reduce((a, pg) => a + pg.horasCobertas, 0)
-        const saldoAFaturar = Math.max(0, totalHistorico - totalJaPago)
+        // projeto considerado pago não tem saldo a faturar, mesmo que horas
+        // novas tenham sido lançadas depois da regularização
+        const saldoAFaturar = p.consideradoPago ? 0 : Math.max(0, totalHistorico - totalJaPago)
         return { projeto: p, cliente, totalHistorico, totalJaPago, totalNoPeriodo, saldoAFaturar }
       })
       .filter((l): l is LinhaPeriodoApuracao => l !== null && l.totalHistorico > 0)
@@ -498,7 +504,14 @@ export default function Relatorios() {
                   <tbody>
                     {linhasPeriodoApuracao.map(l => (
                       <tr key={l.projeto.id} style={{ cursor: 'default' }}>
-                        <td style={{ fontWeight: 500 }}>{l.projeto.nome}</td>
+                        <td style={{ fontWeight: 500 }}>
+                          {l.projeto.nome}
+                          {l.projeto.consideradoPago && (
+                            <span className="badge" style={{ background: 'var(--bg-3)', color: 'var(--text-muted)', fontSize: 10, marginLeft: 8 }}>
+                              considerado pago
+                            </span>
+                          )}
+                        </td>
                         <td className="hide-mobile" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l.cliente.nome}</td>
                         <td className="td-mono">{l.totalHistorico.toFixed(1)}h</td>
                         <td className="td-mono hide-mobile">{l.totalJaPago.toFixed(1)}h</td>
