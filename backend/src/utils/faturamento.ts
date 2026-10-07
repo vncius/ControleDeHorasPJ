@@ -23,18 +23,17 @@ export function calcularStatusPagamento(
 }
 
 /**
- * Um projeto ainda tem saldo a faturar se não está encerrado, não foi
- * marcado como considerado pago e as horas cobertas por pagamentos não
- * alcançam o total já trabalhado.
+ * Um projeto ainda tem saldo a faturar se não está encerrado e seu status de
+ * pagamento não é 'Pago'. Um projeto recém-cadastrado (sem lançamentos nem
+ * pagamentos) é 'Não pago', logo ainda tem saldo — não é "pago em andamento".
  */
 export function projetoTemSaldoAFaturar(
   projeto: Projeto,
   totalHorasCobertas: number,
   totalTrabalhado: number
 ): boolean {
-  if (projeto.consideradoPago) return false
   if (STATUS_ENCERRADO.has(projeto.status)) return false
-  return totalHorasCobertas < totalTrabalhado
+  return calcularStatusPagamento(projeto, totalHorasCobertas, totalTrabalhado) !== 'Pago'
 }
 
 /**

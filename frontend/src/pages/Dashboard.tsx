@@ -17,7 +17,7 @@ import Button from '../components/Button'
 function emAndamentoEhFaturavel(l: NonNullable<DashboardData['lancamentoEmAndamento']>, resumo?: ResumoProjeto): boolean {
   if (l.projeto.status === 'Finalizado' || l.projeto.status === 'Cancelado') return false
   if (!resumo) return true
-  return resumo.totalHorasCobertas < resumo.totalTrabalhado
+  return resumo.statusPagamento !== 'Pago'
 }
 
 // regra única: exibido = finalizados (resumo) + decorrido do lançamento aberto

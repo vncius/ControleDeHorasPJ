@@ -505,6 +505,15 @@ export default function ProjetoDetalhe({ toast }: Props) {
     trabalhadasPorEscopo.set(lancamentoAberto.escopoId, (trabalhadasPorEscopo.get(lancamentoAberto.escopoId) ?? 0) + decorridoAoVivo)
   }
 
+  // Saldo a faturar = horas fechadas com o cliente (contratadas + extras de
+  // escopo aprovadas) menos o que já foi pago — independe do que foi lançado.
+  // Projeto de horas abertas não tem total fechado; nele a base é o trabalhado.
+  // Projeto considerado pago não tem saldo.
+  const baseFaturamento = resumo.horasAbertas ? totalTrabalhado : resumo.totalDisponivel
+  const saldoAFaturar = projeto.consideradoPago
+    ? 0
+    : Math.max(0, Math.round((baseFaturamento - resumo.totalHorasCobertas) * 100) / 100)
+
   const pct = Math.min(percentualConsumido, 100)
 
   const statusCor = STATUS_COR[projeto.status] ?? { bg: 'var(--bg-3)', color: 'var(--text-muted)' }
@@ -732,12 +741,20 @@ export default function ProjetoDetalhe({ toast }: Props) {
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 20 }}>
-            <MetricCard label={t('pagamento.cardTrabalhado')} value={`${totalTrabalhado.toFixed(1)}h`} />
-            <MetricCard label={t('pagamento.cardCoberto')} value={`${resumo.totalHorasCobertas.toFixed(1)}h`} destaque />
+            <MetricCard
+              label={t('pagamento.cardPago')}
+              value={`${resumo.totalHorasCobertas.toFixed(1)}h`}
+              sub={projeto.valorHora != null
+                ? fmtReais(resumo.totalHorasCobertas * projeto.valorHora)
+                : t('pagamento.cardPagoSub')}
+              destaque
+            />
             <MetricCard
               label={t('pagamento.cardSaldo')}
-              value={`${Math.max(0, totalTrabalhado - resumo.totalHorasCobertas).toFixed(1)}h`}
-              sub={t('pagamento.cardSaldoSub')}
+              value={`${saldoAFaturar.toFixed(1)}h`}
+              sub={projeto.valorHora != null
+                ? fmtReais(saldoAFaturar * projeto.valorHora)
+                : resumo.horasAbertas ? t('pagamento.cardSaldoSubAberto') : t('pagamento.cardSaldoSub')}
             />
           </div>
 

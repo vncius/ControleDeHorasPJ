@@ -10,6 +10,7 @@ import { hojeLocal } from '../utils/tempo'
 import { useFormatarData } from '../contexts/PreferenciasContext'
 import DatePicker from '../components/DatePicker'
 import InputMoeda from '../components/InputMoeda'
+import InputDecimal from '../components/InputDecimal'
 import ProjetoDetalhe from './ProjetoDetalhe'
 import Button from '../components/Button'
 
@@ -133,11 +134,8 @@ export function ProjetoForm({
                 {t('formProjeto.horasContratadas')}
                 {form.horasAbertas && <span style={{ color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6 }}>{t('formProjeto.emAberto')}</span>}
               </label>
-              <input className="input input-mono" type="number" placeholder={t('formProjeto.horasPlaceholder')}
-                value={form.horasContratadas}
-                onChange={e => setForm(f => ({ ...f, horasContratadas: e.target.value }))}
-                min="0" step="0.5" disabled={form.horasAbertas}
-                style={{ opacity: form.horasAbertas ? 0.4 : 1 }} />
+              <InputDecimal value={form.horasContratadas} disabled={form.horasAbertas}
+                onChange={v => setForm(f => ({ ...f, horasContratadas: v }))} />
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)' }}>
                 <input type="checkbox" checked={form.horasAbertas}
                   onChange={e => setForm(f => ({ ...f, horasAbertas: e.target.checked, horasContratadas: e.target.checked ? '' : f.horasContratadas }))}
