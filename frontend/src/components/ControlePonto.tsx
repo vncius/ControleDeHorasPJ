@@ -75,24 +75,23 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
         return
       }
 
-      // sem conflito — se há descrição anterior, pergunta se reutiliza ou escreve uma nova
-      const { descricao } = await lancamentosApi.ultimaDescricao(projetoId)
-      if (descricao) {
-        setDescricaoAnteriorSugerida(descricao)
-        setEscrevendoNovaDescricao(false)
-        setNovaDescricaoIniciar('')
-        setModalDescricao(true)
-        return
-      }
-
-      await lancamentosApi.iniciar(projetoId)
-      toast.success(t('ponto.iniciado'))
-      onAtualizar()
+      // sem conflito — a descrição é obrigatória para iniciar
+      await solicitarDescricao()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('ponto.erroIniciar'))
     } finally {
       setCarregando(false)
     }
+  }
+
+  // Abre o modal de descrição: com descrição anterior, oferece reutilizá-la ou escrever uma nova;
+  // sem anterior (primeiro lançamento do projeto), vai direto para o campo de texto.
+  async function solicitarDescricao() {
+    const { descricao } = await lancamentosApi.ultimaDescricao(projetoId)
+    setDescricaoAnteriorSugerida(descricao ?? '')
+    setEscrevendoNovaDescricao(!descricao)
+    setNovaDescricaoIniciar('')
+    setModalDescricao(true)
   }
 
   function fecharModalDescricao() {
@@ -103,9 +102,10 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
 
   async function iniciarComDescricao(descricao: string) {
     if (carregando) return
+    if (!descricao.trim()) { toast.error(t('comum.descricaoObrigatoria')); return }
     setCarregando(true)
     try {
-      await lancamentosApi.iniciar(projetoId, descricao || undefined)
+      await lancamentosApi.iniciar(projetoId, descricao.trim())
       toast.success(t('ponto.iniciado'))
       fecharModalDescricao()
       onAtualizar()
@@ -120,23 +120,21 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
     if (carregando) return
     if (!lancamentoParaFinalizar) return
     if (!horaFim) { toast.error(t('dashboard.horaFimObrigatoria')); return }
+    if (!descricaoFinal.trim()) { toast.error(t('comum.descricaoObrigatoria')); return }
     setCarregando(true)
     try {
       await lancamentosApi.finalizar(lancamentoParaFinalizar.id, {
         horaFim,
-        descricao: descricaoFinal || undefined,
+        descricao: descricaoFinal.trim(),
         escopoId: escopoIdFinal || null,
       })
+      toast.success(t('dashboard.trabalhoFinalizado'))
 
-      if (iniciarAposFechar) {
-        await lancamentosApi.iniciar(projetoId)
-        toast.success(t('ponto.trocaConcluida'))
-      } else {
-        toast.success(t('dashboard.trabalhoFinalizado'))
-      }
-
+      const trocando = iniciarAposFechar
       fecharModal()
       onAtualizar()
+      // troca de projeto: o novo lançamento também precisa de descrição
+      if (trocando) await solicitarDescricao()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('dashboard.erroFinalizar'))
     } finally {
@@ -222,7 +220,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
             </div>
           )}
           <div className="form-group">
-            <label className="form-label">{t('comum.descricao')}</label>
+            <label className="form-label">{t('comum.descricao')} *</label>
             <textarea className="input" rows={3}
               placeholder={t('dashboard.oQueFoiFeito')}
               value={descricaoFinal}
@@ -275,15 +273,17 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
         ) : (
           <>
             <div className="form-group" style={{ marginBottom: 20 }}>
-              <label className="form-label">{t('comum.descricao')}</label>
+              <label className="form-label">{t('comum.descricao')} *</label>
               <textarea className="input" rows={3} autoFocus
                 placeholder={t('dashboard.oQueFoiFeito')}
                 value={novaDescricaoIniciar}
                 onChange={e => setNovaDescricaoIniciar(e.target.value)} />
             </div>
             <div className="form-actions">
-              <button className="btn btn-secondary" onClick={() => setEscrevendoNovaDescricao(false)} disabled={carregando}>
-                {t('comum.voltar')}
+              <button className="btn btn-secondary"
+                onClick={() => descricaoAnteriorSugerida ? setEscrevendoNovaDescricao(false) : fecharModalDescricao()}
+                disabled={carregando}>
+                {descricaoAnteriorSugerida ? t('comum.voltar') : t('comum.cancelar')}
               </button>
               <Button className="btn btn-primary"
                 onClick={() => iniciarComDescricao(novaDescricaoIniciar)} loading={carregando}>

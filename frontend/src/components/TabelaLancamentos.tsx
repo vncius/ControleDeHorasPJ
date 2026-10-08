@@ -78,6 +78,7 @@ function ModalLancamento({ projetoId, editando, escopos, toast, onSalvar, onFech
   async function salvar() {
     if (salvando) return
     if (!form.horaInicio) { toast.error(t('lanc.horaInicioObrigatoria')); return }
+    if (!form.descricao.trim()) { toast.error(t('comum.descricaoObrigatoria')); return }
     setSalvando(true)
     try {
       if (editando) {
@@ -200,7 +201,7 @@ function ModalLancamento({ projetoId, editando, escopos, toast, onSalvar, onFech
             </div>
           )}
           <div className="form-group">
-            <label className="form-label">{t('comum.descricao')}</label>
+            <label className="form-label">{t('comum.descricao')} *</label>
             <textarea className="input" rows={3} placeholder={t('lanc.oQueFoiFeito')}
               value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} />
           </div>

@@ -17,6 +17,7 @@ export default {
     nenhum: 'None',
     total: 'Total',
     semDescricao: 'no description',
+    descricaoObrigatoria: 'Enter a description of what was done',
     emAndamento: 'in progress',
     erroSalvar: 'Error while saving',
     erroExcluir: 'Error while deleting',

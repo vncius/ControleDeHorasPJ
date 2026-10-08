@@ -218,11 +218,12 @@ export default function Dashboard({ toast }: Props) {
     if (finalizando) return
     if (!data?.lancamentoEmAndamento) return
     if (!horaFim) { toast.error(t('dashboard.horaFimObrigatoria')); return }
+    if (!descricaoFinal.trim()) { toast.error(t('comum.descricaoObrigatoria')); return }
     setFinalizando(true)
     try {
       await lancamentosApi.finalizar(data.lancamentoEmAndamento.id, {
         horaFim,
-        descricao: descricaoFinal || undefined,
+        descricao: descricaoFinal.trim(),
       })
       toast.success(t('dashboard.trabalhoFinalizado'))
       setModalFinalizar(false)
@@ -332,7 +333,7 @@ export default function Dashboard({ toast }: Props) {
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">{t('comum.descricao')}</label>
+                <label className="form-label">{t('comum.descricao')} *</label>
                 <textarea className="input" rows={3}
                   placeholder={t('dashboard.oQueFoiFeito')}
                   value={descricaoFinal}

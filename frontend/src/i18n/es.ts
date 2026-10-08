@@ -17,6 +17,7 @@ export default {
     nenhum: 'Ninguno',
     total: 'Total',
     semDescricao: 'sin descripción',
+    descricaoObrigatoria: 'Informa la descripción de lo que se hizo',
     emAndamento: 'en curso',
     erroSalvar: 'Error al guardar',
     erroExcluir: 'Error al eliminar',

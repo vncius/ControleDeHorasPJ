@@ -18,6 +18,7 @@ export default {
     nenhum: 'Nenhum',
     total: 'Total',
     semDescricao: 'sem descrição',
+    descricaoObrigatoria: 'Informe a descrição do que foi feito',
     emAndamento: 'em andamento',
     erroSalvar: 'Erro ao salvar',
     erroExcluir: 'Erro ao excluir',

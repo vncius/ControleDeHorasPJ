@@ -17,6 +17,8 @@ import {
 } from '../utils/tempo'
 import { marcarLancamentosFaturaveis } from '../utils/faturamento'
 
+const DESCRICAO_OBRIGATORIA = 'Descrição obrigatória: informe o que foi feito'
+
 async function somarHorasCobertas(tenantId: string, projetoId: string): Promise<number> {
   const pagamentos = await pagamentosRepo.findBy((p) => p.tenantId === tenantId && p.projetoId === projetoId)
   return pagamentos.reduce((acc, p) => acc + p.horasCobertas, 0)
@@ -138,13 +140,16 @@ export const lancamentosService = {
     }
 
     const ultimaDesc = await this.obterUltimaDescricao(tenantId, projetoId)
+    const descricaoFinal = descricao?.trim() || ultimaDesc?.trim()
+    if (!descricaoFinal) throw new Error(DESCRICAO_OBRIGATORIA)
+
     const lancamento: LancamentoHoras = {
       id: uuid(),
       tenantId,
       projetoId,
       data: hoje(),
       horaInicio: horaAtual(),
-      descricao: descricao ?? ultimaDesc ?? '',
+      descricao: descricaoFinal,
       tipo: 'Automatico',
       dataCriacao: agora(),
       dataAtualizacao: agora(),
@@ -160,7 +165,8 @@ export const lancamentosService = {
     const horaFim = dto.horaFim ?? horaAtual()
     const calculo = calcularDiferenca(lancamento.horaInicio, horaFim)
 
-    const descricao = dto.descricao ?? lancamento.descricao
+    const descricao = (dto.descricao ?? lancamento.descricao)?.trim()
+    if (!descricao) throw new Error(DESCRICAO_OBRIGATORIA)
 
     const atualizado = await lancamentosRepo.updateForTenant(id, tenantId, {
       horaFim,
@@ -181,6 +187,7 @@ export const lancamentosService = {
     if (!(await projetosRepo.existsForTenant(dto.projetoId, tenantId))) throw new Error('Projeto não encontrado')
     if (!isDataValida(dto.data)) throw new Error('Data inválida (esperado YYYY-MM-DD)')
     if (!isHoraValida(dto.horaInicio)) throw new Error('Hora início inválida (esperado HH:MM)')
+    if (!dto.descricao?.trim()) throw new Error(DESCRICAO_OBRIGATORIA)
     if (!dto.horaFim && isInstanteFuturo(dto.data, dto.horaInicio)) {
       throw new Error(
         'Início no futuro: um lançamento em andamento não pode começar depois de agora. Se corrigiu a hora para antes da meia-noite, ajuste também a data.'
@@ -223,6 +230,8 @@ export const lancamentosService = {
     const horaInicio = dto.horaInicio ?? lancamento.horaInicio
     const horaFim = dto.horaFim !== undefined ? dto.horaFim : lancamento.horaFim
     const data = dto.data ?? lancamento.data
+
+    if (dto.descricao !== undefined && !dto.descricao.trim()) throw new Error(DESCRICAO_OBRIGATORIA)
 
     if (!horaFim && isInstanteFuturo(data, horaInicio)) {
       throw new Error(
