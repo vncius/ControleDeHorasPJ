@@ -275,7 +275,7 @@ function ProjetosList({ toast }: Props) {
       setHorasPorProjeto(mapa)
       const extras = new Map<string, number>()
       todosEscopos.filter(e => e.status === 'Aprovada').forEach(e => {
-        extras.set(e.projetoId, (extras.get(e.projetoId) ?? 0) + e.horasAdicionais)
+        extras.set(e.projetoId, (extras.get(e.projetoId) ?? 0) + (e.horasAdicionais ?? 0))
       })
       setExtrasPorProjeto(extras)
       const cobertas = new Map<string, number>()

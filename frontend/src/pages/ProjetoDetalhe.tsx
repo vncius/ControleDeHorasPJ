@@ -81,7 +81,7 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
   const [form, setForm] = useState({
     titulo: editando?.titulo ?? '',
     descricaoDetalhada: editando?.descricaoDetalhada ?? '',
-    horasAdicionais: editando ? String(editando.horasAdicionais) : '',
+    horasAdicionais: editando?.horasAdicionais !== undefined ? String(editando.horasAdicionais) : '',
     status: (editando?.status ?? 'Pendente') as StatusEscopo,
     dataInicio: editando?.dataInicio ?? '',
     dataFim: editando?.dataFim ?? '',
@@ -92,8 +92,10 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
   async function salvar() {
     if (salvando) return
     if (!form.titulo.trim()) { toast.error(t('escopo.tituloObrigatorio')); return }
-    const horas = parseFloat(form.horasAdicionais)
-    if (!horas || horas <= 0) { toast.error(t('escopo.horasInvalidas')); return }
+    // vazio = horas livres (levantamento, estimativa etc.); preenchido precisa ser > 0
+    const horasTexto = form.horasAdicionais.trim()
+    const horas = horasTexto === '' ? undefined : parseFloat(horasTexto)
+    if (horas !== undefined && (!horas || horas <= 0)) { toast.error(t('escopo.horasInvalidas')); return }
     if (form.dataInicio && form.dataFim && form.dataFim < form.dataInicio) {
       toast.error(t('escopo.dataFimAnterior')); return
     }
@@ -102,7 +104,7 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
       const payload = {
         titulo: form.titulo,
         descricaoDetalhada: form.descricaoDetalhada || undefined,
-        horasAdicionais: horas,
+        horasAdicionais: horas ?? null,   // null limpa as horas ao editar; no criar o backend trata como livre
         status: form.status,
         dataInicio: form.dataInicio || undefined,
         dataFim: form.dataFim || undefined,
@@ -143,9 +145,10 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">{t('escopo.horasAdicionais')}</label>
+              <label className="form-label">{t('escopo.horasAdicionais')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('comum.opcional')}</span></label>
               <input className="input input-mono" type="number" placeholder={t('escopo.horasPlaceholder')} min="0" step="0.5"
                 value={form.horasAdicionais} onChange={e => setForm(f => ({ ...f, horasAdicionais: e.target.value }))} />
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{t('escopo.horasLivresDica')}</div>
             </div>
             <div className="form-group">
               <label className="form-label">{t('comum.status')}</label>
@@ -668,7 +671,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
                   <tbody>
                     {escopos.map(e => {
                       const trabalhadas = trabalhadasPorEscopo.get(e.id) ?? 0
-                      const pctEscopo = e.horasAdicionais > 0 ? Math.min((trabalhadas / e.horasAdicionais) * 100, 100) : 0
+                      const pctEscopo = e.horasAdicionais ? Math.min((trabalhadas / e.horasAdicionais) * 100, 100) : 0
                       return (
                       <tr key={e.id} onClick={() => { setEscopoEditando(e); setModalEscopo(true) }}>
                         <td style={{ fontWeight: 500 }}>
@@ -678,10 +681,14 @@ export default function ProjetoDetalhe({ toast }: Props) {
                         <td className="td-mono hide-mobile">{fmtDataBR(e.dataInicio)}</td>
                         <td className="td-mono hide-mobile">{fmtDataBR(e.dataFim)}</td>
                         <td className="td-mono" style={{ color: e.status === 'Aprovada' ? 'var(--accent)' : 'var(--text-muted)', fontWeight: e.status === 'Aprovada' ? 600 : 400 }}>
-                          +{e.horasAdicionais.toFixed(1)}h
+                          {e.horasAdicionais !== undefined ? `+${e.horasAdicionais.toFixed(1)}h` : t('escopo.horasLivres')}
                         </td>
                         <td className="hide-mobile">
-                          {e.status === 'Aprovada' ? (
+                          {e.status === 'Aprovada' && e.horasAdicionais === undefined ? (
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                              {trabalhadas.toFixed(1)}h
+                            </div>
+                          ) : e.status === 'Aprovada' && e.horasAdicionais !== undefined ? (
                             <div>
                               <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginBottom: 3 }}>
                                 {trabalhadas.toFixed(1)}h / {e.horasAdicionais.toFixed(1)}h

@@ -98,7 +98,7 @@ export const escoposApi = {
     body: {
       titulo: string
       descricaoDetalhada?: string
-      horasAdicionais: number
+      horasAdicionais?: number | null   // null/ausente = horas livres
       status?: StatusEscopo
       dataInicio?: string
       dataFim?: string
@@ -109,7 +109,7 @@ export const escoposApi = {
     id: string,
     body: {
       titulo?: string
-      horasAdicionais?: number
+      horasAdicionais?: number | null   // null = tornar horas livres
       status?: StatusEscopo
       dataInicio?: string
       dataFim?: string

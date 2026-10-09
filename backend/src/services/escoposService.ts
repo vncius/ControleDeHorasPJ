@@ -26,7 +26,10 @@ export const escoposService = {
   async criar(tenantId: string, dto: CriarEscopoDTO): Promise<AlteracaoEscopo> {
     if (!dto.titulo?.trim()) throw new Error('Título é obrigatório')
     if (!(await projetosRepo.existsForTenant(dto.projetoId, tenantId))) throw new Error('Projeto não encontrado')
-    if (dto.horasAdicionais <= 0) throw new Error('Horas adicionais devem ser maiores que zero')
+    // horasAdicionais ausente = escopo de horas livres (levantamento, estimativa etc.)
+    const horasAdicionais = dto.horasAdicionais ?? undefined
+    if (horasAdicionais !== undefined && horasAdicionais <= 0)
+      throw new Error('Horas adicionais devem ser maiores que zero')
     if (dto.dataInicio && dto.dataFim && dto.dataFim < dto.dataInicio)
       throw new Error('Data fim não pode ser anterior à data início do escopo')
 
@@ -36,7 +39,7 @@ export const escoposService = {
       projetoId: dto.projetoId,
       titulo: dto.titulo.trim(),
       descricaoDetalhada: dto.descricaoDetalhada?.trim(),
-      horasAdicionais: dto.horasAdicionais,
+      horasAdicionais,
       status: dto.status ?? 'Pendente',
       dataInicio: dto.dataInicio,
       dataFim: dto.dataFim,
@@ -50,11 +53,14 @@ export const escoposService = {
     await this.buscarPorId(tenantId, id)
     if (dto.dataInicio && dto.dataFim && dto.dataFim < dto.dataInicio)
       throw new Error('Data fim não pode ser anterior à data início do escopo')
+    if (typeof dto.horasAdicionais === 'number' && dto.horasAdicionais <= 0)
+      throw new Error('Horas adicionais devem ser maiores que zero')
 
     const atualizado = await escoposRepo.updateForTenant(id, tenantId, {
       ...(dto.titulo && { titulo: dto.titulo.trim() }),
       ...(dto.descricaoDetalhada !== undefined && { descricaoDetalhada: dto.descricaoDetalhada?.trim() }),
-      ...(dto.horasAdicionais !== undefined && { horasAdicionais: dto.horasAdicionais }),
+      // null = remover horas (escopo livre); o repository faz $unset quando o valor é undefined
+      ...(dto.horasAdicionais !== undefined && { horasAdicionais: dto.horasAdicionais ?? undefined }),
       ...(dto.status && { status: dto.status }),
       ...(dto.dataInicio !== undefined && { dataInicio: dto.dataInicio }),
       ...(dto.dataFim !== undefined && { dataFim: dto.dataFim }),

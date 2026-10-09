@@ -191,7 +191,7 @@ export const projetosService = {
     const escopos = await escoposRepo.findBy((e) => e.tenantId === tenantId && e.projetoId === projetoId)
     const horasExtrasAprovadas = escopos
       .filter((e) => e.status === 'Aprovada')
-      .reduce((acc, e) => acc + e.horasAdicionais, 0)
+      .reduce((acc, e) => acc + (e.horasAdicionais ?? 0), 0)
     const temEscopoPendente = escopos.some((e) => e.status === 'Pendente')
     const horasContratadas = projeto.horasContratadas ?? 0
     const totalDisponivel = horasAbertas ? 0 : horasContratadas + horasExtrasAprovadas

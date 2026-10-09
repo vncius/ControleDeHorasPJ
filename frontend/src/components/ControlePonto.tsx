@@ -214,7 +214,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
               <select className="input" value={escopoIdFinal} onChange={e => setEscopoIdFinal(e.target.value)}>
                 <option value="">{t('lanc.escopoPrincipal')}</option>
                 {escoposAprovados.map(e => (
-                  <option key={e.id} value={e.id}>{e.titulo} (+{e.horasAdicionais.toFixed(1)}h)</option>
+                  <option key={e.id} value={e.id}>{e.titulo} ({e.horasAdicionais !== undefined ? `+${e.horasAdicionais.toFixed(1)}h` : t('escopo.horasLivres')})</option>
                 ))}
               </select>
             </div>

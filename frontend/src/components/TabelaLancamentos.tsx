@@ -195,7 +195,7 @@ function ModalLancamento({ projetoId, editando, escopos, toast, onSalvar, onFech
                 onChange={e => setForm(f => ({ ...f, escopoId: e.target.value }))}>
                 <option value="">{t('lanc.escopoPrincipal')}</option>
                 {escopos.filter(e => e.status === 'Aprovada').map(e => (
-                  <option key={e.id} value={e.id}>{e.titulo} (+{e.horasAdicionais.toFixed(1)}h)</option>
+                  <option key={e.id} value={e.id}>{e.titulo} ({e.horasAdicionais !== undefined ? `+${e.horasAdicionais.toFixed(1)}h` : t('escopo.horasLivres')})</option>
                 ))}
               </select>
             </div>

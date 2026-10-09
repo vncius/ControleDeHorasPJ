@@ -52,7 +52,7 @@ export interface AlteracaoEscopo {
   projetoId: string
   titulo: string
   descricaoDetalhada?: string
-  horasAdicionais: number
+  horasAdicionais?: number      // undefined = horas livres (escopo sem horas definidas)
   status: StatusEscopo
   // controle de período próprio
   dataInicio?: string           // YYYY-MM-DD início do escopo
@@ -191,7 +191,7 @@ export interface CriarEscopoDTO {
   projetoId: string
   titulo: string
   descricaoDetalhada?: string
-  horasAdicionais: number
+  horasAdicionais?: number | null   // null/ausente = horas livres
   status?: StatusEscopo
   dataInicio?: string
   dataFim?: string
@@ -201,7 +201,7 @@ export interface CriarEscopoDTO {
 export interface AtualizarEscopoDTO {
   titulo?: string
   descricaoDetalhada?: string
-  horasAdicionais?: number
+  horasAdicionais?: number | null   // null = tornar horas livres, undefined = não alterar
   status?: StatusEscopo
   dataInicio?: string
   dataFim?: string

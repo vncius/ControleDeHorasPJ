@@ -43,7 +43,7 @@ export interface AlteracaoEscopo {
   projetoId: string
   titulo: string
   descricaoDetalhada?: string
-  horasAdicionais: number
+  horasAdicionais?: number   // undefined = horas livres (escopo sem horas definidas)
   status: StatusEscopo
   dataInicio?: string
   dataFim?: string
