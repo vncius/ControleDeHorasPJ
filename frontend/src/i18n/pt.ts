@@ -270,6 +270,7 @@ export default {
     descricaoPlaceholder: 'Detalhe o escopo...',
     horasAdicionais: 'Horas adicionais',
     horasPlaceholder: 'Ex: 20',
+    statusDica: 'O escopo precisa estar Aprovado para aparecer na seleção de lançamentos',
     horasLivres: 'Livre',
     horasLivresDica: 'Deixe em branco para escopo com horas livres (levantamento, estimativa etc.)',
     criarBtn: 'Criar escopo',

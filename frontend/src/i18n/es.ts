@@ -269,6 +269,7 @@ export default {
     descricaoPlaceholder: 'Detalla el alcance...',
     horasAdicionais: 'Horas adicionales',
     horasPlaceholder: 'Ej: 20',
+    statusDica: 'El alcance debe estar Aprobado para aparecer en la selección de registros',
     horasLivres: 'Libre',
     horasLivresDica: 'Déjalo en blanco para un alcance con horas libres (relevamiento, estimación, etc.)',
     criarBtn: 'Crear alcance',

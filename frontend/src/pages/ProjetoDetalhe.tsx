@@ -81,7 +81,7 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
   const [form, setForm] = useState({
     titulo: editando?.titulo ?? '',
     descricaoDetalhada: editando?.descricaoDetalhada ?? '',
-    horasAdicionais: editando?.horasAdicionais !== undefined ? String(editando.horasAdicionais) : '',
+    horasAdicionais: editando?.horasAdicionais != null ? String(editando.horasAdicionais) : '',
     status: (editando?.status ?? 'Pendente') as StatusEscopo,
     dataInicio: editando?.dataInicio ?? '',
     dataFim: editando?.dataFim ?? '',
@@ -157,6 +157,7 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
                 <option value="Aprovada">{t('statusEscopo.Aprovada')}</option>
                 <option value="Cancelada">{t('statusEscopo.Cancelada')}</option>
               </select>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{t('escopo.statusDica')}</div>
             </div>
           </div>
           <div className="form-row">
@@ -681,14 +682,14 @@ export default function ProjetoDetalhe({ toast }: Props) {
                         <td className="td-mono hide-mobile">{fmtDataBR(e.dataInicio)}</td>
                         <td className="td-mono hide-mobile">{fmtDataBR(e.dataFim)}</td>
                         <td className="td-mono" style={{ color: e.status === 'Aprovada' ? 'var(--accent)' : 'var(--text-muted)', fontWeight: e.status === 'Aprovada' ? 600 : 400 }}>
-                          {e.horasAdicionais !== undefined ? `+${e.horasAdicionais.toFixed(1)}h` : t('escopo.horasLivres')}
+                          {e.horasAdicionais != null ? `+${e.horasAdicionais.toFixed(1)}h` : t('escopo.horasLivres')}
                         </td>
                         <td className="hide-mobile">
-                          {e.status === 'Aprovada' && e.horasAdicionais === undefined ? (
+                          {e.status === 'Aprovada' && e.horasAdicionais == null ? (
                             <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                               {trabalhadas.toFixed(1)}h
                             </div>
-                          ) : e.status === 'Aprovada' && e.horasAdicionais !== undefined ? (
+                          ) : e.status === 'Aprovada' && e.horasAdicionais != null ? (
                             <div>
                               <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginBottom: 3 }}>
                                 {trabalhadas.toFixed(1)}h / {e.horasAdicionais.toFixed(1)}h

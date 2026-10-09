@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { lancamentosApi } from '../services/api'
 import { hojeLocal } from '../utils/tempo'
@@ -72,6 +72,22 @@ function ModalLancamento({ projetoId, editando, escopos, toast, onSalvar, onFech
     escopoId: editando?.escopoId ?? '',
   })
   const [salvando, setSalvando] = useState(false)
+
+  // Novo lançamento: pré-seleciona o escopo do último lançamento do projeto
+  // (mesma regra que reaproveita a descrição) para não precisar escolher toda vez.
+  useEffect(() => {
+    if (editando) return
+    let ativo = true
+    lancamentosApi.ultimaDescricao(projetoId)
+      .then(({ escopoId }) => {
+        if (!ativo || !escopoId) return
+        if (!escopos.some(e => e.id === escopoId && e.status === 'Aprovada')) return
+        // não sobrescreve se o usuário já escolheu algo enquanto a consulta rodava
+        setForm(f => f.escopoId ? f : { ...f, escopoId })
+      })
+      .catch(() => {})  // conveniência: falha aqui não deve atrapalhar o lançamento
+    return () => { ativo = false }
+  }, [])
   const [confirmando, setConfirmando] = useState<Acao | null>(null)
   const [processandoAcao, setProcessandoAcao] = useState(false)
 
@@ -195,7 +211,7 @@ function ModalLancamento({ projetoId, editando, escopos, toast, onSalvar, onFech
                 onChange={e => setForm(f => ({ ...f, escopoId: e.target.value }))}>
                 <option value="">{t('lanc.escopoPrincipal')}</option>
                 {escopos.filter(e => e.status === 'Aprovada').map(e => (
-                  <option key={e.id} value={e.id}>{e.titulo} ({e.horasAdicionais !== undefined ? `+${e.horasAdicionais.toFixed(1)}h` : t('escopo.horasLivres')})</option>
+                  <option key={e.id} value={e.id}>{e.titulo} ({e.horasAdicionais != null ? `+${e.horasAdicionais.toFixed(1)}h` : t('escopo.horasLivres')})</option>
                 ))}
               </select>
             </div>

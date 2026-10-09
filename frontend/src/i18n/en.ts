@@ -269,6 +269,7 @@ export default {
     descricaoPlaceholder: 'Detail the scope...',
     horasAdicionais: 'Additional hours',
     horasPlaceholder: 'E.g.: 20',
+    statusDica: 'The scope must be Approved to appear in the time entry selection',
     horasLivres: 'Open',
     horasLivresDica: 'Leave blank for a scope with open hours (information gathering, estimates, etc.)',
     criarBtn: 'Create scope',

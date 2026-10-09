@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid'
-import { lancamentosRepo, projetosRepo, preferenciasRepo, pagamentosRepo } from '../repositories'
+import { lancamentosRepo, projetosRepo, preferenciasRepo, pagamentosRepo, escoposRepo } from '../repositories'
 import {
   LancamentoHoras,
   CriarLancamentoDTO,
@@ -36,16 +36,30 @@ function calcularEAtribuir(
   return { totalHHMM: diff.hhMM, totalDecimal: diff.decimal }
 }
 
-async function salvarUltimaDescricao(tenantId: string, projetoId: string, descricao: string): Promise<void> {
+// Guarda a descrição e o escopo do último lançamento do projeto, para serem
+// reaproveitados no próximo. escopoId ausente limpa o escopo (volta ao principal).
+async function salvarUltimaDescricao(
+  tenantId: string,
+  projetoId: string,
+  descricao: string,
+  escopoId?: string | null
+): Promise<void> {
+  const ultimoEscopoLancamento = escopoId ?? undefined
   const pref = await preferenciasRepo.findOneBy((p) => p.tenantId === tenantId && p.projetoId === projetoId)
   if (pref) {
-    await preferenciasRepo.updateForTenant(pref.id, tenantId, { ultimaDescricaoLancamento: descricao })
+    // undefined em ultimoEscopoLancamento vira $unset no repository
+    await preferenciasRepo.updateForTenant(pref.id, tenantId, {
+      ultimaDescricaoLancamento: descricao,
+      ultimoEscopoLancamento,
+    })
   } else {
     await preferenciasRepo.create({
       id: uuid(),
       tenantId,
       projetoId,
       ultimaDescricaoLancamento: descricao,
+      // chave ausente (não undefined): o driver do Mongo grava undefined como null
+      ...(ultimoEscopoLancamento && { ultimoEscopoLancamento }),
     })
   }
 }
@@ -128,6 +142,16 @@ export const lancamentosService = {
     return pref?.ultimaDescricaoLancamento
   },
 
+  // Escopo do último lançamento, só se ainda pode receber lançamentos (existe no
+  // projeto e está aprovado) — escopo excluído/cancelado/pendente não é reaproveitado.
+  async obterUltimoEscopo(tenantId: string, projetoId: string): Promise<string | undefined> {
+    const pref = await preferenciasRepo.findOneBy((p) => p.tenantId === tenantId && p.projetoId === projetoId)
+    const escopoId = pref?.ultimoEscopoLancamento
+    if (!escopoId) return undefined
+    const escopo = await escoposRepo.findByIdAndTenant(escopoId, tenantId)
+    return escopo && escopo.projetoId === projetoId && escopo.status === 'Aprovada' ? escopo.id : undefined
+  },
+
   // --- Controle de ponto: Iniciar ---
   async iniciarTrabalho(tenantId: string, projetoId: string, descricao?: string): Promise<LancamentoHoras> {
     if (!(await projetosRepo.existsForTenant(projetoId, tenantId))) throw new Error('Projeto não encontrado')
@@ -143,10 +167,14 @@ export const lancamentosService = {
     const descricaoFinal = descricao?.trim() || ultimaDesc?.trim()
     if (!descricaoFinal) throw new Error(DESCRICAO_OBRIGATORIA)
 
+    // reaproveita o escopo do último lançamento (o usuário ainda pode trocá-lo ao finalizar)
+    const escopoId = await this.obterUltimoEscopo(tenantId, projetoId)
+
     const lancamento: LancamentoHoras = {
       id: uuid(),
       tenantId,
       projetoId,
+      ...(escopoId && { escopoId }),
       data: hoje(),
       horaInicio: horaAtual(),
       descricao: descricaoFinal,
@@ -178,7 +206,7 @@ export const lancamentosService = {
     })
     if (!atualizado) throw new Error('Falha ao finalizar lançamento')
 
-    if (descricao) await salvarUltimaDescricao(tenantId, lancamento.projetoId, descricao)
+    if (descricao) await salvarUltimaDescricao(tenantId, lancamento.projetoId, descricao, atualizado.escopoId)
     return atualizado
   },
 
@@ -219,7 +247,7 @@ export const lancamentosService = {
     }
 
     const criado = await lancamentosRepo.create(lancamento)
-    if (dto.descricao) await salvarUltimaDescricao(tenantId, dto.projetoId, dto.descricao)
+    if (dto.descricao) await salvarUltimaDescricao(tenantId, dto.projetoId, dto.descricao, dto.escopoId)
     return criado
   },
 
@@ -262,7 +290,7 @@ export const lancamentosService = {
     const atualizado = await lancamentosRepo.updateForTenant(id, tenantId, partial)
     if (!atualizado) throw new Error('Falha ao atualizar lançamento')
 
-    if (dto.descricao) await salvarUltimaDescricao(tenantId, lancamento.projetoId, dto.descricao)
+    if (dto.descricao) await salvarUltimaDescricao(tenantId, lancamento.projetoId, dto.descricao, atualizado.escopoId)
     return atualizado
   },
 

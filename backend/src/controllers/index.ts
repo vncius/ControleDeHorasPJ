@@ -148,6 +148,7 @@ export const lancamentosController = {
   ultimaDescricao(req: Request, res: Response) {
     handle(res, async () => ({
       descricao: await lancamentosService.obterUltimaDescricao(req.usuario!.email, req.params.projetoId),
+      escopoId: await lancamentosService.obterUltimoEscopo(req.usuario!.email, req.params.projetoId),
     }))
   },
   iniciar(req: Request, res: Response) {

@@ -174,7 +174,7 @@ export const lancamentosApi = {
     }
   },
   ultimaDescricao: (projetoId: string) =>
-    get<{ descricao?: string }>(`/projetos/${projetoId}/ultima-descricao`),
+    get<{ descricao?: string; escopoId?: string }>(`/projetos/${projetoId}/ultima-descricao`),
   iniciar: (projetoId: string, descricao?: string) =>
     post<LancamentoHoras>(`/projetos/${projetoId}/iniciar`, { descricao }),
   finalizar: (id: string, body: { horaFim: string; descricao?: string; escopoId?: string | null }) =>

@@ -106,6 +106,7 @@ export interface PreferenciasProjeto {
   tenantId: string
   projetoId: string
   ultimaDescricaoLancamento?: string
+  ultimoEscopoLancamento?: string   // escopoId do último lançamento; ausente = escopo principal
 }
 
 // ============================================================

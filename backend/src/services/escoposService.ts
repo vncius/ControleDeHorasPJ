@@ -39,7 +39,8 @@ export const escoposService = {
       projetoId: dto.projetoId,
       titulo: dto.titulo.trim(),
       descricaoDetalhada: dto.descricaoDetalhada?.trim(),
-      horasAdicionais,
+      // chave ausente (não undefined): o driver do Mongo grava undefined como null
+      ...(horasAdicionais !== undefined && { horasAdicionais }),
       status: dto.status ?? 'Pendente',
       dataInicio: dto.dataInicio,
       dataFim: dto.dataFim,
