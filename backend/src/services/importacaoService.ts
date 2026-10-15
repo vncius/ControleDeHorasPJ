@@ -84,10 +84,16 @@ export function parsearLinhas(texto: string, ano: number): LinhaImportacao[] {
     }
     entry.data = data
 
-    // ── descrição ──
+    // ── descrição ── obrigatória, como no lançamento manual e no controle de
+    // ponto (D8 de docs/plano-melhorias.md): linha sem descrição não é importada
     entry.descricao = colDesc?.trim() ?? ''
+    if (!entry.descricao) {
+      entry.status = 'erro'
+      entry.mensagem = 'Descrição vazia: informe o que foi feito'
+      resultado.push(entry)
+      continue
+    }
     const avisos: string[] = []
-    if (!entry.descricao) avisos.push('Descrição vazia')
 
     // ── hora início ──
     if (!isHoraValida(colInicio)) {
@@ -168,9 +174,10 @@ export const importacaoService = {
       throw naoEncontrado('projeto.naoEncontrado', 'Projeto não encontrado')
     }
 
-    // importa apenas linhas válidas e com aviso
+    // importa apenas linhas válidas e com aviso — e com descrição: as linhas
+    // voltam do cliente, então não basta confiar no status que o preview deu
     const importaveis = linhas.filter(
-      l => l.status !== 'erro' && l.data && l.horaInicio && l.horaFim
+      l => l.status !== 'erro' && l.data && l.horaInicio && l.horaFim && l.descricao?.trim()
     )
 
     const agr = agora()
@@ -188,7 +195,7 @@ export const importacaoService = {
         horaFim: linha.horaFim!,
         totalHHMM: diff.hhMM,
         totalDecimal: diff.decimal,
-        descricao: linha.descricao ?? '',
+        descricao: linha.descricao!.trim(),
         tipo: 'Importado',
         dataCriacao: agr,
         dataAtualizacao: agr,

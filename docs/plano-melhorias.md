@@ -39,8 +39,8 @@ Continua `routes → controllers → services → repositories`, nomes em portug
 ### D2 — Validação na borda com Zod
 Um schema por DTO em `backend/src/schemas/<entidade>.ts`, `.strict()` (rejeita campo desconhecido — inclusive `tenantId` e `geradoPorRegularizacao`). O tipo do DTO passa a ser `z.infer<typeof schema>`, eliminando a duplicação em `types/index.ts`. Regras de negócio (faturabilidade, saldo, posse por tenant) continuam nos services/utils — o schema só garante **formato**.
 
-### D8 — Descrição em linha importada — *a confirmar com o usuário*
-Hoje a importação aceita linha sem descrição (status "aviso") e grava o lançamento com descrição vazia, enquanto o lançamento manual e o controle de ponto exigem descrição. Opções: (a) manter, já que a planilha antiga pode não ter descrição; (b) virar "erro" no preview, e a linha não é importada; (c) exigir que o usuário preencha antes de confirmar. A M8 manteve o comportamento atual.
+### D8 — Descrição em linha importada (decidido em 2026-10-15)
+Linha sem descrição vira **erro** no preview e não é importada, igual ao lançamento manual e ao controle de ponto. O `confirmar` também descarta linha sem descrição, porque as linhas voltam do cliente e o status pode ter sido alterado. Antes, essa linha era "aviso" e entrava com descrição vazia.
 
 ### D3 — Erros com código traduzível
 `AppError(status, codigo, mensagem?)` + `errorHandler` único: `ZodError → 400 validacao.*`, `AppError → status próprio`, JSON inválido → 400, corpo grande → 413, resto → 500 genérico (detalhe só no log). O frontend traduz `codigo` via i18n; mensagem do Mongo nunca chega ao cliente.
@@ -138,7 +138,7 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 | M5 | Rate limit e limite de corpo | — | P | ✅ | 2026-10-15 | f892005 |
 | M6 | `app.ts`/`server.ts` + log de requisições | — | P | ✅ | 2026-10-15 | fdba622 |
 | M7 | Erros padronizados + cliente HTTP robusto | M6 | M | ✅ | 2026-10-15 | 5ae84e5 |
-| M8 | Validação com Zod | M7 | M | ✅ | 2026-10-15 | (este commit) |
+| M8 | Validação com Zod | M7 | M | ✅ | 2026-10-15 | 1af33e3 |
 | M9 | Testes + CI | M1–M8 | M | ⬜ | | |
 | M10 | Migrações idempotentes no boot | — | P | ⬜ | | |
 | M11 | CSV seguro + i18n tipado | — | P | ⬜ | | |

@@ -24,6 +24,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Cabeçalhos de segurança: `helmet` na API (CSP fechada, sem `X-Powered-By`) e `frontend/public/_headers` no Cloudflare Pages (CSP, HSTS, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`). O anti-flash de tema saiu do script inline para `public/tema-inicial.js` (M4).
 - Proteção contra CSRF: toda requisição que altera estado exige `X-Requested-With: XMLHttpRequest` (403 sem ele), e o cookie de sessão passa a ser `SameSite=Lax` também em produção, configurável por `COOKIE_SAME_SITE` (M3).
 
+### Alterado (regra de negócio)
+- Importação: linha sem descrição passa de "aviso" (importada vazia) para "erro" (não importada), e o confirmar também a descarta (D8).
+
 ### Corrigido
 - Lançamentos aceitavam `escopoId` de outro tenant ou de outro projeto ao criar, editar ou finalizar. Agora o escopo é validado (M1).
 - Ao trocar de projeto no controle de ponto, o modal oferecia os escopos do projeto da página para o lançamento de outro projeto. Agora o seletor só aparece no próprio projeto (M8).

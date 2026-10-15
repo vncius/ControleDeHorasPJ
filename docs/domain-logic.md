@@ -57,7 +57,7 @@ Para projetos históricos sem os pagamentos registrados. Marcar a opção (`PUT 
 
 - Texto colado do Excel/Google Sheets, colunas separadas por TAB: `Data | Descrição | Hora início | Hora fim | HH:MM | Decimal`.
 - Data sem ano → o usuário informa o ano de referência.
-- O total é recalculado; divergência acima de `0,02` vira **aviso**. Data/hora inválida ou colunas insuficientes viram **erro** (linha ignorada). Linhas válidas e com aviso são importadas com `tipo: "Importado"`.
+- O total é recalculado; divergência acima de `0,02` vira **aviso**. Data/hora inválida, colunas insuficientes ou **descrição vazia** viram **erro** (linha ignorada). A descrição é obrigatória como no lançamento manual. O confirmar também descarta linha sem descrição, mesmo que o cliente tenha alterado o status. Linhas válidas e com aviso são importadas com `tipo: "Importado"`.
 
 ## Exclusões
 
