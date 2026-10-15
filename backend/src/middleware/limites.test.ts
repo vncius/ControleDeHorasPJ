@@ -4,7 +4,8 @@ import type { Request, Response } from 'express'
 import type { AddressInfo } from 'node:net'
 import { Server } from 'node:http'
 import { criarLimitador } from './rateLimit'
-import { parsersJson, errosDeCorpo } from './corpo'
+import { parsersJson } from './corpo'
+import { errorHandler } from './errorHandler'
 
 // ----------------------------------------------------------------
 // Rate limit (unitário, relógio controlado)
@@ -64,7 +65,7 @@ beforeAll(async () => {
   const app = express()
   app.use(parsersJson())
   app.post('*', (req, res) => res.json({ bytes: JSON.stringify(req.body).length }))
-  app.use(errosDeCorpo)
+  app.use(errorHandler)
   servidor = app.listen(0)
   await new Promise((r) => servidor.once('listening', r))
   base = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}`
@@ -97,6 +98,6 @@ describe('limites de corpo JSON', () => {
   it('JSON malformado vira 400 em JSON', async () => {
     const res = await postar('/api/clientes', '{"nome": ')
     expect(res.status).toBe(400)
-    expect(await res.json()).toEqual({ erro: 'JSON inválido no corpo da requisição' })
+    expect(await res.json()).toEqual({ erro: 'JSON inválido no corpo da requisição', codigo: 'corpo.jsonInvalido' })
   })
 })

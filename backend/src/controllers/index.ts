@@ -1,4 +1,5 @@
-import { Request, Response } from 'express'
+import { Request, Response, NextFunction } from 'express'
+import { invalido } from '../errors/AppError'
 import { clientesService } from '../services/clientesService'
 import { projetosService } from '../services/projetosService'
 import { escoposService } from '../services/escoposService'
@@ -10,15 +11,20 @@ import { authService } from '../services/authService'
 import { assinarSessao, NOME_COOKIE_SESSAO, OPCOES_COOKIE_SESSAO } from '../middleware/auth'
 
 // ----------------------------------------------------------------
-// Helper — wrapper de erros
+// Helper — executa o service, responde JSON e repassa qualquer erro ao
+// errorHandler (middleware/errorHandler.ts), que decide status e código.
 // ----------------------------------------------------------------
-async function handle(res: Response, fn: () => Promise<unknown> | unknown, status = 200): Promise<void> {
+async function handle(
+  res: Response,
+  next: NextFunction,
+  fn: () => Promise<unknown> | unknown,
+  status = 200
+): Promise<void> {
   try {
     const data = await fn()
     res.status(status).json(data)
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Erro interno'
-    res.status(400).json({ erro: message })
+    next(err)
   }
 }
 
@@ -26,20 +32,20 @@ async function handle(res: Response, fn: () => Promise<unknown> | unknown, statu
 // CLIENTES
 // ----------------------------------------------------------------
 export const clientesController = {
-  listar(req: Request, res: Response) {
-    handle(res, () => clientesService.listar(req.usuario!.email))
+  listar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => clientesService.listar(req.usuario!.email))
   },
-  buscar(req: Request, res: Response) {
-    handle(res, () => clientesService.buscarPorId(req.usuario!.email, req.params.id))
+  buscar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => clientesService.buscarPorId(req.usuario!.email, req.params.id))
   },
-  criar(req: Request, res: Response) {
-    handle(res, () => clientesService.criar(req.usuario!.email, req.body), 201)
+  criar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => clientesService.criar(req.usuario!.email, req.body), 201)
   },
-  atualizar(req: Request, res: Response) {
-    handle(res, () => clientesService.atualizar(req.usuario!.email, req.params.id, req.body))
+  atualizar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => clientesService.atualizar(req.usuario!.email, req.params.id, req.body))
   },
-  excluir(req: Request, res: Response) {
-    handle(res, async () => {
+  excluir(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, async () => {
       await clientesService.excluir(req.usuario!.email, req.params.id)
       return { mensagem: 'Cliente excluído com sucesso' }
     })
@@ -50,23 +56,23 @@ export const clientesController = {
 // PROJETOS
 // ----------------------------------------------------------------
 export const projetosController = {
-  listar(req: Request, res: Response) {
-    handle(res, () => projetosService.listar(req.usuario!.email, req.query.clienteId as string | undefined))
+  listar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => projetosService.listar(req.usuario!.email, req.query.clienteId as string | undefined))
   },
-  buscar(req: Request, res: Response) {
-    handle(res, () => projetosService.buscarPorId(req.usuario!.email, req.params.id))
+  buscar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => projetosService.buscarPorId(req.usuario!.email, req.params.id))
   },
-  resumo(req: Request, res: Response) {
-    handle(res, () => projetosService.calcularResumo(req.usuario!.email, req.params.id))
+  resumo(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => projetosService.calcularResumo(req.usuario!.email, req.params.id))
   },
-  criar(req: Request, res: Response) {
-    handle(res, () => projetosService.criar(req.usuario!.email, req.body), 201)
+  criar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => projetosService.criar(req.usuario!.email, req.body), 201)
   },
-  atualizar(req: Request, res: Response) {
-    handle(res, () => projetosService.atualizar(req.usuario!.email, req.params.id, req.body))
+  atualizar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => projetosService.atualizar(req.usuario!.email, req.params.id, req.body))
   },
-  excluir(req: Request, res: Response) {
-    handle(res, async () => {
+  excluir(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, async () => {
       await projetosService.excluir(req.usuario!.email, req.params.id)
       return { mensagem: 'Projeto excluído com sucesso' }
     })
@@ -77,24 +83,25 @@ export const projetosController = {
 // ESCOPOS
 // ----------------------------------------------------------------
 export const escoposController = {
-  listarPorProjeto(req: Request, res: Response) {
-    handle(res, () => escoposService.listarPorProjeto(req.usuario!.email, req.params.projetoId))
+  listarPorProjeto(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => escoposService.listarPorProjeto(req.usuario!.email, req.params.projetoId))
   },
-  listarPorTenant(req: Request, res: Response) {
-    handle(res, () => escoposService.listarPorTenant(req.usuario!.email))
+  listarPorTenant(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => escoposService.listarPorTenant(req.usuario!.email))
   },
-  criar(req: Request, res: Response) {
+  criar(req: Request, res: Response, next: NextFunction) {
     handle(
       res,
+      next,
       () => escoposService.criar(req.usuario!.email, { ...req.body, projetoId: req.params.projetoId }),
       201
     )
   },
-  atualizar(req: Request, res: Response) {
-    handle(res, () => escoposService.atualizar(req.usuario!.email, req.params.id, req.body))
+  atualizar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => escoposService.atualizar(req.usuario!.email, req.params.id, req.body))
   },
-  excluir(req: Request, res: Response) {
-    handle(res, async () => {
+  excluir(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, async () => {
       await escoposService.excluir(req.usuario!.email, req.params.id)
       return { mensagem: 'Escopo excluído com sucesso' }
     })
@@ -105,24 +112,25 @@ export const escoposController = {
 // PAGAMENTOS
 // ----------------------------------------------------------------
 export const pagamentosController = {
-  listarPorProjeto(req: Request, res: Response) {
-    handle(res, () => pagamentosService.listarPorProjeto(req.usuario!.email, req.params.projetoId))
+  listarPorProjeto(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => pagamentosService.listarPorProjeto(req.usuario!.email, req.params.projetoId))
   },
-  listarPorTenant(req: Request, res: Response) {
-    handle(res, () => pagamentosService.listarPorTenant(req.usuario!.email))
+  listarPorTenant(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => pagamentosService.listarPorTenant(req.usuario!.email))
   },
-  criar(req: Request, res: Response) {
+  criar(req: Request, res: Response, next: NextFunction) {
     handle(
       res,
+      next,
       () => pagamentosService.criar(req.usuario!.email, { ...req.body, projetoId: req.params.projetoId }),
       201
     )
   },
-  atualizar(req: Request, res: Response) {
-    handle(res, () => pagamentosService.atualizar(req.usuario!.email, req.params.id, req.body))
+  atualizar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => pagamentosService.atualizar(req.usuario!.email, req.params.id, req.body))
   },
-  excluir(req: Request, res: Response) {
-    handle(res, async () => {
+  excluir(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, async () => {
       await pagamentosService.excluir(req.usuario!.email, req.params.id)
       return { mensagem: 'Pagamento excluído com sucesso' }
     })
@@ -133,48 +141,49 @@ export const pagamentosController = {
 // LANÇAMENTOS
 // ----------------------------------------------------------------
 export const lancamentosController = {
-  listarPorProjeto(req: Request, res: Response) {
-    handle(res, () => lancamentosService.listarPorProjeto(req.usuario!.email, req.params.projetoId))
+  listarPorProjeto(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => lancamentosService.listarPorProjeto(req.usuario!.email, req.params.projetoId))
   },
-  listarPorTenant(req: Request, res: Response) {
-    handle(res, () => lancamentosService.listarPorTenant(req.usuario!.email))
+  listarPorTenant(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => lancamentosService.listarPorTenant(req.usuario!.email))
   },
-  buscar(req: Request, res: Response) {
-    handle(res, () => lancamentosService.buscarPorId(req.usuario!.email, req.params.id))
+  buscar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => lancamentosService.buscarPorId(req.usuario!.email, req.params.id))
   },
-  emAndamento(req: Request, res: Response) {
-    handle(res, () => lancamentosService.buscarEmAndamento(req.usuario!.email))
+  emAndamento(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => lancamentosService.buscarEmAndamento(req.usuario!.email))
   },
-  ultimaDescricao(req: Request, res: Response) {
-    handle(res, async () => ({
+  ultimaDescricao(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, async () => ({
       descricao: await lancamentosService.obterUltimaDescricao(req.usuario!.email, req.params.projetoId),
       escopoId: await lancamentosService.obterUltimoEscopo(req.usuario!.email, req.params.projetoId),
     }))
   },
-  iniciar(req: Request, res: Response) {
+  iniciar(req: Request, res: Response, next: NextFunction) {
     handle(
       res,
+      next,
       () => lancamentosService.iniciarTrabalho(req.usuario!.email, req.params.projetoId, req.body.descricao),
       201
     )
   },
-  finalizar(req: Request, res: Response) {
-    handle(res, () => lancamentosService.finalizarTrabalho(req.usuario!.email, req.params.id, req.body))
+  finalizar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => lancamentosService.finalizarTrabalho(req.usuario!.email, req.params.id, req.body))
   },
-  criar(req: Request, res: Response) {
-    handle(res, () => lancamentosService.criar(req.usuario!.email, req.body), 201)
+  criar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => lancamentosService.criar(req.usuario!.email, req.body), 201)
   },
-  atualizar(req: Request, res: Response) {
-    handle(res, () => lancamentosService.atualizar(req.usuario!.email, req.params.id, req.body))
+  atualizar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => lancamentosService.atualizar(req.usuario!.email, req.params.id, req.body))
   },
-  excluir(req: Request, res: Response) {
-    handle(res, async () => {
+  excluir(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, async () => {
       await lancamentosService.excluir(req.usuario!.email, req.params.id)
       return { mensagem: 'Lançamento excluído com sucesso' }
     })
   },
-  duplicar(req: Request, res: Response) {
-    handle(res, () => lancamentosService.duplicar(req.usuario!.email, req.params.id), 201)
+  duplicar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => lancamentosService.duplicar(req.usuario!.email, req.params.id), 201)
   },
 }
 
@@ -182,8 +191,8 @@ export const lancamentosController = {
 // DASHBOARD
 // ----------------------------------------------------------------
 export const dashboardController = {
-  obter(req: Request, res: Response) {
-    handle(res, () => dashboardService.obter(req.usuario!.email))
+  obter(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => dashboardService.obter(req.usuario!.email))
   },
 }
 
@@ -191,20 +200,20 @@ export const dashboardController = {
 // IMPORTAÇÃO
 // ----------------------------------------------------------------
 export const importacaoController = {
-  preview(req: Request, res: Response) {
-    handle(res, () => {
+  preview(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => {
       const { texto, ano } = req.body
-      if (!texto || typeof texto !== 'string') throw new Error('Campo "texto" obrigatório')
+      if (!texto || typeof texto !== 'string') throw invalido('importacao.textoObrigatorio', 'Campo "texto" obrigatório')
       const anoNum = Number(ano)
-      if (!anoNum || anoNum < 2000 || anoNum > 2100) throw new Error('Ano inválido')
+      if (!anoNum || anoNum < 2000 || anoNum > 2100) throw invalido('importacao.anoInvalido', 'Ano inválido')
       return importacaoService.preview(texto, anoNum)
     })
   },
 
-  confirmar(req: Request, res: Response) {
-    handle(res, () => {
+  confirmar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => {
       const { linhas } = req.body
-      if (!Array.isArray(linhas)) throw new Error('Campo "linhas" deve ser um array')
+      if (!Array.isArray(linhas)) throw invalido('importacao.linhasInvalidas', 'Campo "linhas" deve ser um array')
       return importacaoService.confirmar(req.usuario!.email, req.params.projetoId, linhas)
     }, 201)
   },
@@ -214,21 +223,18 @@ export const importacaoController = {
 // AUTENTICAÇÃO
 // ----------------------------------------------------------------
 export const authController = {
-  async loginGoogle(req: Request, res: Response) {
-    const { credential } = req.body
-    if (!credential || typeof credential !== 'string') {
-      res.status(400).json({ erro: 'Campo "credential" obrigatório' })
-      return
-    }
-
+  async loginGoogle(req: Request, res: Response, next: NextFunction) {
     try {
+      const { credential } = req.body ?? {}
+      if (!credential || typeof credential !== 'string') {
+        throw invalido('auth.credentialObrigatorio', 'Campo "credential" obrigatório')
+      }
       const { email, nome } = await authService.loginComGoogle(credential)
       const token = assinarSessao({ email })
       res.cookie(NOME_COOKIE_SESSAO, token, OPCOES_COOKIE_SESSAO)
       res.json({ email, nome })
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erro interno'
-      res.status(401).json({ erro: message })
+      next(err)
     }
   },
 

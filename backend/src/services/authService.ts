@@ -1,4 +1,5 @@
 import { OAuth2Client } from 'google-auth-library'
+import { naoAutorizado } from '../errors/AppError'
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
@@ -16,11 +17,11 @@ export const authService = {
       })
       payload = ticket.getPayload()
     } catch {
-      throw new Error('Token do Google inválido')
+      throw naoAutorizado('auth.tokenInvalido', 'Token do Google inválido')
     }
 
     if (!payload?.email_verified) {
-      throw new Error('Token do Google inválido')
+      throw naoAutorizado('auth.tokenInvalido', 'Token do Google inválido')
     }
 
     const email = payload.email!.trim().toLowerCase()

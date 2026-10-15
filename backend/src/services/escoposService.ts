@@ -2,6 +2,7 @@ import { v4 as uuid } from 'uuid'
 import { escoposRepo, projetosRepo } from '../repositories'
 import { AlteracaoEscopo, CriarEscopoDTO, AtualizarEscopoDTO } from '../types'
 import { agora } from '../utils/tempo'
+import { invalido, naoEncontrado } from '../errors/AppError'
 
 export const escoposService = {
   async listarPorProjeto(tenantId: string, projetoId: string): Promise<AlteracaoEscopo[]> {
@@ -19,19 +20,19 @@ export const escoposService = {
 
   async buscarPorId(tenantId: string, id: string): Promise<AlteracaoEscopo> {
     const escopo = await escoposRepo.findByIdAndTenant(id, tenantId)
-    if (!escopo) throw new Error(`Alteração de escopo não encontrada: ${id}`)
+    if (!escopo) throw naoEncontrado('escopo.naoEncontrado', 'Alteração de escopo não encontrada')
     return escopo
   },
 
   async criar(tenantId: string, dto: CriarEscopoDTO): Promise<AlteracaoEscopo> {
-    if (!dto.titulo?.trim()) throw new Error('Título é obrigatório')
-    if (!(await projetosRepo.existsForTenant(dto.projetoId, tenantId))) throw new Error('Projeto não encontrado')
+    if (!dto.titulo?.trim()) throw invalido('escopo.tituloObrigatorio', 'Título é obrigatório')
+    if (!(await projetosRepo.existsForTenant(dto.projetoId, tenantId))) throw naoEncontrado('projeto.naoEncontrado', 'Projeto não encontrado')
     // horasAdicionais ausente = escopo de horas livres (levantamento, estimativa etc.)
     const horasAdicionais = dto.horasAdicionais ?? undefined
     if (horasAdicionais !== undefined && horasAdicionais <= 0)
-      throw new Error('Horas adicionais devem ser maiores que zero')
+      throw invalido('escopo.horasInvalidas', 'Horas adicionais devem ser maiores que zero')
     if (dto.dataInicio && dto.dataFim && dto.dataFim < dto.dataInicio)
-      throw new Error('Data fim não pode ser anterior à data início do escopo')
+      throw invalido('escopo.dataFimAntesInicio', 'Data fim não pode ser anterior à data início do escopo')
 
     const escopo: AlteracaoEscopo = {
       id: uuid(),
@@ -53,9 +54,9 @@ export const escoposService = {
   async atualizar(tenantId: string, id: string, dto: AtualizarEscopoDTO): Promise<AlteracaoEscopo> {
     await this.buscarPorId(tenantId, id)
     if (dto.dataInicio && dto.dataFim && dto.dataFim < dto.dataInicio)
-      throw new Error('Data fim não pode ser anterior à data início do escopo')
+      throw invalido('escopo.dataFimAntesInicio', 'Data fim não pode ser anterior à data início do escopo')
     if (typeof dto.horasAdicionais === 'number' && dto.horasAdicionais <= 0)
-      throw new Error('Horas adicionais devem ser maiores que zero')
+      throw invalido('escopo.horasInvalidas', 'Horas adicionais devem ser maiores que zero')
 
     const atualizado = await escoposRepo.updateForTenant(id, tenantId, {
       ...(dto.titulo && { titulo: dto.titulo.trim() }),
@@ -67,7 +68,7 @@ export const escoposService = {
       ...(dto.dataFim !== undefined && { dataFim: dto.dataFim }),
       ...(dto.observacoes !== undefined && { observacoes: dto.observacoes?.trim() }),
     })
-    if (!atualizado) throw new Error('Falha ao atualizar escopo')
+    if (!atualizado) throw naoEncontrado('escopo.naoEncontrado', 'Alteração de escopo não encontrada')
     return atualizado
   },
 

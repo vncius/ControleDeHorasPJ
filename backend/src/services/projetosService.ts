@@ -10,6 +10,7 @@ import {
 import { agora, somarHoras, isDataValida } from '../utils/tempo'
 import { calcularStatusPagamento } from '../utils/faturamento'
 import { pagamentosService } from './pagamentosService'
+import { invalido, naoEncontrado } from '../errors/AppError'
 
 const OBSERVACAO_REGULARIZACAO =
   'Pagamento gerado automaticamente ao marcar o projeto como considerado pago.'
@@ -75,20 +76,20 @@ export const projetosService = {
 
   async buscarPorId(tenantId: string, id: string): Promise<Projeto> {
     const projeto = await projetosRepo.findByIdAndTenant(id, tenantId)
-    if (!projeto) throw new Error(`Projeto não encontrado: ${id}`)
+    if (!projeto) throw naoEncontrado('projeto.naoEncontrado', 'Projeto não encontrado')
     return projeto
   },
 
   async criar(tenantId: string, dto: CriarProjetoDTO): Promise<Projeto> {
-    if (!dto.nome?.trim()) throw new Error('Nome do projeto é obrigatório')
-    if (!dto.clienteId) throw new Error('Cliente é obrigatório')
-    if (!(await clientesRepo.existsForTenant(dto.clienteId, tenantId))) throw new Error('Cliente não encontrado')
+    if (!dto.nome?.trim()) throw invalido('projeto.nomeObrigatorio', 'Nome do projeto é obrigatório')
+    if (!dto.clienteId) throw invalido('projeto.clienteObrigatorio', 'Cliente é obrigatório')
+    if (!(await clientesRepo.existsForTenant(dto.clienteId, tenantId))) throw invalido('projeto.clienteInvalido', 'Cliente não encontrado')
     if (dto.horasContratadas !== undefined && dto.horasContratadas <= 0)
-      throw new Error('Horas contratadas devem ser maiores que zero')
-    if (!dto.dataInicio) throw new Error('Data de início é obrigatória')
-    if (!isDataValida(dto.dataInicio)) throw new Error('Data de início inválida (use YYYY-MM-DD)')
-    if (dto.dataFim && !isDataValida(dto.dataFim)) throw new Error('Data de fim inválida (use YYYY-MM-DD)')
-    if (dto.dataFim && dto.dataFim < dto.dataInicio) throw new Error('Data de fim não pode ser anterior à data de início')
+      throw invalido('projeto.horasContratadasInvalidas', 'Horas contratadas devem ser maiores que zero')
+    if (!dto.dataInicio) throw invalido('projeto.dataInicioObrigatoria', 'Data de início é obrigatória')
+    if (!isDataValida(dto.dataInicio)) throw invalido('projeto.dataInicioInvalida', 'Data de início inválida (use YYYY-MM-DD)')
+    if (dto.dataFim && !isDataValida(dto.dataFim)) throw invalido('projeto.dataFimInvalida', 'Data de fim inválida (use YYYY-MM-DD)')
+    if (dto.dataFim && dto.dataFim < dto.dataInicio) throw invalido('projeto.dataFimAntesInicio', 'Data de fim não pode ser anterior à data de início')
 
     const projeto: Projeto = {
       id: uuid(),
@@ -112,14 +113,14 @@ export const projetosService = {
     const atual = await this.buscarPorId(tenantId, id)
 
     if (dto.clienteId && !(await clientesRepo.existsForTenant(dto.clienteId, tenantId))) {
-      throw new Error('Cliente não encontrado')
+      throw invalido('projeto.clienteInvalido', 'Cliente não encontrado')
     }
-    if (dto.dataInicio && !isDataValida(dto.dataInicio)) throw new Error('Data de início inválida')
-    if (dto.dataFim && !isDataValida(dto.dataFim)) throw new Error('Data de fim inválida')
+    if (dto.dataInicio && !isDataValida(dto.dataInicio)) throw invalido('projeto.dataInicioInvalida', 'Data de início inválida (use YYYY-MM-DD)')
+    if (dto.dataFim && !isDataValida(dto.dataFim)) throw invalido('projeto.dataFimInvalida', 'Data de fim inválida (use YYYY-MM-DD)')
 
     const dataInicio = dto.dataInicio ?? atual.dataInicio
     const dataFim = dto.dataFim !== undefined ? dto.dataFim : atual.dataFim
-    if (dataFim && dataFim < dataInicio) throw new Error('Data de fim não pode ser anterior à data de início')
+    if (dataFim && dataFim < dataInicio) throw invalido('projeto.dataFimAntesInicio', 'Data de fim não pode ser anterior à data de início')
 
     // Ao MARCAR "considerar como pago", o saldo em aberto vira um pagamento de
     // regularização. Roda antes do update: se falhar, a flag não fica ligada
@@ -149,7 +150,7 @@ export const projetosService = {
       ...(dto.observacoes !== undefined && { observacoes: dto.observacoes?.trim() }),
       ...(dto.consideradoPago !== undefined && { consideradoPago: dto.consideradoPago }),
     })
-    if (!atualizado) throw new Error('Falha ao atualizar projeto')
+    if (!atualizado) throw naoEncontrado('projeto.naoEncontrado', 'Projeto não encontrado')
 
     // Ao DESMARCAR, o caminho inverso: os pagamentos gerados pela
     // regularização são removidos. Aqui a ordem é depois do update — se a
@@ -188,7 +189,7 @@ export const projetosService = {
   async calcularResumo(tenantId: string, projetoId: string): Promise<ResumoProjeto> {
     const projeto = await this.buscarPorId(tenantId, projetoId)
     const cliente = await clientesRepo.findByIdAndTenant(projeto.clienteId, tenantId)
-    if (!cliente) throw new Error('Cliente do projeto não encontrado')
+    if (!cliente) throw naoEncontrado('cliente.naoEncontrado', 'Cliente do projeto não encontrado')
 
     const horasAbertas = projeto.horasContratadas === undefined || projeto.horasContratadas === null
 

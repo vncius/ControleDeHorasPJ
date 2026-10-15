@@ -20,5 +20,5 @@ export function exigirCabecalhoCsrf(req: Request, res: Response, next: NextFunct
     next()
     return
   }
-  res.status(403).json({ erro: 'Requisição recusada: cabeçalho de segurança ausente' })
+  res.status(403).json({ erro: 'Requisição recusada: cabeçalho de segurança ausente', codigo: 'csrf.cabecalhoAusente' })
 }

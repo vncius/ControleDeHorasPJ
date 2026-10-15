@@ -50,7 +50,7 @@ export function criarLimitador({ janelaMs, max, chave, agora = Date.now }: Opcoe
 
     if (c.total > max) {
       res.setHeader('Retry-After', String(Math.ceil((c.inicio + janelaMs - instante) / 1000)))
-      res.status(429).json({ erro: MENSAGEM })
+      res.status(429).json({ erro: MENSAGEM, codigo: 'limite.excedido' })
       return
     }
     next()

@@ -31,6 +31,13 @@ npm run build      # build de produção real (já pegou bugs que o dev server n
 - **Checagem de posse por tenant**: centralizada em `backend/src/repositories/mongoRepository.ts` (`findAllByTenant`, `findByIdAndTenant`, `updateForTenant`, `deleteForTenant`, `existsForTenant`). Nunca reimplemente `item.tenantId === tenantId` manualmente num service — use esses métodos, inclusive para validar referências entre entidades (ex.: `clienteId` de um `Projeto` precisa existir *no mesmo tenant*, não só existir).
 - Antes de adicionar uma regra de cálculo/validação nova, verifique se ela já existe em um desses arquivos.
 
+## Erros da API
+
+- Services nunca fazem `throw new Error(...)` para erro de negócio: usam `invalido` (400), `naoEncontrado` (404), `conflito` (409) ou `naoAutorizado` (401) de `backend/src/errors/AppError.ts`, com um **código estável** (`<entidade>.<motivo>`, ex.: `projeto.dataFimAntesInicio`) e a mensagem em pt. Um `Error` comum vira 500 genérico no `errorHandler`.
+- Todo código novo precisa da tradução `erros.<codigo>` em `frontend/src/i18n/{pt,en,es}.ts`. Sem ela, o usuário vê a mensagem em pt em qualquer idioma.
+- Mensagens de erro não levam ids internos nem dados do usuário.
+- Logs nunca registram corpo de requisição, query string, cookies, e-mail ou mensagem de erro do Mongo (ver `middleware/logRequisicoes.ts` e `middleware/errorHandler.ts`).
+
 ## Dados sensíveis
 
 Os dados **reais** de clientes, projetos e faturamento do usuário vivem hoje no **MongoDB Atlas** (banco `horas-pj`, connection string em `backend/.env`, gitignored). `backend/src/data/*.json` (sem sufixo `.example`) deixaram de ser lidos/escritos pela aplicação e viram **backup histórico** do estado anterior à migração — continuam no disco e ignorados pelo git (ver `.gitignore`). Nunca:

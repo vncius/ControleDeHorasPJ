@@ -5,7 +5,8 @@ import helmet from 'helmet'
 import routes from './routes'
 import { exigirCabecalhoCsrf } from './middleware/csrf'
 import { limiteGeral } from './middleware/rateLimit'
-import { parsersJson, errosDeCorpo } from './middleware/corpo'
+import { parsersJson } from './middleware/corpo'
+import { errorHandler, rotaNaoEncontrada } from './middleware/errorHandler'
 import { logRequisicoes } from './middleware/logRequisicoes'
 
 // ============================================================
@@ -57,12 +58,15 @@ export function criarApp(env: NodeJS.ProcessEnv = process.env): Express {
   // Rotas
   // ----------------------------------------------------------------
   app.use('/api', exigirCabecalhoCsrf, routes)
-  app.use(errosDeCorpo)
+  app.use('/api', rotaNaoEncontrada)
 
   // Rota de saúde
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() })
   })
+
+  // Por último: qualquer erro (services, body-parser) vira JSON com status e código.
+  app.use(errorHandler)
 
   return app
 }

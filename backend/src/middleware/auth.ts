@@ -61,7 +61,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   const sessao = token ? verificarSessao(token) : null
 
   if (!sessao) {
-    res.status(401).json({ erro: 'Não autenticado' })
+    res.status(401).json({ erro: 'Não autenticado', codigo: 'auth.naoAutenticado' })
     return
   }
 

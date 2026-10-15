@@ -16,15 +16,17 @@ import {
   isInstanteFuturo,
 } from '../utils/tempo'
 import { marcarLancamentosFaturaveis } from '../utils/faturamento'
+import { conflito, invalido, naoEncontrado } from '../errors/AppError'
 
-const DESCRICAO_OBRIGATORIA = 'Descrição obrigatória: informe o que foi feito'
+const descricaoObrigatoria = () =>
+  invalido('lancamento.descricaoObrigatoria', 'Descrição obrigatória: informe o que foi feito')
 
 // escopoId vem do cliente: precisa existir no mesmo tenant E pertencer ao
 // mesmo projeto do lançamento. Vazio/null = escopo principal, sempre válido.
 async function validarEscopo(tenantId: string, projetoId: string, escopoId?: string | null): Promise<void> {
   if (!escopoId) return
   const escopo = await escoposRepo.findByIdAndTenant(escopoId, tenantId)
-  if (!escopo || escopo.projetoId !== projetoId) throw new Error('Escopo não encontrado neste projeto')
+  if (!escopo || escopo.projetoId !== projetoId) throw invalido('lancamento.escopoInvalido', 'Escopo não encontrado neste projeto')
 }
 
 async function somarHorasCobertas(tenantId: string, projetoId: string): Promise<number> {
@@ -136,7 +138,7 @@ export const lancamentosService = {
 
   async buscarPorId(tenantId: string, id: string): Promise<LancamentoHoras> {
     const lancamento = await lancamentosRepo.findByIdAndTenant(id, tenantId)
-    if (!lancamento) throw new Error(`Lançamento não encontrado: ${id}`)
+    if (!lancamento) throw naoEncontrado('lancamento.naoEncontrado', 'Lançamento não encontrado')
     return lancamento
   },
 
@@ -162,18 +164,19 @@ export const lancamentosService = {
 
   // --- Controle de ponto: Iniciar ---
   async iniciarTrabalho(tenantId: string, projetoId: string, descricao?: string): Promise<LancamentoHoras> {
-    if (!(await projetosRepo.existsForTenant(projetoId, tenantId))) throw new Error('Projeto não encontrado')
+    if (!(await projetosRepo.existsForTenant(projetoId, tenantId))) throw naoEncontrado('projeto.naoEncontrado', 'Projeto não encontrado')
 
     const emAndamento = await this.buscarEmAndamento(tenantId)
     if (emAndamento) {
-      throw new Error(
-        `Já existe um lançamento em andamento (projeto: ${emAndamento.projetoId}). Finalize-o antes de iniciar outro.`
+      throw conflito(
+        'lancamento.jaEmAndamento',
+        'Já existe um lançamento em andamento. Finalize-o antes de iniciar outro.'
       )
     }
 
     const ultimaDesc = await this.obterUltimaDescricao(tenantId, projetoId)
     const descricaoFinal = descricao?.trim() || ultimaDesc?.trim()
-    if (!descricaoFinal) throw new Error(DESCRICAO_OBRIGATORIA)
+    if (!descricaoFinal) throw descricaoObrigatoria()
 
     // reaproveita o escopo do último lançamento (o usuário ainda pode trocá-lo ao finalizar)
     const escopoId = await this.obterUltimoEscopo(tenantId, projetoId)
@@ -196,14 +199,14 @@ export const lancamentosService = {
   // --- Controle de ponto: Finalizar ---
   async finalizarTrabalho(tenantId: string, id: string, dto: FinalizarLancamentoDTO): Promise<LancamentoHoras> {
     const lancamento = await this.buscarPorId(tenantId, id)
-    if (lancamento.horaFim) throw new Error('Lançamento já foi finalizado')
+    if (lancamento.horaFim) throw conflito('lancamento.jaFinalizado', 'Lançamento já foi finalizado')
     await validarEscopo(tenantId, lancamento.projetoId, dto.escopoId)
 
     const horaFim = dto.horaFim ?? horaAtual()
     const calculo = calcularDiferenca(lancamento.horaInicio, horaFim)
 
     const descricao = (dto.descricao ?? lancamento.descricao)?.trim()
-    if (!descricao) throw new Error(DESCRICAO_OBRIGATORIA)
+    if (!descricao) throw descricaoObrigatoria()
 
     const atualizado = await lancamentosRepo.updateForTenant(id, tenantId, {
       horaFim,
@@ -213,7 +216,7 @@ export const lancamentosService = {
       ...(dto.escopoId !== undefined && { escopoId: dto.escopoId ?? undefined }),
       dataAtualizacao: agora(),
     })
-    if (!atualizado) throw new Error('Falha ao finalizar lançamento')
+    if (!atualizado) throw naoEncontrado('lancamento.naoEncontrado', 'Lançamento não encontrado')
 
     if (descricao) await salvarUltimaDescricao(tenantId, lancamento.projetoId, descricao, atualizado.escopoId)
     return atualizado
@@ -221,13 +224,14 @@ export const lancamentosService = {
 
   // --- Lançamento manual ---
   async criar(tenantId: string, dto: CriarLancamentoDTO): Promise<LancamentoHoras> {
-    if (!(await projetosRepo.existsForTenant(dto.projetoId, tenantId))) throw new Error('Projeto não encontrado')
+    if (!(await projetosRepo.existsForTenant(dto.projetoId, tenantId))) throw naoEncontrado('projeto.naoEncontrado', 'Projeto não encontrado')
     await validarEscopo(tenantId, dto.projetoId, dto.escopoId)
-    if (!isDataValida(dto.data)) throw new Error('Data inválida (esperado YYYY-MM-DD)')
-    if (!isHoraValida(dto.horaInicio)) throw new Error('Hora início inválida (esperado HH:MM)')
-    if (!dto.descricao?.trim()) throw new Error(DESCRICAO_OBRIGATORIA)
+    if (!isDataValida(dto.data)) throw invalido('lancamento.dataInvalida', 'Data inválida (esperado YYYY-MM-DD)')
+    if (!isHoraValida(dto.horaInicio)) throw invalido('lancamento.horaInicioInvalida', 'Hora início inválida (esperado HH:MM)')
+    if (!dto.descricao?.trim()) throw descricaoObrigatoria()
     if (!dto.horaFim && isInstanteFuturo(dto.data, dto.horaInicio)) {
-      throw new Error(
+      throw invalido(
+        'lancamento.inicioNoFuturo',
         'Início no futuro: um lançamento em andamento não pode começar depois de agora. Se corrigiu a hora para antes da meia-noite, ajuste também a data.'
       )
     }
@@ -235,7 +239,7 @@ export const lancamentosService = {
     const partial: Partial<Pick<LancamentoHoras, 'totalHHMM' | 'totalDecimal' | 'horaFim'>> = {}
 
     if (dto.horaFim) {
-      if (!isHoraValida(dto.horaFim)) throw new Error('Hora fim inválida (esperado HH:MM)')
+      if (!isHoraValida(dto.horaFim)) throw invalido('lancamento.horaFimInvalida', 'Hora fim inválida (esperado HH:MM)')
       const calculo = calcularDiferenca(dto.horaInicio, dto.horaFim)
       partial.horaFim = dto.horaFim
       partial.totalHHMM = calculo.hhMM
@@ -270,10 +274,11 @@ export const lancamentosService = {
     const horaFim = dto.horaFim !== undefined ? dto.horaFim : lancamento.horaFim
     const data = dto.data ?? lancamento.data
 
-    if (dto.descricao !== undefined && !dto.descricao.trim()) throw new Error(DESCRICAO_OBRIGATORIA)
+    if (dto.descricao !== undefined && !dto.descricao.trim()) throw descricaoObrigatoria()
 
     if (!horaFim && isInstanteFuturo(data, horaInicio)) {
-      throw new Error(
+      throw invalido(
+        'lancamento.inicioNoFuturo',
         'Início no futuro: um lançamento em andamento não pode começar depois de agora. Se corrigiu a hora para antes da meia-noite, ajuste também a data.'
       )
     }
@@ -299,7 +304,7 @@ export const lancamentosService = {
     }
 
     const atualizado = await lancamentosRepo.updateForTenant(id, tenantId, partial)
-    if (!atualizado) throw new Error('Falha ao atualizar lançamento')
+    if (!atualizado) throw naoEncontrado('lancamento.naoEncontrado', 'Lançamento não encontrado')
 
     if (dto.descricao) await salvarUltimaDescricao(tenantId, lancamento.projetoId, dto.descricao, atualizado.escopoId)
     return atualizado

@@ -2,11 +2,12 @@ import { v4 as uuid } from 'uuid'
 import { pagamentosRepo, projetosRepo } from '../repositories'
 import { Pagamento, CriarPagamentoDTO, AtualizarPagamentoDTO } from '../types'
 import { agora, isDataValida } from '../utils/tempo'
+import { invalido, naoEncontrado } from '../errors/AppError'
 
 function validarPeriodo(inicio: string, fim: string): void {
-  if (!isDataValida(inicio)) throw new Error('Início do período de apuração inválido (use YYYY-MM-DD)')
-  if (!isDataValida(fim)) throw new Error('Fim do período de apuração inválido (use YYYY-MM-DD)')
-  if (fim < inicio) throw new Error('Fim do período de apuração não pode ser anterior ao início')
+  if (!isDataValida(inicio)) throw invalido('pagamento.periodoInicioInvalido', 'Início do período de apuração inválido (use YYYY-MM-DD)')
+  if (!isDataValida(fim)) throw invalido('pagamento.periodoFimInvalido', 'Fim do período de apuração inválido (use YYYY-MM-DD)')
+  if (fim < inicio) throw invalido('pagamento.periodoFimAntesInicio', 'Fim do período de apuração não pode ser anterior ao início')
 }
 
 export const pagamentosService = {
@@ -24,14 +25,14 @@ export const pagamentosService = {
 
   async buscarPorId(tenantId: string, id: string): Promise<Pagamento> {
     const pagamento = await pagamentosRepo.findByIdAndTenant(id, tenantId)
-    if (!pagamento) throw new Error(`Pagamento não encontrado: ${id}`)
+    if (!pagamento) throw naoEncontrado('pagamento.naoEncontrado', 'Pagamento não encontrado')
     return pagamento
   },
 
   async criar(tenantId: string, dto: CriarPagamentoDTO): Promise<Pagamento> {
-    if (!(await projetosRepo.existsForTenant(dto.projetoId, tenantId))) throw new Error('Projeto não encontrado')
-    if (!dto.horasCobertas || dto.horasCobertas <= 0) throw new Error('Horas cobertas devem ser maiores que zero')
-    if (!isDataValida(dto.dataPagamento)) throw new Error('Data de pagamento inválida (use YYYY-MM-DD)')
+    if (!(await projetosRepo.existsForTenant(dto.projetoId, tenantId))) throw naoEncontrado('projeto.naoEncontrado', 'Projeto não encontrado')
+    if (!dto.horasCobertas || dto.horasCobertas <= 0) throw invalido('pagamento.horasInvalidas', 'Horas cobertas devem ser maiores que zero')
+    if (!isDataValida(dto.dataPagamento)) throw invalido('pagamento.dataInvalida', 'Data de pagamento inválida (use YYYY-MM-DD)')
     validarPeriodo(dto.periodoApuracaoInicio, dto.periodoApuracaoFim)
 
     const pagamento: Pagamento = {
@@ -54,9 +55,9 @@ export const pagamentosService = {
   async atualizar(tenantId: string, id: string, dto: AtualizarPagamentoDTO): Promise<Pagamento> {
     const atual = await this.buscarPorId(tenantId, id)
     if (dto.horasCobertas !== undefined && dto.horasCobertas <= 0)
-      throw new Error('Horas cobertas devem ser maiores que zero')
+      throw invalido('pagamento.horasInvalidas', 'Horas cobertas devem ser maiores que zero')
     if (dto.dataPagamento !== undefined && !isDataValida(dto.dataPagamento))
-      throw new Error('Data de pagamento inválida (use YYYY-MM-DD)')
+      throw invalido('pagamento.dataInvalida', 'Data de pagamento inválida (use YYYY-MM-DD)')
 
     const periodoInicio = dto.periodoApuracaoInicio ?? atual.periodoApuracaoInicio
     const periodoFim = dto.periodoApuracaoFim ?? atual.periodoApuracaoFim
@@ -73,7 +74,7 @@ export const pagamentosService = {
       ...(dto.numeroNF !== undefined && { numeroNF: dto.numeroNF?.trim() }),
       ...(dto.observacoes !== undefined && { observacoes: dto.observacoes?.trim() }),
     })
-    if (!atualizado) throw new Error('Falha ao atualizar pagamento')
+    if (!atualizado) throw naoEncontrado('pagamento.naoEncontrado', 'Pagamento não encontrado')
     return atualizado
   },
 

@@ -4,7 +4,7 @@ Base: `/api`. Todas as respostas são JSON. Exceto as rotas de autenticação ma
 
 Toda requisição que altera estado (POST, PUT, PATCH, DELETE), inclusive o login, precisa do cabeçalho `X-Requested-With: XMLHttpRequest`. Sem ele a resposta é `403`.
 
-Erros hoje respondem `400 { erro: string }` (401 quando não há sessão). Excesso de requisições responde `429` com `Retry-After` (login: 20/min por IP; API: 600/min por IP; importação: 30 a cada 10 min por usuário). Corpo acima de 100 KB, ou 2 MB na importação, responde `413`. A padronização de status e códigos de erro está planejada em [`plano-melhorias.md`](plano-melhorias.md) (M7).
+Erros respondem `{ erro, codigo, params? }`. `erro` é a mensagem em pt (fallback), `codigo` é a chave estável que o frontend traduz (`erros.<codigo>` em `frontend/src/i18n`) e `params` alimenta a interpolação. Status: `400` dado inválido, `401` sem sessão (`auth.naoAutenticado`), `403` sem cabeçalho CSRF, `404` não encontrado (inclusive de outro usuário), `409` conflito com o estado atual (ex.: `lancamento.jaEmAndamento`, `cliente.possuiProjetos`) e `500` erro interno genérico (`interno`). Excesso de requisições responde `429` com `Retry-After` (login: 20/min por IP; API: 600/min por IP; importação: 30 a cada 10 min por usuário). Corpo acima de 100 KB, ou 2 MB na importação, responde `413`.
 
 ## Autenticação
 

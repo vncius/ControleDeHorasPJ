@@ -133,8 +133,8 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 | M3 | CSRF (SameSite=Lax + cabeçalho) | — | P | ✅ | 2026-10-15 | e659629 |
 | M4 | Cabeçalhos de segurança (helmet + `_headers`) | — | P | ✅ | 2026-10-15 | 6e1e205 |
 | M5 | Rate limit e limite de corpo | — | P | ✅ | 2026-10-15 | f892005 |
-| M6 | `app.ts`/`server.ts` + log de requisições | — | P | ✅ | 2026-10-15 | (este commit) |
-| M7 | Erros padronizados + cliente HTTP robusto | M6 | M | ⬜ | | |
+| M6 | `app.ts`/`server.ts` + log de requisições | — | P | ✅ | 2026-10-15 | fdba622 |
+| M7 | Erros padronizados + cliente HTTP robusto | M6 | M | ✅ | 2026-10-15 | (este commit) |
 | M8 | Validação com Zod | M7 | M | ⬜ | | |
 | M9 | Testes + CI | M1–M8 | M | ⬜ | | |
 | M10 | Migrações idempotentes no boot | — | P | ⬜ | | |
@@ -205,3 +205,25 @@ Ordem sugerida: M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M
 - `src/app.test.ts` sobe o app numa porta efêmera, sem MongoDB, e cobre health com cabeçalhos do helmet, 401 sem sessão, 403 sem cabeçalho CSRF, cookie de logout `SameSite=Lax`/`HttpOnly`, CORS só para a origem configurada e 413. Testes que precisam do banco (services de verdade) ficam para a M9.
 - `middleware/logRequisicoes.ts` gera uma linha por requisição, `[http] MÉTODO caminho status duração`, com o caminho cortado no `?`. Nunca registra corpo, cookies, cabeçalhos nem e-mail. `/health` não é registrado, e o log fica desligado com `NODE_ENV=test`.
 - O `export default app` de `server.ts` saiu; nada o importava.
+
+### M7
+- `errors/AppError.ts`: `AppError(status, codigo, mensagem, params?)` e os atalhos `invalido` (400), `naoAutorizado` (401), `naoEncontrado` (404) e `conflito` (409). Os 57 `throw new Error` dos services e os 4 dos controllers viraram `AppError`, com 43 códigos no total.
+  - "Não encontrado" e "falha ao atualizar" (registro sumiu entre a leitura e a escrita) viraram 404. Já em andamento, já finalizado e cliente com projetos viraram 409. O restante virou 400.
+  - As mensagens perderam ids internos (antes, "Projeto não encontrado: <uuid>").
+- `middleware/errorHandler.ts` é montado por último em `app.ts` e absorveu o `errosDeCorpo` da M5:
+  - `AppError` responde `{ erro, codigo, params? }`;
+  - erros do body-parser respondem 413 ou 400;
+  - qualquer outro erro responde 500 genérico (`codigo: interno`);
+  - o log do 500 registra tipo, código e stack, **sem a mensagem**, porque erros do Mongo (chave duplicada) a montam com valores dos documentos, inclusive o e-mail do tenant;
+  - `rotaNaoEncontrada` responde 404 em JSON para `/api` inexistente.
+- Controllers: `handle(res, next, fn, status)` repassa o erro ao `next` (antes respondia sempre 400 com `err.message`). `requireAuth`, CSRF e rate limit também passaram a mandar `codigo`.
+- Frontend (`services/api.ts`):
+  - `ErroApi(status, codigo, mensagem)`, com a mensagem traduzida de `erros.<codigo>` no idioma ativo (fallback: o `erro` em pt do backend; interpolação com `params`, inclusive plural);
+  - só faz parse de JSON quando o `content-type` é JSON, então 502/500 de proxy viram `respostaInvalida` em vez de `SyntaxError`;
+  - falha de rede vira `rede`;
+  - um 401 fora de `/auth/*` chama `definirAoExpirarSessao`, que o `AuthContext` usa para limpar o usuário e levar ao `/login`.
+- Traduções `erros.*` em pt/en/es. Uma verificação manual (script fora do repo) confirmou os 43 códigos nos três idiomas. Transformar isso em teste automatizado fica para a M9/M11.
+- Verificado no navegador (preview com CSP e backend de demo):
+  - excluir cliente com 2 projetos recebe 409, com a mensagem "Cannot delete: the client has 2 linked projects." (en, com plural);
+  - apagar o cookie e navegar recebe 401 e redireciona para `/login`;
+  - com o backend derrubado, o POST recebe 500 do proxy, sem JSON, e a tela mostra a mensagem de resposta inesperada, sem `SyntaxError`.

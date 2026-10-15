@@ -1,4 +1,4 @@
-import express, { Router, Request, Response, NextFunction } from 'express'
+import express, { Router } from 'express'
 
 // ----------------------------------------------------------------
 // Limites de corpo JSON. A importação recebe texto colado de planilha e as
@@ -19,19 +19,4 @@ export function parsersJson(): Router {
   router.use(express.json({ limit: LIMITE_CORPO_PADRAO }))
   return router
 }
-
-/**
- * Erros do body-parser viram JSON no mesmo formato do resto da API (o
- * padrão do Express responde HTML). Os demais erros seguem adiante.
- */
-export function errosDeCorpo(err: any, _req: Request, res: Response, next: NextFunction): void {
-  if (err?.type === 'entity.too.large') {
-    res.status(413).json({ erro: 'Conteúdo grande demais para esta requisição' })
-    return
-  }
-  if (err?.type === 'entity.parse.failed') {
-    res.status(400).json({ erro: 'JSON inválido no corpo da requisição' })
-    return
-  }
-  next(err)
-}
+// Os erros do body-parser (413, JSON inválido) viram JSON no errorHandler.

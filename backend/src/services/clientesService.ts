@@ -2,6 +2,7 @@ import { v4 as uuid } from 'uuid'
 import { clientesRepo, projetosRepo } from '../repositories'
 import { Cliente, CriarClienteDTO, AtualizarClienteDTO } from '../types'
 import { agora } from '../utils/tempo'
+import { conflito, invalido, naoEncontrado } from '../errors/AppError'
 
 export const clientesService = {
   async listar(tenantId: string): Promise<Cliente[]> {
@@ -13,12 +14,12 @@ export const clientesService = {
 
   async buscarPorId(tenantId: string, id: string): Promise<Cliente> {
     const cliente = await clientesRepo.findByIdAndTenant(id, tenantId)
-    if (!cliente) throw new Error(`Cliente não encontrado: ${id}`)
+    if (!cliente) throw naoEncontrado('cliente.naoEncontrado', 'Cliente não encontrado')
     return cliente
   },
 
   async criar(tenantId: string, dto: CriarClienteDTO): Promise<Cliente> {
-    if (!dto.nome?.trim()) throw new Error('Nome do cliente é obrigatório')
+    if (!dto.nome?.trim()) throw invalido('cliente.nomeObrigatorio', 'Nome do cliente é obrigatório')
     const cliente: Cliente = {
       id: uuid(),
       tenantId,
@@ -35,7 +36,7 @@ export const clientesService = {
       ...(dto.nome && { nome: dto.nome.trim() }),
       ...(dto.observacoes !== undefined && { observacoes: dto.observacoes?.trim() }),
     })
-    if (!atualizado) throw new Error('Falha ao atualizar cliente')
+    if (!atualizado) throw naoEncontrado('cliente.naoEncontrado', 'Cliente não encontrado')
     return atualizado
   },
 
@@ -45,8 +46,10 @@ export const clientesService = {
     // Verificar se há projetos vinculados
     const projetos = await projetosRepo.findBy((p) => p.tenantId === tenantId && p.clienteId === id)
     if (projetos.length > 0) {
-      throw new Error(
-        `Não é possível excluir: cliente possui ${projetos.length} projeto(s) vinculado(s)`
+      throw conflito(
+        'cliente.possuiProjetos',
+        `Não é possível excluir: cliente possui ${projetos.length} projeto(s) vinculado(s)`,
+        { count: projetos.length }
       )
     }
 

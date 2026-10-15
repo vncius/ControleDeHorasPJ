@@ -77,7 +77,10 @@ describe('lançamento só aceita escopo do mesmo tenant e do mesmo projeto', () 
   })
 
   it('criar: recusa escopo de outro tenant', async () => {
-    await expect(lancamentosService.criar(A, novoLancamento('eB1'))).rejects.toThrow('Escopo não encontrado')
+    await expect(lancamentosService.criar(A, novoLancamento('eB1'))).rejects.toMatchObject({
+      status: 400,
+      codigo: 'lancamento.escopoInvalido',
+    })
   })
 
   it('criar: recusa escopo de outro projeto do mesmo tenant', async () => {

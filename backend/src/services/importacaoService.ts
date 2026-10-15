@@ -6,6 +6,7 @@ import {
   StatusLinhaImportacao,
 } from '../types'
 import { calcularDiferenca, agora, isHoraValida, horaParaMinutos } from '../utils/tempo'
+import { naoEncontrado } from '../errors/AppError'
 
 // ── constantes ──────────────────────────────────────────────────
 
@@ -164,7 +165,7 @@ export const importacaoService = {
 
   async confirmar(tenantId: string, projetoId: string, linhas: LinhaImportacao[]): Promise<LancamentoHoras[]> {
     if (!(await projetosRepo.existsForTenant(projetoId, tenantId))) {
-      throw new Error('Projeto não encontrado')
+      throw naoEncontrado('projeto.naoEncontrado', 'Projeto não encontrado')
     }
 
     // importa apenas linhas válidas e com aviso

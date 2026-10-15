@@ -10,6 +10,7 @@ import type {
   StatusEscopo,
   TipoLancamento,
 } from '../types'
+import i18n from '../i18n'
 
 // Em produção front e back ficam em domínios/plataformas distintas, então
 // a base da API precisa ser absoluta (VITE_API_URL). Em dev, sem essa
@@ -20,15 +21,76 @@ const BASE = `${import.meta.env.VITE_API_URL ?? ''}/api`
 // estado (proteção contra CSRF — backend/src/middleware/csrf.ts)
 const CABECALHOS = { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
 
+// ----------------------------------------------------------------
+// Erros
+// ----------------------------------------------------------------
+// A API responde erros como { erro, codigo, params? } (backend/src/errors/
+// AppError.ts). A mensagem mostrada vem da tradução `erros.<codigo>` no
+// idioma ativo; `erro` (pt, do backend) é o fallback para código sem tradução.
+export class ErroApi extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly codigo: string,
+    mensagem: string
+  ) {
+    super(mensagem)
+    this.name = 'ErroApi'
+  }
+}
+
+interface CorpoErro {
+  erro?: string
+  codigo?: string
+  params?: Record<string, string | number>
+}
+
+function traduzirErro(codigo: string, fallback: string, params?: Record<string, string | number>): string {
+  return i18n.t(`erros.${codigo}`, { defaultValue: fallback, ...params })
+}
+
+// Chamado quando uma rota autenticada responde 401 (sessão expirou ou foi
+// invalidada): o AuthContext limpa o usuário e o ProtectedRoute leva ao /login.
+let aoExpirarSessao: (() => void) | null = null
+export function definirAoExpirarSessao(fn: (() => void) | null): void {
+  aoExpirarSessao = fn
+}
+
+/** Corpo JSON da resposta, ou null se não for JSON (ex.: página de erro HTML de um proxy). */
+async function lerJson(res: Response): Promise<unknown> {
+  if (!res.headers.get('content-type')?.includes('application/json')) return null
+  try {
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
 async function req<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: CABECALHOS,
-    credentials: 'include',
-    ...options,
-  })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.erro ?? 'Erro na requisição')
-  return data as T
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      headers: CABECALHOS,
+      credentials: 'include',
+      ...options,
+    })
+  } catch {
+    throw new ErroApi(0, 'rede', traduzirErro('rede', 'Sem conexão com o servidor.'))
+  }
+
+  const corpo = await lerJson(res)
+
+  if (!res.ok) {
+    // /auth/* trata o próprio 401 (sem sessão no /me, token inválido no login)
+    if (res.status === 401 && !path.startsWith('/auth/')) aoExpirarSessao?.()
+    const erro = (corpo ?? {}) as CorpoErro
+    const codigo = erro.codigo ?? (corpo ? 'interno' : 'respostaInvalida')
+    const fallback = erro.erro ?? `Erro inesperado (status ${res.status})`
+    throw new ErroApi(res.status, codigo, traduzirErro(codigo, fallback, { status: res.status, ...erro.params }))
+  }
+  if (corpo === null) {
+    throw new ErroApi(res.status, 'respostaInvalida', traduzirErro('respostaInvalida', 'Resposta inesperada', { status: res.status }))
+  }
+  return corpo as T
 }
 
 const get = <T>(path: string) => req<T>(path)

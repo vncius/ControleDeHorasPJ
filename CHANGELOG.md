@@ -19,6 +19,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - `app.ts` separado de `server.ts` (app testável sem banco) e log de requisições com método, caminho sem query string, status e duração, sem corpo, cookies nem e-mail (M6).
 - Limites de requisição em memória: login 20/min por IP, API 600/min por IP e importação 30 a cada 10 min por tenant (429 com `Retry-After`). Corpo JSON limitado a 100 KB, ou 2 MB na importação, com 413 e JSON inválido respondidos em JSON (M5).
 - Dependências do Express atualizadas por `npm audit fix` (body-parser, proxy-addr, qs) (M5).
+- Erros padronizados: services lançam `AppError` com status (400, 404 ou 409) e código estável, e a API responde `{ erro, codigo, params? }`. Erro inesperado vira 500 genérico, sem vazar detalhe do banco. Rotas `/api` inexistentes respondem 404 em JSON. O frontend traduz pelo código (pt/en/es), trata resposta que não é JSON e falha de rede, e redireciona ao login quando a sessão expira (M7).
 - Cabeçalhos de segurança: `helmet` na API (CSP fechada, sem `X-Powered-By`) e `frontend/public/_headers` no Cloudflare Pages (CSP, HSTS, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`). O anti-flash de tema saiu do script inline para `public/tema-inicial.js` (M4).
 - Proteção contra CSRF: toda requisição que altera estado exige `X-Requested-With: XMLHttpRequest` (403 sem ele), e o cookie de sessão passa a ser `SameSite=Lax` também em produção, configurável por `COOKIE_SAME_SITE` (M3).
 
