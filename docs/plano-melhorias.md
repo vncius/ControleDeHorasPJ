@@ -140,7 +140,7 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 | M7 | Erros padronizados + cliente HTTP robusto | M6 | M | ✅ | 2026-10-15 | 5ae84e5 |
 | M8 | Validação com Zod | M7 | M | ✅ | 2026-10-15 | 1af33e3 |
 | M9 | Testes + CI | M1–M8 | M | ✅ | 2026-10-15 | 5695954 |
-| M10 | Migrações idempotentes no boot | — | P | ✅ | 2026-10-15 | (este commit) |
+| M10 | Migrações idempotentes no boot | — | P | ✅ | 2026-10-15 | cd79f58 |
 | M11 | CSV seguro + i18n tipado | — | P | ⬜ | | |
 | M12 | Acessibilidade de modais e toasts | — | M | ⬜ | | |
 | M13 | Identidade (`usuarios`) e sessão revogável | M10, D6 | M | ⬜ | | |
@@ -325,4 +325,4 @@ Cada PR testado num worktree com o branch mesclado sobre a main: `npm ci`, typec
 - `001-status-pausado` faz `updateMany({ status: "Pausado" }, { $set: { status: "Com impedimento" } })` na coleção `projetos`, atravessando todos os tenants porque é correção de formato. O alvo foi decidido pelo usuário.
 - **Quando roda nos dados reais:** no próximo boot do backend apontando para o banco de produção, seja o `npm run dev` local (o `backend/.env` usa o banco real) ou o próximo deploy no Render. O log mostra `[migracao] 001-status-pausado: 1 documento(s) alterado(s)` na primeira vez e nada nas seguintes.
 - Testes: `migrations.test.ts`, com o runner (ordem, log só com contagem, ids únicos) e a integração opt-in (converte, não mexe nos demais, idempotente).
-- **Pendente de verificação:** a integração não rodou nesta sessão, porque o Atlas passou a recusar a conexão desta máquina (TLS alert 80, sintoma de IP fora da Network Access List; uma hora antes funcionava). Rodar `npm run test:integracao` quando o acesso for liberado.
+- Integração verificada contra o banco de teste no Atlas: `npm run test:integracao` passou com 117/117. Durante a sessão, o Atlas recusou a conexão por alguns minutos (TLS alert 80, sintoma de acesso de rede ou instabilidade) e depois voltou sozinho. Se reaparecer, conferir a Network Access List.
