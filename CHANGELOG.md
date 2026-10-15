@@ -16,6 +16,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Segurança
 - O servidor não sobe sem `JWT_SECRET` e `GOOGLE_CLIENT_ID`. Em produção também recusa `JWT_SECRET` com menos de 32 bytes e os valores de exemplo (M2).
+- Cabeçalhos de segurança: `helmet` na API (CSP fechada, sem `X-Powered-By`) e `frontend/public/_headers` no Cloudflare Pages (CSP, HSTS, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`). O anti-flash de tema saiu do script inline para `public/tema-inicial.js` (M4).
 - Proteção contra CSRF: toda requisição que altera estado exige `X-Requested-With: XMLHttpRequest` (403 sem ele), e o cookie de sessão passa a ser `SameSite=Lax` também em produção, configurável por `COOKIE_SAME_SITE` (M3).
 
 ### Corrigido

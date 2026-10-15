@@ -33,6 +33,16 @@
       "env": {
         "MONGODB_DB_NAME": "horas-pj-demo"
       }
+    },
+    {
+      "name": "frontend-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "preview"
+      ],
+      "cwd": "frontend",
+      "port": 4173
     }
   ]
 }

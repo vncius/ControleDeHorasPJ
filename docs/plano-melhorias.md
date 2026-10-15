@@ -130,8 +130,8 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 | M0 | Documentação de portfólio + dados de demonstração | — | M | ✅ | 2026-10-15 | cb8095e |
 | M1 | Bugs de isolamento (`escopoId`) e cascata (preferências) | — | P | ✅ | 2026-10-15 | cdca188 |
 | M2 | Segredos validados no boot | — | P | ✅ | 2026-10-15 | 9b3bd04 |
-| M3 | CSRF (SameSite=Lax + cabeçalho) | — | P | ✅ | 2026-10-15 | (este commit) |
-| M4 | Cabeçalhos de segurança (helmet + `_headers`) | — | P | ⬜ | | |
+| M3 | CSRF (SameSite=Lax + cabeçalho) | — | P | ✅ | 2026-10-15 | e659629 |
+| M4 | Cabeçalhos de segurança (helmet + `_headers`) | — | P | ✅ | 2026-10-15 | (este commit) |
 | M5 | Rate limit e limite de corpo | — | P | ⬜ | | |
 | M6 | `app.ts`/`server.ts` + log de requisições | — | P | ⬜ | | |
 | M7 | Erros padronizados + cliente HTTP robusto | M6 | M | ⬜ | | |
@@ -178,3 +178,11 @@ Ordem sugerida: M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M
   - o `Set-Cookie` sai com `SameSite=Lax`;
   - criar e excluir cliente pela interface retornam 201 e 200.
 - **Ação de deploy:** confirmar que o Cloudflare Pages **não** define `VITE_API_URL` apontando para o Render, ou seja, que o frontend usa o proxy same-origin `/api`. Se usar o Render direto (cross-site), defina `COOKIE_SAME_SITE=none` no Render, senão o login para de funcionar. A proteção por cabeçalho vale nos dois cenários.
+
+### M4
+- Backend: `helmet` 8 em `server.ts` antes do CORS, com CSP `default-src 'none'; frame-ancestors 'none'` (a API só devolve JSON), `X-Frame-Options: DENY` e os padrões do helmet (HSTS, nosniff). `X-Powered-By` saiu das respostas.
+- Frontend: `public/_headers` (Cloudflare Pages) com CSP para o próprio domínio, o Google Identity Services e o Google Fonts, mais HSTS, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` e COOP `same-origin-allow-popups` (popup do login Google).
+- O script inline anti-flash de tema do `index.html` virou `public/tema-inicial.js`, para a CSP não precisar de `'unsafe-inline'` em `script-src`. `style-src` mantém `'unsafe-inline'` porque o GIS injeta estilos.
+- `vite preview` (porta 4173, configuração `frontend-preview` do `launch.json`) aplica o `_headers` e faz proxy de `/api` como o Cloudflare, para testar a CSP localmente: `VITE_API_URL= npm run build`.
+- Verificado no preview com o backend de demo: login (script e iframe do Google, fontes, tema), dashboard, projetos e relatórios sem nenhuma violação de CSP no console. A exportação de PDF não foi exercitada (geraria download).
+- **Ação de deploy (mesma da M3):** a CSP tem `connect-src 'self'`. Se o Cloudflare Pages definir `VITE_API_URL` apontando para o Render, inclua essa URL em `connect-src` no `_headers`, senão todas as chamadas à API serão bloqueadas.

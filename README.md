@@ -57,7 +57,7 @@
 | Backend | Node.js, TypeScript, Express, MongoDB Atlas (driver nativo, sem ODM), google-auth-library, JWT |
 | Arquitetura | `routes → controllers → services → repositories`; o frontend só fala com a API REST |
 | Testes | Vitest |
-| Deploy | Cloudflare Pages (frontend + proxy `/api`) e Render (backend) |
+| Deploy | Cloudflare Pages (frontend + proxy `/api` + cabeçalhos de segurança em `public/_headers`) e Render (backend, com helmet) |
 
 ## Rodando localmente
 

@@ -14,16 +14,7 @@
     />
   </head>
   <body>
-    <script>
-      // Evita flash do tema errado antes do React montar
-      (function () {
-        var t = localStorage.getItem('horas-pj:tema')
-        if (t !== 'dark' && t !== 'light') {
-          t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
-        }
-        document.documentElement.setAttribute('data-theme', t)
-      })()
-    </script>
+    <script src="/tema-inicial.js"></script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

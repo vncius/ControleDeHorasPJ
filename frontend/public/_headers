@@ -1,0 +1,20 @@
+# Cabeçalhos de segurança do Cloudflare Pages (M4 de docs/plano-melhorias.md).
+# Valem para os arquivos estáticos; as respostas de /api/* vêm do backend
+# (helmet em backend/src/server.ts). `npm run build && npx vite preview`
+# aplica este mesmo arquivo localmente (ver vite.config.ts).
+#
+# CSP: o próprio domínio, Google Identity Services (botão de login) e
+# Google Fonts (index.html). Sem 'unsafe-inline' em script-src — por isso o
+# anti-flash do tema fica em public/tema-inicial.js.
+# connect-src 'self' pressupõe que o frontend chama a API pelo proxy
+# same-origin /api (VITE_API_URL vazia); um deploy chamando o backend direto
+# precisa incluir a URL dele em connect-src.
+# COOP same-origin-allow-popups: o login do Google pode abrir popup.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; frame-src https://accounts.google.com/gsi/; connect-src 'self' https://accounts.google.com/gsi/; img-src 'self' data: blob: https://*.googleusercontent.com https://*.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Cross-Origin-Opener-Policy: same-origin-allow-popups

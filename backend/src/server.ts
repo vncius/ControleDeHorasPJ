@@ -8,6 +8,7 @@ import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
+import helmet from 'helmet'
 import routes from './routes'
 import { conectarMongo } from './repositories/mongoClient'
 import { validarAmbiente } from './utils/ambiente'
@@ -33,6 +34,18 @@ const origensPermitidas = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
 // ----------------------------------------------------------------
 // Middlewares
 // ----------------------------------------------------------------
+// A API só devolve JSON: CSP fechada (nada é renderizado a partir dela) e os
+// demais cabeçalhos padrão do helmet (HSTS, nosniff, sem X-Powered-By…). Os
+// cabeçalhos das páginas do frontend ficam em frontend/public/_headers.
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: false,
+      directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+    },
+    frameguard: { action: 'deny' },
+  })
+)
 app.use(cors({ origin: origensPermitidas, credentials: true }))
 app.use(express.json())
 app.use(cookieParser())
