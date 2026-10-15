@@ -129,8 +129,8 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 |---|---|---|---|---|---|---|
 | M0 | Documentação de portfólio + dados de demonstração | — | M | ✅ | 2026-10-15 | cb8095e |
 | M1 | Bugs de isolamento (`escopoId`) e cascata (preferências) | — | P | ✅ | 2026-10-15 | cdca188 |
-| M2 | Segredos validados no boot | — | P | ✅ | 2026-10-15 | (este commit) |
-| M3 | CSRF (SameSite=Lax + cabeçalho) | — | P | ⬜ | | |
+| M2 | Segredos validados no boot | — | P | ✅ | 2026-10-15 | 9b3bd04 |
+| M3 | CSRF (SameSite=Lax + cabeçalho) | — | P | ✅ | 2026-10-15 | (este commit) |
 | M4 | Cabeçalhos de segurança (helmet + `_headers`) | — | P | ⬜ | | |
 | M5 | Rate limit e limite de corpo | — | P | ⬜ | | |
 | M6 | `app.ts`/`server.ts` + log de requisições | — | P | ⬜ | | |
@@ -164,6 +164,17 @@ Ordem sugerida: M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M
 - `src/services/isolamento.test.ts` usa repositórios em memória (`vi.mock`), sem banco. Os 5 casos do bug falhavam no código anterior.
 
 ### M2
-- `validarSegredos` (`backend/src/utils/ambiente.ts`) roda em `server.ts` antes de conectar no Mongo e lista todos os problemas de uma vez. Em qualquer ambiente, `JWT_SECRET` e `GOOGLE_CLIENT_ID` são obrigatórios (só espaços conta como ausente). Em produção, `JWT_SECRET` precisa de 32 bytes ou mais, e nenhum dos dois pode ser o valor do `.env.example`.
+- `validarAmbiente` (`backend/src/utils/ambiente.ts`, chamada `validarSegredos` até a M3) roda em `server.ts` antes de conectar no Mongo e lista todos os problemas de uma vez. Em qualquer ambiente, `JWT_SECRET` e `GOOGLE_CLIENT_ID` são obrigatórios (só espaços conta como ausente). Em produção, `JWT_SECRET` precisa de 32 bytes ou mais, e nenhum dos dois pode ser o valor do `.env.example`.
 - O log de falha no boot deixou de dizer "Falha ao conectar no MongoDB" para qualquer erro: agora é "Falha ao iniciar o servidor" com a mensagem.
 - **Ação de deploy:** confirmar que o `JWT_SECRET` do Render tem 32 bytes ou mais antes de publicar, senão o backend não sobe. Trocar o segredo derruba as sessões abertas.
+
+### M3
+- `middleware/csrf.ts` (`exigirCabecalhoCsrf`) é montado em `/api` antes das rotas e vale também para `/auth/google` e `/auth/logout`. Métodos que não sejam GET, HEAD ou OPTIONS sem `X-Requested-With: XMLHttpRequest` recebem 403.
+- O cookie passou a ser `SameSite=Lax` por padrão, inclusive em produção (antes era `none`), e é configurável por `COOKIE_SAME_SITE` (`lax`, `strict` ou `none`, validado no boot). `none` força `secure`. As opções vêm de `opcoesCookieSessao(env)`, que é testável.
+- O frontend envia o cabeçalho em todas as chamadas (`CABECALHOS` em `frontend/src/services/api.ts`). O proxy do Cloudflare repassa os cabeçalhos da requisição, e o preflight CORS libera `x-requested-with` só para `CORS_ORIGIN`.
+- Verificado com o backend de demo:
+  - POST com sessão e sem o cabeçalho recebe 403;
+  - um POST de formulário com Origin de terceiro em `/auth/logout` recebe 403;
+  - o `Set-Cookie` sai com `SameSite=Lax`;
+  - criar e excluir cliente pela interface retornam 201 e 200.
+- **Ação de deploy:** confirmar que o Cloudflare Pages **não** define `VITE_API_URL` apontando para o Render, ou seja, que o frontend usa o proxy same-origin `/api`. Se usar o Render direto (cross-site), defina `COOKIE_SAME_SITE=none` no Render, senão o login para de funcionar. A proteção por cabeçalho vale nos dois cenários.

@@ -2,6 +2,8 @@
 
 Base: `/api`. Todas as respostas são JSON. Exceto as rotas de autenticação marcadas como públicas, toda rota exige a sessão (cookie `sessao`, httpOnly) e opera **apenas sobre os dados do tenant logado** — o `tenantId` vem sempre da sessão, nunca do corpo ou da query string.
 
+Toda requisição que altera estado (POST, PUT, PATCH, DELETE), inclusive o login, precisa do cabeçalho `X-Requested-With: XMLHttpRequest`. Sem ele a resposta é `403`.
+
 Erros hoje respondem `400 { erro: string }` (401 quando não há sessão). A padronização de status e códigos de erro está planejada em [`plano-melhorias.md`](plano-melhorias.md) (M7).
 
 ## Autenticação

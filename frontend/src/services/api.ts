@@ -16,9 +16,13 @@ import type {
 // variável, cai no caminho relativo que o proxy do Vite resolve.
 const BASE = `${import.meta.env.VITE_API_URL ?? ''}/api`
 
+// X-Requested-With é exigido pelo backend em toda requisição que altera
+// estado (proteção contra CSRF — backend/src/middleware/csrf.ts)
+const CABECALHOS = { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+
 async function req<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: CABECALHOS,
     credentials: 'include',
     ...options,
   })
@@ -163,7 +167,7 @@ export const lancamentosApi = {
   emAndamento: async (): Promise<LancamentoHoras | null> => {
     try {
       const res = await fetch(`${BASE}/lancamentos/em-andamento`, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: CABECALHOS,
         credentials: 'include',
       })
       if (!res.ok) return null

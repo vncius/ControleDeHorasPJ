@@ -5,6 +5,8 @@
 // assinar sessões com uma chave previsível ou recusar todo login em runtime.
 // ============================================================
 
+import { VALORES_SAME_SITE } from '../middleware/auth'
+
 // Valores de exemplo do backend/.env.example: nunca aceitos em produção.
 const EXEMPLO_JWT_SECRET = 'replace-with-a-long-random-secret'
 const EXEMPLO_GOOGLE_CLIENT_ID = 'your-google-oauth-client-id.apps.googleusercontent.com'
@@ -15,9 +17,9 @@ const MIN_BYTES_JWT_SECRET = 32
  * Lança um único erro listando todos os problemas encontrados. Em qualquer
  * ambiente, JWT_SECRET e GOOGLE_CLIENT_ID são obrigatórios; em produção,
  * JWT_SECRET precisa ter ao menos 32 bytes e nenhum dos dois pode ser o valor
- * de exemplo.
+ * de exemplo. COOKIE_SAME_SITE, se definido, precisa ser lax, strict ou none.
  */
-export function validarSegredos(env: NodeJS.ProcessEnv = process.env): void {
+export function validarAmbiente(env: NodeJS.ProcessEnv = process.env): void {
   const producao = env.NODE_ENV === 'production'
   const problemas: string[] = []
 
@@ -36,6 +38,11 @@ export function validarSegredos(env: NodeJS.ProcessEnv = process.env): void {
     problemas.push('GOOGLE_CLIENT_ID não definido')
   } else if (producao && googleClientId === EXEMPLO_GOOGLE_CLIENT_ID) {
     problemas.push('GOOGLE_CLIENT_ID está com o valor de exemplo do .env.example')
+  }
+
+  const sameSite = env.COOKIE_SAME_SITE?.trim().toLowerCase()
+  if (sameSite && !(VALORES_SAME_SITE as readonly string[]).includes(sameSite)) {
+    problemas.push(`COOKIE_SAME_SITE inválido ("${env.COOKIE_SAME_SITE}"): use ${VALORES_SAME_SITE.join(', ')}`)
   }
 
   if (problemas.length > 0) {

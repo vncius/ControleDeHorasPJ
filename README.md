@@ -47,6 +47,7 @@
 - **Exclusão em cascata transacional.** Apagar um projeto remove escopos, lançamentos, pagamentos e preferências numa transação MongoDB.
 - **Fuso fixo.** O servidor roda em `America/Sao_Paulo`, então "hoje" e "agora" não mudam conforme a hospedagem.
 - **Login Google com sessão própria.** O ID token é validado no backend (assinatura, audience e `email_verified`), e a sessão é um JWT em cookie httpOnly. Em produção, um proxy same-origin no Cloudflare Pages deixa o cookie first-party e faz funcionar no Safari/iOS.
+- **Proteção contra CSRF sem depender de cookie de terceiro.** O cookie usa `SameSite=Lax`, e toda requisição que altera estado exige o cabeçalho `X-Requested-With`, que um site de terceiro não consegue enviar sem passar pelo CORS.
 
 ## Stack
 
@@ -100,6 +101,7 @@ O script apaga e recria, só nesse banco, cerca de 3 meses de trabalho fictício
 | `GOOGLE_CLIENT_ID` | — (obrigatória) | OAuth Client ID do Google. Sem ele o servidor não sobe |
 | `JWT_SECRET` | — (obrigatória) | Segredo que assina o cookie de sessão. Em produção precisa ter 32 bytes ou mais e ser diferente do exemplo (`openssl rand -base64 48`), senão o servidor não sobe |
 | `CORS_ORIGIN` | `http://localhost:5173` | Uma ou mais origens do frontend, separadas por vírgula |
+| `COOKIE_SAME_SITE` | `lax` | `SameSite` do cookie de sessão (`lax`, `strict` ou `none`). Só use `none` em deploy cross-site sem o proxy `/api`. `none` força `secure` |
 
 **Cloudflare Pages**: `API_ORIGIN` é a URL pública do backend, usada pelo proxy `frontend/functions/api/[[path]].ts`.
 

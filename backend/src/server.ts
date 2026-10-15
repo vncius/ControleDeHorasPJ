@@ -10,7 +10,8 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import routes from './routes'
 import { conectarMongo } from './repositories/mongoClient'
-import { validarSegredos } from './utils/ambiente'
+import { validarAmbiente } from './utils/ambiente'
+import { exigirCabecalhoCsrf } from './middleware/csrf'
 
 const app = express()
 const PORT = process.env.PORT ?? 3001
@@ -39,7 +40,7 @@ app.use(cookieParser())
 // ----------------------------------------------------------------
 // Rotas
 // ----------------------------------------------------------------
-app.use('/api', routes)
+app.use('/api', exigirCabecalhoCsrf, routes)
 
 // Rota de saúde
 app.get('/health', (_req, res) => {
@@ -50,7 +51,7 @@ app.get('/health', (_req, res) => {
 // Start
 // ----------------------------------------------------------------
 async function iniciar() {
-  validarSegredos()
+  validarAmbiente()
   await conectarMongo()
 
   app.listen(PORT, () => {

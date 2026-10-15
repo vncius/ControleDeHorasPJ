@@ -16,6 +16,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Segurança
 - O servidor não sobe sem `JWT_SECRET` e `GOOGLE_CLIENT_ID`. Em produção também recusa `JWT_SECRET` com menos de 32 bytes e os valores de exemplo (M2).
+- Proteção contra CSRF: toda requisição que altera estado exige `X-Requested-With: XMLHttpRequest` (403 sem ele), e o cookie de sessão passa a ser `SameSite=Lax` também em produção, configurável por `COOKIE_SAME_SITE` (M3).
 
 ### Corrigido
 - Lançamentos aceitavam `escopoId` de outro tenant ou de outro projeto ao criar, editar ou finalizar. Agora o escopo é validado (M1).
