@@ -19,6 +19,14 @@ import { marcarLancamentosFaturaveis } from '../utils/faturamento'
 
 const DESCRICAO_OBRIGATORIA = 'Descrição obrigatória: informe o que foi feito'
 
+// escopoId vem do cliente: precisa existir no mesmo tenant E pertencer ao
+// mesmo projeto do lançamento. Vazio/null = escopo principal, sempre válido.
+async function validarEscopo(tenantId: string, projetoId: string, escopoId?: string | null): Promise<void> {
+  if (!escopoId) return
+  const escopo = await escoposRepo.findByIdAndTenant(escopoId, tenantId)
+  if (!escopo || escopo.projetoId !== projetoId) throw new Error('Escopo não encontrado neste projeto')
+}
+
 async function somarHorasCobertas(tenantId: string, projetoId: string): Promise<number> {
   const pagamentos = await pagamentosRepo.findBy((p) => p.tenantId === tenantId && p.projetoId === projetoId)
   return pagamentos.reduce((acc, p) => acc + p.horasCobertas, 0)
@@ -189,6 +197,7 @@ export const lancamentosService = {
   async finalizarTrabalho(tenantId: string, id: string, dto: FinalizarLancamentoDTO): Promise<LancamentoHoras> {
     const lancamento = await this.buscarPorId(tenantId, id)
     if (lancamento.horaFim) throw new Error('Lançamento já foi finalizado')
+    await validarEscopo(tenantId, lancamento.projetoId, dto.escopoId)
 
     const horaFim = dto.horaFim ?? horaAtual()
     const calculo = calcularDiferenca(lancamento.horaInicio, horaFim)
@@ -213,6 +222,7 @@ export const lancamentosService = {
   // --- Lançamento manual ---
   async criar(tenantId: string, dto: CriarLancamentoDTO): Promise<LancamentoHoras> {
     if (!(await projetosRepo.existsForTenant(dto.projetoId, tenantId))) throw new Error('Projeto não encontrado')
+    await validarEscopo(tenantId, dto.projetoId, dto.escopoId)
     if (!isDataValida(dto.data)) throw new Error('Data inválida (esperado YYYY-MM-DD)')
     if (!isHoraValida(dto.horaInicio)) throw new Error('Hora início inválida (esperado HH:MM)')
     if (!dto.descricao?.trim()) throw new Error(DESCRICAO_OBRIGATORIA)
@@ -254,6 +264,7 @@ export const lancamentosService = {
   // --- Edição ---
   async atualizar(tenantId: string, id: string, dto: AtualizarLancamentoDTO): Promise<LancamentoHoras> {
     const lancamento = await this.buscarPorId(tenantId, id)
+    await validarEscopo(tenantId, lancamento.projetoId, dto.escopoId)
 
     const horaInicio = dto.horaInicio ?? lancamento.horaInicio
     const horaFim = dto.horaFim !== undefined ? dto.horaFim : lancamento.horaFim

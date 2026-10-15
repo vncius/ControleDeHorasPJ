@@ -62,7 +62,8 @@ Para projetos históricos sem os pagamentos registrados. Marcar a opção (`PUT 
 ## Exclusões
 
 - Cliente com projetos vinculados não pode ser excluído.
-- Excluir projeto remove escopos, lançamentos e pagamentos numa transação (`withTransaction` em `mongoClient.ts`). As preferências do projeto ainda não entram na cascata — correção planejada em [`plano-melhorias.md`](plano-melhorias.md) (M1).
+- Excluir projeto remove escopos, lançamentos, pagamentos e preferências numa transação (`withTransaction` em `mongoClient.ts`).
+- O `escopoId` de um lançamento precisa ser de um escopo do **mesmo tenant e do mesmo projeto** (`validarEscopo` em `lancamentosService`).
 
 ## Multi-tenant
 

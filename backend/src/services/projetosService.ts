@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid'
-import { projetosRepo, clientesRepo, escoposRepo, lancamentosRepo, pagamentosRepo } from '../repositories'
+import { projetosRepo, clientesRepo, escoposRepo, lancamentosRepo, pagamentosRepo, preferenciasRepo } from '../repositories'
 import { withTransaction } from '../repositories/mongoClient'
 import {
   Projeto,
@@ -176,6 +176,10 @@ export const projetosService = {
       const pagamentos = await pagamentosRepo.findBy((p) => p.tenantId === tenantId && p.projetoId === id, session)
       for (const p of pagamentos) {
         await pagamentosRepo.deleteForTenant(p.id, tenantId, session)
+      }
+      const preferencias = await preferenciasRepo.findBy((p) => p.tenantId === tenantId && p.projetoId === id, session)
+      for (const p of preferencias) {
+        await preferenciasRepo.deleteForTenant(p.id, tenantId, session)
       }
       await projetosRepo.deleteForTenant(id, tenantId, session)
     })

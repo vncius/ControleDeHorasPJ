@@ -127,8 +127,8 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 
 | # | Entrega | Depende | Esforço | Status | Concluída em | Commit |
 |---|---|---|---|---|---|---|
-| M0 | Documentação de portfólio + dados de demonstração | — | M | ✅ | 2026-10-15 | (pendente) |
-| M1 | Bugs de isolamento (`escopoId`) e cascata (preferências) | — | P | ⬜ | | |
+| M0 | Documentação de portfólio + dados de demonstração | — | M | ✅ | 2026-10-15 | cb8095e |
+| M1 | Bugs de isolamento (`escopoId`) e cascata (preferências) | — | P | ✅ | 2026-10-15 | (este commit) |
 | M2 | Segredos validados no boot | — | P | ⬜ | | |
 | M3 | CSRF (SameSite=Lax + cabeçalho) | — | P | ⬜ | | |
 | M4 | Cabeçalhos de segurança (helmet + `_headers`) | — | P | ⬜ | | |
@@ -152,3 +152,13 @@ Ordem sugerida: M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M
 ## Notas de implementação
 
 *(preencher ao concluir cada entrega)*
+
+### M0
+- `seed:demo` grava lançamentos direto via `insertMany` (o `lancamentosService.criar` faria ~4 idas ao Atlas por lançamento) e usa os services para clientes, projetos, escopos, pagamentos e a regularização.
+- Prints tirados com Edge headless (puppeteer-core, script fora do repositório) e um JWT de sessão local para o tenant `demo@horaspj.dev`. Desktop 1440×900 @2x, celular 390×844 @3x.
+- Neste ambiente o Node resolvia DNS por `127.0.0.1` e falhava no `querySrv` do Atlas (`ECONNREFUSED`). Contornado só no processo local com `dns.setServers`, sem mudar código.
+
+### M1
+- `validarEscopo` em `lancamentosService` é chamado em `criar`, `atualizar` e `finalizarTrabalho`: o escopo precisa existir no tenant **e** ser do mesmo projeto. `null`/vazio continua significando escopo principal. Não exige `status: Aprovada`; isso seria regra de produto nova, não correção.
+- `projetosService.excluir` agora remove também `preferenciasProjeto` na transação (pagamentos já eram removidos).
+- `src/services/isolamento.test.ts` usa repositórios em memória (`vi.mock`), sem banco. Os 5 casos do bug falhavam no código anterior.
