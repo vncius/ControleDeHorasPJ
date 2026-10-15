@@ -12,7 +12,7 @@
 process.env.TZ = 'America/Sao_Paulo'
 
 import 'dotenv/config'
-import { v4 as uuid } from 'uuid'
+import { randomUUID as uuid } from 'node:crypto'
 import { conectarMongo, getDb, resolverNomeBanco } from '../repositories/mongoClient'
 import { preferenciasRepo } from '../repositories'
 import { clientesService } from '../services/clientesService'

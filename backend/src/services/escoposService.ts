@@ -1,4 +1,4 @@
-import { v4 as uuid } from 'uuid'
+import { randomUUID as uuid } from 'node:crypto'
 import { escoposRepo, projetosRepo } from '../repositories'
 import { AlteracaoEscopo, CriarEscopoDTO, AtualizarEscopoDTO } from '../types'
 import { agora } from '../utils/tempo'
