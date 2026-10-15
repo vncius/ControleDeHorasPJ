@@ -7,6 +7,7 @@ process.env.TZ = 'America/Sao_Paulo'
 import 'dotenv/config'
 import { criarApp } from './app'
 import { conectarMongo } from './repositories/mongoClient'
+import { executarMigracoes } from './migrations'
 import { validarAmbiente } from './utils/ambiente'
 
 // Ponto de entrada: valida o ambiente, conecta no MongoDB e só então abre a
@@ -15,7 +16,8 @@ const PORT = process.env.PORT ?? 3001
 
 async function iniciar() {
   validarAmbiente()
-  await conectarMongo()
+  const db = await conectarMongo()
+  await executarMigracoes(db)
 
   criarApp().listen(PORT, () => {
     console.log(`\n✅ Backend rodando em http://localhost:${PORT}`)
