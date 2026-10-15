@@ -60,4 +60,8 @@ A sequência de 9 melhorias arquiteturais planejadas foi **concluída**:
 8. ✅ Isolamento multi-tenant (`tenantId` em todas as entidades, checagem centralizada no repository)
 9. ✅ Migração de JSON para MongoDB Atlas (`mongoRepository.ts`/`mongoClient.ts`, banco `horas-pj`), incluindo exclusão em cascata de projeto transacional (`withTransaction`)
 
-Não há próximo item planejado nesta sequência. Se for continuar evoluindo a arquitetura, avalie a dívida técnica conhecida acima (fetch completo em `findBy`/`findOneBy`) como candidato natural.
+## Plano em andamento
+
+A evolução seguinte está em [`docs/plano-melhorias.md`](../docs/plano-melhorias.md), que é a fonte de verdade do andamento. Antes de mexer em camadas, segurança, testes ou LGPD, leia o plano e siga o protocolo "Como continuar". Regras de negócio estão em [`docs/domain-logic.md`](../docs/domain-logic.md) e endpoints em [`docs/api.md`](../docs/api.md). Mudanças relevantes entram no `CHANGELOG.md` (`[Unreleased]`).
+
+Prints do README: só com o tenant fictício de `npm run seed:demo`, em banco com `demo` no nome (configuração `backend-demo` do `launch.json`). Nunca com dados reais.
