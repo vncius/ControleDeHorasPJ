@@ -5,74 +5,19 @@
 process.env.TZ = 'America/Sao_Paulo'
 
 import 'dotenv/config'
-import express from 'express'
-import cors from 'cors'
-import cookieParser from 'cookie-parser'
-import helmet from 'helmet'
-import routes from './routes'
+import { criarApp } from './app'
 import { conectarMongo } from './repositories/mongoClient'
 import { validarAmbiente } from './utils/ambiente'
-import { exigirCabecalhoCsrf } from './middleware/csrf'
-import { limiteGeral } from './middleware/rateLimit'
-import { parsersJson, errosDeCorpo } from './middleware/corpo'
 
-const app = express()
+// Ponto de entrada: valida o ambiente, conecta no MongoDB e só então abre a
+// porta. A montagem do Express (middlewares e rotas) fica em app.ts.
 const PORT = process.env.PORT ?? 3001
 
-// Hospedagens em nuvem colocam a aplicação atrás de um proxy/load balancer.
-// Sem isso, o Express nunca vê a requisição original como https e o cookie
-// com secure:true (exigido por sameSite:'none') nunca seria considerado seguro.
-if (process.env.NODE_ENV === 'production') {
-  app.set('trust proxy', 1)
-}
-
-// CORS_ORIGIN aceita uma ou mais origins separadas por vírgula, já que
-// front e back ficam em domínios/plataformas distintas em produção.
-const origensPermitidas = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
-  .split(',')
-  .map((origem) => origem.trim())
-  .filter(Boolean)
-
-// ----------------------------------------------------------------
-// Middlewares
-// ----------------------------------------------------------------
-// A API só devolve JSON: CSP fechada (nada é renderizado a partir dela) e os
-// demais cabeçalhos padrão do helmet (HSTS, nosniff, sem X-Powered-By…). Os
-// cabeçalhos das páginas do frontend ficam em frontend/public/_headers.
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      useDefaults: false,
-      directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
-    },
-    frameguard: { action: 'deny' },
-  })
-)
-app.use(cors({ origin: origensPermitidas, credentials: true }))
-// Depois do cors: um 429 sem cabeçalhos CORS chegaria ao frontend como erro de rede.
-app.use('/api', limiteGeral)
-app.use(parsersJson())
-app.use(cookieParser())
-
-// ----------------------------------------------------------------
-// Rotas
-// ----------------------------------------------------------------
-app.use('/api', exigirCabecalhoCsrf, routes)
-app.use(errosDeCorpo)
-
-// Rota de saúde
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() })
-})
-
-// ----------------------------------------------------------------
-// Start
-// ----------------------------------------------------------------
 async function iniciar() {
   validarAmbiente()
   await conectarMongo()
 
-  app.listen(PORT, () => {
+  criarApp().listen(PORT, () => {
     console.log(`\n✅ Backend rodando em http://localhost:${PORT}`)
     console.log(`   API disponível em http://localhost:${PORT}/api`)
     console.log(`   Health check: http://localhost:${PORT}/health\n`)
@@ -83,5 +28,3 @@ iniciar().catch((err) => {
   console.error('Falha ao iniciar o servidor:', err instanceof Error ? err.message : err)
   process.exit(1)
 })
-
-export default app

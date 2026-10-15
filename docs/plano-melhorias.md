@@ -132,8 +132,8 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 | M2 | Segredos validados no boot | — | P | ✅ | 2026-10-15 | 9b3bd04 |
 | M3 | CSRF (SameSite=Lax + cabeçalho) | — | P | ✅ | 2026-10-15 | e659629 |
 | M4 | Cabeçalhos de segurança (helmet + `_headers`) | — | P | ✅ | 2026-10-15 | 6e1e205 |
-| M5 | Rate limit e limite de corpo | — | P | ✅ | 2026-10-15 | (este commit) |
-| M6 | `app.ts`/`server.ts` + log de requisições | — | P | ⬜ | | |
+| M5 | Rate limit e limite de corpo | — | P | ✅ | 2026-10-15 | f892005 |
+| M6 | `app.ts`/`server.ts` + log de requisições | — | P | ✅ | 2026-10-15 | (este commit) |
 | M7 | Erros padronizados + cliente HTTP robusto | M6 | M | ⬜ | | |
 | M8 | Validação com Zod | M7 | M | ⬜ | | |
 | M9 | Testes + CI | M1–M8 | M | ⬜ | | |
@@ -199,3 +199,9 @@ Ordem sugerida: M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M
 - **Limitação conhecida:** atrás do proxy do Cloudflare, `req.ip` (com `trust proxy` 1) é o IP de saída do Cloudflare, compartilhado entre usuários. Por isso os limites por IP são folgados e o de importação é por tenant. O IP real do cliente exige o esquema `X-Client-IP` com segredo compartilhado da referência e fica como item futuro.
 - `middleware/corpo.ts`: corpo de 100 KB por padrão e de 2 MB nas duas rotas de importação (o parser específico roda antes do global). `errosDeCorpo` converte 413 e JSON inválido em respostas JSON (antes saía HTML do Express).
 - Verificado no servidor real: 20 logins inválidos recebem 401 e o 21º recebe 429 com `Retry-After` e `Access-Control-Allow-Origin`; um POST de 150 KB recebe 413 em JSON.
+
+### M6
+- `app.ts` exporta `criarApp(env)`, que monta o Express (middlewares, rotas e health) sem banco nem porta. `server.ts` virou só o ponto de entrada: TZ, dotenv, `validarAmbiente`, `conectarMongo` e `listen`. O `TZ` continua sendo fixado antes de qualquer `require` no JS compilado (conferido em `dist/server.js`).
+- `src/app.test.ts` sobe o app numa porta efêmera, sem MongoDB, e cobre health com cabeçalhos do helmet, 401 sem sessão, 403 sem cabeçalho CSRF, cookie de logout `SameSite=Lax`/`HttpOnly`, CORS só para a origem configurada e 413. Testes que precisam do banco (services de verdade) ficam para a M9.
+- `middleware/logRequisicoes.ts` gera uma linha por requisição, `[http] MÉTODO caminho status duração`, com o caminho cortado no `?`. Nunca registra corpo, cookies, cabeçalhos nem e-mail. `/health` não é registrado, e o log fica desligado com `NODE_ENV=test`.
+- O `export default app` de `server.ts` saiu; nada o importava.

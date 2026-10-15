@@ -123,12 +123,14 @@ cd frontend && npx tsc --noEmit && npm run build
 
 ```
 backend/src/
+  app.ts           # monta o Express (middlewares + rotas), sem banco nem porta
+  server.ts        # ponto de entrada: valida ambiente, conecta no MongoDB, listen
   routes/          # rotas Express (/api/...)
   controllers/     # traduzem HTTP ↔ service
   services/        # regras de negócio por entidade
   repositories/    # MongoRepository genérico + conexão/índices (única camada que toca o banco)
   utils/           # tempo.ts (horas/datas), faturamento.ts (fonte única de faturabilidade)
-  middleware/      # autenticação (cookie de sessão)
+  middleware/      # sessão, CSRF, rate limit, limite de corpo, log de requisições
   scripts/         # seed-demo
 frontend/src/
   pages/           # Dashboard, Clientes, Projetos (lista e detalhe), Relatórios, Login

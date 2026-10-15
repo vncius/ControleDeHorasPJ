@@ -16,6 +16,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ### Segurança
 - O servidor não sobe sem `JWT_SECRET` e `GOOGLE_CLIENT_ID`. Em produção também recusa `JWT_SECRET` com menos de 32 bytes e os valores de exemplo (M2).
+- `app.ts` separado de `server.ts` (app testável sem banco) e log de requisições com método, caminho sem query string, status e duração, sem corpo, cookies nem e-mail (M6).
 - Limites de requisição em memória: login 20/min por IP, API 600/min por IP e importação 30 a cada 10 min por tenant (429 com `Retry-After`). Corpo JSON limitado a 100 KB, ou 2 MB na importação, com 413 e JSON inválido respondidos em JSON (M5).
 - Dependências do Express atualizadas por `npm audit fix` (body-parser, proxy-addr, qs) (M5).
 - Cabeçalhos de segurança: `helmet` na API (CSP fechada, sem `X-Powered-By`) e `frontend/public/_headers` no Cloudflare Pages (CSP, HSTS, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`). O anti-flash de tema saiu do script inline para `public/tema-inicial.js` (M4).
