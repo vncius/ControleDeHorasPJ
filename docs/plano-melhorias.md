@@ -128,8 +128,8 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 | # | Entrega | Depende | Esforço | Status | Concluída em | Commit |
 |---|---|---|---|---|---|---|
 | M0 | Documentação de portfólio + dados de demonstração | — | M | ✅ | 2026-10-15 | cb8095e |
-| M1 | Bugs de isolamento (`escopoId`) e cascata (preferências) | — | P | ✅ | 2026-10-15 | (este commit) |
-| M2 | Segredos validados no boot | — | P | ⬜ | | |
+| M1 | Bugs de isolamento (`escopoId`) e cascata (preferências) | — | P | ✅ | 2026-10-15 | cdca188 |
+| M2 | Segredos validados no boot | — | P | ✅ | 2026-10-15 | (este commit) |
 | M3 | CSRF (SameSite=Lax + cabeçalho) | — | P | ⬜ | | |
 | M4 | Cabeçalhos de segurança (helmet + `_headers`) | — | P | ⬜ | | |
 | M5 | Rate limit e limite de corpo | — | P | ⬜ | | |
@@ -162,3 +162,8 @@ Ordem sugerida: M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M
 - `validarEscopo` em `lancamentosService` é chamado em `criar`, `atualizar` e `finalizarTrabalho`: o escopo precisa existir no tenant **e** ser do mesmo projeto. `null`/vazio continua significando escopo principal. Não exige `status: Aprovada`; isso seria regra de produto nova, não correção.
 - `projetosService.excluir` agora remove também `preferenciasProjeto` na transação (pagamentos já eram removidos).
 - `src/services/isolamento.test.ts` usa repositórios em memória (`vi.mock`), sem banco. Os 5 casos do bug falhavam no código anterior.
+
+### M2
+- `validarSegredos` (`backend/src/utils/ambiente.ts`) roda em `server.ts` antes de conectar no Mongo e lista todos os problemas de uma vez. Em qualquer ambiente, `JWT_SECRET` e `GOOGLE_CLIENT_ID` são obrigatórios (só espaços conta como ausente). Em produção, `JWT_SECRET` precisa de 32 bytes ou mais, e nenhum dos dois pode ser o valor do `.env.example`.
+- O log de falha no boot deixou de dizer "Falha ao conectar no MongoDB" para qualquer erro: agora é "Falha ao iniciar o servidor" com a mensagem.
+- **Ação de deploy:** confirmar que o `JWT_SECRET` do Render tem 32 bytes ou mais antes de publicar, senão o backend não sobe. Trocar o segredo derruba as sessões abertas.

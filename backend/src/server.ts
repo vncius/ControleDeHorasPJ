@@ -10,6 +10,7 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import routes from './routes'
 import { conectarMongo } from './repositories/mongoClient'
+import { validarSegredos } from './utils/ambiente'
 
 const app = express()
 const PORT = process.env.PORT ?? 3001
@@ -49,6 +50,7 @@ app.get('/health', (_req, res) => {
 // Start
 // ----------------------------------------------------------------
 async function iniciar() {
+  validarSegredos()
   await conectarMongo()
 
   app.listen(PORT, () => {
@@ -59,7 +61,7 @@ async function iniciar() {
 }
 
 iniciar().catch((err) => {
-  console.error('Falha ao conectar no MongoDB:', err)
+  console.error('Falha ao iniciar o servidor:', err instanceof Error ? err.message : err)
   process.exit(1)
 })
 

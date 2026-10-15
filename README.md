@@ -97,8 +97,8 @@ O script apaga e recria, só nesse banco, cerca de 3 meses de trabalho fictício
 | `MONGODB_URI` | — (obrigatória) | Connection string do MongoDB |
 | `MONGODB_DB_NAME` | `horas-pj` | Nome do banco |
 | `MONGODB_DB_NAME_TEST` | `<banco>-test` | Banco usado com `NODE_ENV=test`. Precisa ser diferente do de produção |
-| `GOOGLE_CLIENT_ID` | — (obrigatória) | OAuth Client ID do Google |
-| `JWT_SECRET` | — (obrigatória) | Segredo que assina o cookie de sessão |
+| `GOOGLE_CLIENT_ID` | — (obrigatória) | OAuth Client ID do Google. Sem ele o servidor não sobe |
+| `JWT_SECRET` | — (obrigatória) | Segredo que assina o cookie de sessão. Em produção precisa ter 32 bytes ou mais e ser diferente do exemplo (`openssl rand -base64 48`), senão o servidor não sobe |
 | `CORS_ORIGIN` | `http://localhost:5173` | Uma ou mais origens do frontend, separadas por vírgula |
 
 **Cloudflare Pages**: `API_ORIGIN` é a URL pública do backend, usada pelo proxy `frontend/functions/api/[[path]].ts`.
