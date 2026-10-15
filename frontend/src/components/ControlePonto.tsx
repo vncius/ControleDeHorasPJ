@@ -208,7 +208,10 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
                 onChange={e => setHoraFim(e.target.value)} autoFocus />
             </div>
           </div>
-          {escoposAprovados.length > 0 && (
+          {/* `escopos` são do projeto desta página; ao trocar de projeto, o lançamento
+              finalizado é de OUTRO projeto — nesse caso o seletor some e o escopo dele
+              é mantido (o backend recusa escopo de outro projeto). */}
+          {escoposAprovados.length > 0 && lancamentoParaFinalizar.projetoId === projetoId && (
             <div className="form-group">
               <label className="form-label">{t('lanc.associarEscopo')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{t('comum.opcional')}</span></label>
               <select className="input" value={escopoIdFinal} onChange={e => setEscopoIdFinal(e.target.value)}>

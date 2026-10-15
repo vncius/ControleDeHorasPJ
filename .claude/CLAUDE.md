@@ -31,7 +31,10 @@ npm run build      # build de produção real (já pegou bugs que o dev server n
 - **Checagem de posse por tenant**: centralizada em `backend/src/repositories/mongoRepository.ts` (`findAllByTenant`, `findByIdAndTenant`, `updateForTenant`, `deleteForTenant`, `existsForTenant`). Nunca reimplemente `item.tenantId === tenantId` manualmente num service — use esses métodos, inclusive para validar referências entre entidades (ex.: `clienteId` de um `Projeto` precisa existir *no mesmo tenant*, não só existir).
 - Antes de adicionar uma regra de cálculo/validação nova, verifique se ela já existe em um desses arquivos.
 
-## Erros da API
+## Entrada e erros da API
+
+- Toda rota com corpo passa por `validarCorpo(schema)` com um schema `.strict()` de `backend/src/schemas/index.ts`. Campo novo num DTO entra **no schema**, porque os tipos `*DTO` são gerados dele (`z.infer`). Um campo que o cliente não pode enviar (ex.: `geradoPorRegularizacao`) fica fora do schema, só no tipo interno.
+- O schema valida formato; a regra de negócio continua no service.
 
 - Services nunca fazem `throw new Error(...)` para erro de negócio: usam `invalido` (400), `naoEncontrado` (404), `conflito` (409) ou `naoAutorizado` (401) de `backend/src/errors/AppError.ts`, com um **código estável** (`<entidade>.<motivo>`, ex.: `projeto.dataFimAntesInicio`) e a mensagem em pt. Um `Error` comum vira 500 genérico no `errorHandler`.
 - Todo código novo precisa da tradução `erros.<codigo>` em `frontend/src/i18n/{pt,en,es}.ts`. Sem ela, o usuário vê a mensagem em pt em qualquer idioma.

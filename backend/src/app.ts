@@ -6,6 +6,7 @@ import routes from './routes'
 import { exigirCabecalhoCsrf } from './middleware/csrf'
 import { limiteGeral } from './middleware/rateLimit'
 import { parsersJson } from './middleware/corpo'
+import { bloquearChavesProibidas } from './middleware/validacao'
 import { errorHandler, rotaNaoEncontrada } from './middleware/errorHandler'
 import { logRequisicoes } from './middleware/logRequisicoes'
 
@@ -52,6 +53,7 @@ export function criarApp(env: NodeJS.ProcessEnv = process.env): Express {
   // Depois do cors: um 429 sem cabeçalhos CORS chegaria ao frontend como erro de rede.
   app.use('/api', limiteGeral)
   app.use(parsersJson())
+  app.use(bloquearChavesProibidas)
   app.use(cookieParser())
 
   // ----------------------------------------------------------------

@@ -39,6 +39,9 @@ Continua `routes → controllers → services → repositories`, nomes em portug
 ### D2 — Validação na borda com Zod
 Um schema por DTO em `backend/src/schemas/<entidade>.ts`, `.strict()` (rejeita campo desconhecido — inclusive `tenantId` e `geradoPorRegularizacao`). O tipo do DTO passa a ser `z.infer<typeof schema>`, eliminando a duplicação em `types/index.ts`. Regras de negócio (faturabilidade, saldo, posse por tenant) continuam nos services/utils — o schema só garante **formato**.
 
+### D8 — Descrição em linha importada — *a confirmar com o usuário*
+Hoje a importação aceita linha sem descrição (status "aviso") e grava o lançamento com descrição vazia, enquanto o lançamento manual e o controle de ponto exigem descrição. Opções: (a) manter, já que a planilha antiga pode não ter descrição; (b) virar "erro" no preview, e a linha não é importada; (c) exigir que o usuário preencha antes de confirmar. A M8 manteve o comportamento atual.
+
 ### D3 — Erros com código traduzível
 `AppError(status, codigo, mensagem?)` + `errorHandler` único: `ZodError → 400 validacao.*`, `AppError → status próprio`, JSON inválido → 400, corpo grande → 413, resto → 500 genérico (detalhe só no log). O frontend traduz `codigo` via i18n; mensagem do Mongo nunca chega ao cliente.
 
@@ -134,8 +137,8 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 | M4 | Cabeçalhos de segurança (helmet + `_headers`) | — | P | ✅ | 2026-10-15 | 6e1e205 |
 | M5 | Rate limit e limite de corpo | — | P | ✅ | 2026-10-15 | f892005 |
 | M6 | `app.ts`/`server.ts` + log de requisições | — | P | ✅ | 2026-10-15 | fdba622 |
-| M7 | Erros padronizados + cliente HTTP robusto | M6 | M | ✅ | 2026-10-15 | (este commit) |
-| M8 | Validação com Zod | M7 | M | ⬜ | | |
+| M7 | Erros padronizados + cliente HTTP robusto | M6 | M | ✅ | 2026-10-15 | 5ae84e5 |
+| M8 | Validação com Zod | M7 | M | ✅ | 2026-10-15 | (este commit) |
 | M9 | Testes + CI | M1–M8 | M | ⬜ | | |
 | M10 | Migrações idempotentes no boot | — | P | ⬜ | | |
 | M11 | CSV seguro + i18n tipado | — | P | ⬜ | | |
@@ -227,3 +230,36 @@ Ordem sugerida: M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M
   - excluir cliente com 2 projetos recebe 409, com a mensagem "Cannot delete: the client has 2 linked projects." (en, com plural);
   - apagar o cookie e navegar recebe 401 e redireciona para `/login`;
   - com o backend derrubado, o POST recebe 500 do proxy, sem JSON, e a tela mostra a mensagem de resposta inesperada, sem `SyntaxError`.
+
+### M8
+- Zod 3.25 com `backend/src/schemas/index.ts`, um schema por DTO, todos `.strict()`. Os tipos `Criar*DTO`/`Atualizar*DTO` saem de `z.infer` e `types/index.ts` só os reexporta, sem duplicação. `CriarEscopoDTO`/`CriarPagamentoDTO` acrescentam `projetoId` (vem da URL), e `geradoPorRegularizacao` só existe no tipo interno, nunca no schema.
+- Validação de **formato**:
+  - enums de status, tipo e status de escopo;
+  - datas `YYYY-MM-DD` e horas `HH:MM` de 00:00 a 23:59 (o service aceitava `25:00`);
+  - números positivos;
+  - tamanhos máximos;
+  - `trim` e não-vazio em nome, título e descrição do lançamento manual;
+  - `null` só onde tem significado: `horasContratadas` no update, `horasAdicionais` e `escopoId`.
+- As regras de **negócio** (posse, fim depois do início, saldo) continuam nos services. As checagens de formato dos services foram mantidas como defesa em profundidade, porque o `seed:demo` e futuros jobs chamam os services direto.
+- `middleware/validacao.ts`:
+  - `validarCorpo(schema)` nas 15 rotas com corpo; substitui `req.body` pelo resultado já com trim e coerção;
+  - `bloquearChavesProibidas` (global, logo após o parser) recusa chaves `$…`, `__proto__`, `constructor` e `prototype` em qualquer nível.
+- O `errorHandler` converte `ZodError` em 400 `validacao.campoInvalido` ou `validacao.campoDesconhecido` com `params.campo`, usando o primeiro problema encontrado.
+- Importação:
+  - preview: `texto` obrigatório (até 500 mil caracteres) e `ano` 2000–2100;
+  - confirmar: até 2000 linhas, cada uma com data e horas revalidadas, porque o cliente pode ter adulterado o que o preview devolveu;
+  - as checagens manuais dos controllers de importação e login saíram, e com elas 4 códigos de erro e suas traduções;
+  - linha sem descrição continua sendo importada (ver D8).
+- Bug de frontend encontrado no teste e corrigido (`ControlePonto.tsx`): ao trocar de projeto, o modal que finaliza o lançamento aberto em **outro** projeto oferecia os escopos do projeto da página.
+  - Antes da M1, escolher um deles gravava um escopo de outro projeto sem avisar; depois da M1, o backend passou a recusar.
+  - Agora o seletor só aparece quando o lançamento é do projeto da página, e o escopo original é mantido.
+- Verificado pela interface com o backend de demo (banco restaurado com `seed:demo` no fim), sem nenhum 4xx/5xx inesperado:
+  - editar projeto com horas abertas;
+  - criar projeto;
+  - lançamento manual com escopo: criar, editar removendo o escopo e excluir;
+  - escopo: criar, editar removendo as horas e excluir;
+  - pagamento: criar, editar e excluir;
+  - importação: pré-visualizar e confirmar;
+  - troca de projeto no ponto: finalizar e iniciar.
+- `schemas.test.ts` tem 15 casos: o que o frontend envia passa; `tenantId`, `geradoPorRegularizacao`, enum inválido, data/hora fora do formato, descrição vazia, número como texto, linha adulterada, excesso de linhas, `$ne` e `__proto__` são recusados.
+- **Instabilidade observada:** uma execução de `npm test` terminou com 67/74, e os 7 que faltaram batem com o total do `app.test.ts`. O detalhe da falha não foi capturado. Não reproduziu em 8 rodadas seguidas. Na M9, investigar se a subida do app na porta efêmera do `beforeAll` dispara timeout em máquina lenta, e considerar `supertest` ou um `testTimeout` maior.

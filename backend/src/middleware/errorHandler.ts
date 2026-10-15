@@ -1,10 +1,12 @@
 import { Request, Response, NextFunction } from 'express'
+import { ZodError } from 'zod'
 import { AppError } from '../errors/AppError'
 
 // ----------------------------------------------------------------
 // Tratamento de erro único da API (montado por último em app.ts).
 //
 // - AppError → status e código próprios.
+// - ZodError (validarCorpo) → 400 validacao.campoInvalido/campoDesconhecido.
 // - Erros do body-parser → 413 (corpo grande) / 400 (JSON inválido).
 // - Qualquer outro erro → 500 genérico; o cliente nunca vê a mensagem
 //   original (que pode trazer detalhe do Mongo).
@@ -14,6 +16,18 @@ export function errorHandler(err: any, req: Request, res: Response, next: NextFu
 
   if (err instanceof AppError) {
     res.status(err.status).json({ erro: err.message, codigo: err.codigo, ...(err.params && { params: err.params }) })
+    return
+  }
+  if (err instanceof ZodError) {
+    // Primeiro problema basta para o usuário corrigir; o caminho (ex.:
+    // "linhas.3.horaFim") vai em params para a tradução montar a frase.
+    const problema = err.issues[0]
+    const campo =
+      problema.code === 'unrecognized_keys' ? problema.keys.join(', ') : problema.path.join('.') || '(corpo)'
+    const codigo = problema.code === 'unrecognized_keys' ? 'validacao.campoDesconhecido' : 'validacao.campoInvalido'
+    const erro =
+      problema.code === 'unrecognized_keys' ? `Campo não permitido: ${campo}` : `Campo inválido: ${campo}`
+    res.status(400).json({ erro, codigo, params: { campo } })
     return
   }
   if (err?.type === 'entity.too.large') {

@@ -442,10 +442,14 @@ export default {
     interno: 'Internal error. Please try again.',
     rede: 'Could not reach the server. Check your connection and try again.',
     respostaInvalida: 'The server sent an unexpected response (status {{status}}). Please try again.',
+    validacao: {
+      campoInvalido: 'Invalid field: {{campo}}.',
+      campoDesconhecido: 'Field not allowed: {{campo}}.',
+      chaveProibida: 'Field not allowed: {{campo}}.',
+    },
     auth: {
       naoAutenticado: 'Your session has expired. Please sign in again.',
       tokenInvalido: 'Could not validate the Google sign-in.',
-      credentialObrigatorio: 'Google sign-in was not received. Please try again.',
     },
     csrf: { cabecalhoAusente: 'Request refused for security reasons. Reload the page.' },
     limite: { excedido: 'Too many requests. Wait a moment and try again.' },
@@ -496,11 +500,6 @@ export default {
       horaFimInvalida: 'Invalid end time (use HH:MM).',
       inicioNoFuturo:
         'Start in the future: an entry in progress cannot start after now. If you moved the time to before midnight, change the date too.',
-    },
-    importacao: {
-      textoObrigatorio: 'Paste the spreadsheet data.',
-      anoInvalido: 'Invalid reference year.',
-      linhasInvalidas: 'Invalid import lines.',
     },
   },
 }

@@ -137,98 +137,20 @@ export interface ConfirmarImportacaoDTO { linhas: LinhaImportacao[] }
 // DTOs
 // ============================================================
 
-export interface CriarClienteDTO { nome: string; observacoes?: string }
-export interface AtualizarClienteDTO { nome?: string; observacoes?: string }
-
-export interface CriarProjetoDTO {
-  clienteId: string
-  nome: string
-  descricao?: string
-  horasContratadas?: number
-  valorHora?: number
-  status?: StatusProjeto
-  dataInicio: string
-  dataFim?: string
-  observacoes?: string
-  consideradoPago?: boolean
-}
-
-export interface AtualizarProjetoDTO {
-  clienteId?: string
-  nome?: string
-  descricao?: string
-  horasContratadas?: number | null
-  valorHora?: number
-  status?: StatusProjeto
-  dataInicio?: string
-  dataFim?: string
-  observacoes?: string
-  consideradoPago?: boolean
-}
-
-export interface CriarPagamentoDTO {
-  projetoId: string
-  horasCobertas: number
-  valor?: number
-  dataPagamento: string
-  periodoApuracaoInicio: string
-  periodoApuracaoFim: string
-  numeroNF?: string
-  observacoes?: string
-  geradoPorRegularizacao?: boolean
-}
-
-export interface AtualizarPagamentoDTO {
-  horasCobertas?: number
-  valor?: number
-  dataPagamento?: string
-  periodoApuracaoInicio?: string
-  periodoApuracaoFim?: string
-  numeroNF?: string
-  observacoes?: string
-}
-
-export interface CriarEscopoDTO {
-  projetoId: string
-  titulo: string
-  descricaoDetalhada?: string
-  horasAdicionais?: number | null   // null/ausente = horas livres
-  status?: StatusEscopo
-  dataInicio?: string
-  dataFim?: string
-  observacoes?: string
-}
-
-export interface AtualizarEscopoDTO {
-  titulo?: string
-  descricaoDetalhada?: string
-  horasAdicionais?: number | null   // null = tornar horas livres, undefined = não alterar
-  status?: StatusEscopo
-  dataInicio?: string
-  dataFim?: string
-  observacoes?: string
-}
-
-export interface CriarLancamentoDTO {
-  projetoId: string
-  escopoId?: string
-  data: string
-  horaInicio: string
-  horaFim?: string
-  descricao: string
-  tipo?: TipoLancamento
-}
-
-export interface AtualizarLancamentoDTO {
-  escopoId?: string | null
-  data?: string
-  horaInicio?: string
-  horaFim?: string
-  descricao?: string
-  tipo?: TipoLancamento
-}
-
-export interface FinalizarLancamentoDTO { horaFim: string; descricao?: string; escopoId?: string | null }
+// Gerados a partir dos schemas Zod (validação de entrada) — fonte única.
+export type {
+  CriarClienteDTO,
+  AtualizarClienteDTO,
+  CriarProjetoDTO,
+  AtualizarProjetoDTO,
+  CriarPagamentoDTO,
+  AtualizarPagamentoDTO,
+  CriarEscopoDTO,
+  AtualizarEscopoDTO,
+  CriarLancamentoDTO,
+  AtualizarLancamentoDTO,
+  FinalizarLancamentoDTO,
+} from '../schemas'
 
 // ============================================================
 // TIPOS DE RESPOSTA

@@ -11,13 +11,31 @@ import {
 } from '../controllers'
 import { requireAuth } from '../middleware/auth'
 import { limiteLogin, limiteImportacao } from '../middleware/rateLimit'
+import { validarCorpo } from '../middleware/validacao'
+import {
+  loginGoogleSchema,
+  criarClienteSchema,
+  atualizarClienteSchema,
+  criarProjetoSchema,
+  atualizarProjetoSchema,
+  criarEscopoSchema,
+  atualizarEscopoSchema,
+  criarPagamentoSchema,
+  atualizarPagamentoSchema,
+  criarLancamentoSchema,
+  atualizarLancamentoSchema,
+  iniciarLancamentoSchema,
+  finalizarLancamentoSchema,
+  previewImportacaoSchema,
+  confirmarImportacaoSchema,
+} from '../schemas'
 
 const router = Router()
 
 // ----------------------------------------------------------------
 // Autenticação (públicas — precisam vir antes do requireAuth)
 // ----------------------------------------------------------------
-router.post('/auth/google', limiteLogin, authController.loginGoogle)
+router.post('/auth/google', limiteLogin, validarCorpo(loginGoogleSchema), authController.loginGoogle)
 router.post('/auth/logout', authController.logout)
 router.get('/auth/me', requireAuth, authController.me)
 
@@ -36,8 +54,8 @@ router.get('/dashboard', dashboardController.obter.bind(dashboardController))
 // ----------------------------------------------------------------
 router.get('/clientes', clientesController.listar.bind(clientesController))
 router.get('/clientes/:id', clientesController.buscar.bind(clientesController))
-router.post('/clientes', clientesController.criar.bind(clientesController))
-router.put('/clientes/:id', clientesController.atualizar.bind(clientesController))
+router.post('/clientes', validarCorpo(criarClienteSchema), clientesController.criar.bind(clientesController))
+router.put('/clientes/:id', validarCorpo(atualizarClienteSchema), clientesController.atualizar.bind(clientesController))
 router.delete('/clientes/:id', clientesController.excluir.bind(clientesController))
 
 // ----------------------------------------------------------------
@@ -46,8 +64,8 @@ router.delete('/clientes/:id', clientesController.excluir.bind(clientesControlle
 router.get('/projetos', projetosController.listar.bind(projetosController))
 router.get('/projetos/:id', projetosController.buscar.bind(projetosController))
 router.get('/projetos/:id/resumo', projetosController.resumo.bind(projetosController))
-router.post('/projetos', projetosController.criar.bind(projetosController))
-router.put('/projetos/:id', projetosController.atualizar.bind(projetosController))
+router.post('/projetos', validarCorpo(criarProjetoSchema), projetosController.criar.bind(projetosController))
+router.put('/projetos/:id', validarCorpo(atualizarProjetoSchema), projetosController.atualizar.bind(projetosController))
 router.delete('/projetos/:id', projetosController.excluir.bind(projetosController))
 
 // ----------------------------------------------------------------
@@ -60,9 +78,10 @@ router.get(
 )
 router.post(
   '/projetos/:projetoId/escopos',
+  validarCorpo(criarEscopoSchema),
   escoposController.criar.bind(escoposController)
 )
-router.put('/escopos/:id', escoposController.atualizar.bind(escoposController))
+router.put('/escopos/:id', validarCorpo(atualizarEscopoSchema), escoposController.atualizar.bind(escoposController))
 router.delete('/escopos/:id', escoposController.excluir.bind(escoposController))
 
 // ----------------------------------------------------------------
@@ -75,9 +94,10 @@ router.get(
 )
 router.post(
   '/projetos/:projetoId/pagamentos',
+  validarCorpo(criarPagamentoSchema),
   pagamentosController.criar.bind(pagamentosController)
 )
-router.put('/pagamentos/:id', pagamentosController.atualizar.bind(pagamentosController))
+router.put('/pagamentos/:id', validarCorpo(atualizarPagamentoSchema), pagamentosController.atualizar.bind(pagamentosController))
 router.delete('/pagamentos/:id', pagamentosController.excluir.bind(pagamentosController))
 
 // ----------------------------------------------------------------
@@ -95,13 +115,14 @@ router.get(
 )
 router.post(
   '/projetos/:projetoId/iniciar',
+  validarCorpo(iniciarLancamentoSchema),
   lancamentosController.iniciar.bind(lancamentosController)
 )
-router.post('/lancamentos', lancamentosController.criar.bind(lancamentosController))
+router.post('/lancamentos', validarCorpo(criarLancamentoSchema), lancamentosController.criar.bind(lancamentosController))
 router.get('/lancamentos/:id', lancamentosController.buscar.bind(lancamentosController))
-router.put('/lancamentos/:id', lancamentosController.atualizar.bind(lancamentosController))
+router.put('/lancamentos/:id', validarCorpo(atualizarLancamentoSchema), lancamentosController.atualizar.bind(lancamentosController))
 router.delete('/lancamentos/:id', lancamentosController.excluir.bind(lancamentosController))
-router.post('/lancamentos/:id/finalizar', lancamentosController.finalizar.bind(lancamentosController))
+router.post('/lancamentos/:id/finalizar', validarCorpo(finalizarLancamentoSchema), lancamentosController.finalizar.bind(lancamentosController))
 router.post('/lancamentos/:id/duplicar', lancamentosController.duplicar.bind(lancamentosController))
 
 // ----------------------------------------------------------------
@@ -110,11 +131,13 @@ router.post('/lancamentos/:id/duplicar', lancamentosController.duplicar.bind(lan
 router.post(
   '/projetos/:projetoId/lancamentos/importar-preview',
   limiteImportacao,
+  validarCorpo(previewImportacaoSchema),
   importacaoController.preview.bind(importacaoController)
 )
 router.post(
   '/projetos/:projetoId/lancamentos/importar-confirmar',
   limiteImportacao,
+  validarCorpo(confirmarImportacaoSchema),
   importacaoController.confirmar.bind(importacaoController)
 )
 

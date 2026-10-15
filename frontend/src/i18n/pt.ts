@@ -443,10 +443,14 @@ export default {
     interno: 'Erro interno. Tente novamente.',
     rede: 'Sem conexão com o servidor. Verifique sua internet e tente novamente.',
     respostaInvalida: 'O servidor respondeu de forma inesperada (status {{status}}). Tente novamente.',
+    validacao: {
+      campoInvalido: 'Campo inválido: {{campo}}.',
+      campoDesconhecido: 'Campo não permitido: {{campo}}.',
+      chaveProibida: 'Campo não permitido: {{campo}}.',
+    },
     auth: {
       naoAutenticado: 'Sua sessão expirou. Entre novamente.',
       tokenInvalido: 'Não foi possível validar o login com o Google.',
-      credentialObrigatorio: 'Login do Google não recebido. Tente novamente.',
     },
     csrf: { cabecalhoAusente: 'Requisição recusada por segurança. Recarregue a página.' },
     limite: { excedido: 'Muitas requisições. Aguarde um pouco e tente novamente.' },
@@ -497,11 +501,6 @@ export default {
       horaFimInvalida: 'Hora de fim inválida (use HH:MM).',
       inicioNoFuturo:
         'Início no futuro: um lançamento em andamento não pode começar depois de agora. Se corrigiu a hora para antes da meia-noite, ajuste também a data.',
-    },
-    importacao: {
-      textoObrigatorio: 'Cole os dados da planilha.',
-      anoInvalido: 'Ano de referência inválido.',
-      linhasInvalidas: 'Linhas da importação inválidas.',
     },
   },
 }

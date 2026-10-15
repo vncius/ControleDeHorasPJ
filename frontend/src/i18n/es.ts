@@ -442,10 +442,14 @@ export default {
     interno: 'Error interno. Inténtalo de nuevo.',
     rede: 'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.',
     respostaInvalida: 'El servidor respondió de forma inesperada (estado {{status}}). Inténtalo de nuevo.',
+    validacao: {
+      campoInvalido: 'Campo inválido: {{campo}}.',
+      campoDesconhecido: 'Campo no permitido: {{campo}}.',
+      chaveProibida: 'Campo no permitido: {{campo}}.',
+    },
     auth: {
       naoAutenticado: 'Tu sesión expiró. Inicia sesión de nuevo.',
       tokenInvalido: 'No se pudo validar el inicio de sesión con Google.',
-      credentialObrigatorio: 'No se recibió el inicio de sesión de Google. Inténtalo de nuevo.',
     },
     csrf: { cabecalhoAusente: 'Solicitud rechazada por seguridad. Recarga la página.' },
     limite: { excedido: 'Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.' },
@@ -496,11 +500,6 @@ export default {
       horaFimInvalida: 'Hora de fin inválida (usa HH:MM).',
       inicioNoFuturo:
         'Inicio en el futuro: un registro en curso no puede empezar después de ahora. Si cambiaste la hora a antes de la medianoche, ajusta también la fecha.',
-    },
-    importacao: {
-      textoObrigatorio: 'Pega los datos de la hoja de cálculo.',
-      anoInvalido: 'Año de referencia inválido.',
-      linhasInvalidas: 'Líneas de importación inválidas.',
     },
   },
 }

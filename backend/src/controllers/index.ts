@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express'
-import { invalido } from '../errors/AppError'
 import { clientesService } from '../services/clientesService'
 import { projetosService } from '../services/projetosService'
 import { escoposService } from '../services/escoposService'
@@ -201,21 +200,13 @@ export const dashboardController = {
 // ----------------------------------------------------------------
 export const importacaoController = {
   preview(req: Request, res: Response, next: NextFunction) {
-    handle(res, next, () => {
-      const { texto, ano } = req.body
-      if (!texto || typeof texto !== 'string') throw invalido('importacao.textoObrigatorio', 'Campo "texto" obrigatório')
-      const anoNum = Number(ano)
-      if (!anoNum || anoNum < 2000 || anoNum > 2100) throw invalido('importacao.anoInvalido', 'Ano inválido')
-      return importacaoService.preview(texto, anoNum)
-    })
+    // corpo já validado por previewImportacaoSchema (texto obrigatório, ano 2000–2100)
+    handle(res, next, () => importacaoService.preview(req.body.texto, req.body.ano))
   },
 
   confirmar(req: Request, res: Response, next: NextFunction) {
-    handle(res, next, () => {
-      const { linhas } = req.body
-      if (!Array.isArray(linhas)) throw invalido('importacao.linhasInvalidas', 'Campo "linhas" deve ser um array')
-      return importacaoService.confirmar(req.usuario!.email, req.params.projetoId, linhas)
-    }, 201)
+    // corpo já validado por confirmarImportacaoSchema (linhas com data/horas revalidadas)
+    handle(res, next, () => importacaoService.confirmar(req.usuario!.email, req.params.projetoId, req.body.linhas), 201)
   },
 }
 
@@ -225,11 +216,8 @@ export const importacaoController = {
 export const authController = {
   async loginGoogle(req: Request, res: Response, next: NextFunction) {
     try {
-      const { credential } = req.body ?? {}
-      if (!credential || typeof credential !== 'string') {
-        throw invalido('auth.credentialObrigatorio', 'Campo "credential" obrigatório')
-      }
-      const { email, nome } = await authService.loginComGoogle(credential)
+      // corpo já validado por loginGoogleSchema
+      const { email, nome } = await authService.loginComGoogle(req.body.credential)
       const token = assinarSessao({ email })
       res.cookie(NOME_COOKIE_SESSAO, token, OPCOES_COOKIE_SESSAO)
       res.json({ email, nome })
