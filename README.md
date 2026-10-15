@@ -56,7 +56,7 @@
 | Frontend | React 18, TypeScript, Vite, React Router, i18next, jsPDF; CSS próprio com variáveis (sem biblioteca de UI) |
 | Backend | Node.js, TypeScript, Express, MongoDB Atlas (driver nativo, sem ODM), google-auth-library, JWT |
 | Arquitetura | `routes → controllers → services → repositories`; o frontend só fala com a API REST |
-| Testes | Vitest |
+| Testes | Vitest: cerca de 110 testes no backend (regras, validação, defesas HTTP, traduções) + integração opcional com MongoDB; CI no GitHub Actions |
 | Deploy | Cloudflare Pages (frontend + proxy `/api` + cabeçalhos de segurança em `public/_headers`) e Render (backend, com helmet) |
 
 ## Rodando localmente
@@ -108,9 +108,25 @@ O script apaga e recria, só nesse banco, cerca de 3 meses de trabalho fictício
 ### Testes e build
 
 ```bash
-cd backend  && npx tsc --noEmit && npm test && npm run build
-cd frontend && npx tsc --noEmit && npm run build
+cd backend  && npm run typecheck && npm test && npm run build
+cd frontend && npm run typecheck && npm run build
 ```
+
+O `npm test` do backend roda os testes que não dependem de rede, a mesma bateria do CI:
+- regra de faturabilidade;
+- parser de importação;
+- schemas de validação;
+- defesas HTTP (CSRF, limites, cookie, 401/413, erros);
+- isolamento entre tenants nos services;
+- cobertura das traduções de erro em pt/en/es.
+
+Os testes de integração com MongoDB (isolamento por tenant no repositório) são opcionais e rodam no banco de **teste** (`MONGODB_DB_NAME_TEST`, nunca o de produção):
+
+```bash
+cd backend && npm run test:integracao
+```
+
+O CI (`.github/workflows/ci.yml`) roda typecheck, testes, build e `npm audit` de produção nos dois pacotes a cada push ou PR. O `security.yml` procura segredos no histórico com Gitleaks, e o Dependabot abre PRs semanais de atualização.
 
 ## Documentação
 

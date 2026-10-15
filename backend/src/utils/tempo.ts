@@ -114,7 +114,10 @@ export function isHoraValida(hora: string): boolean {
  * Soma de horas em decimal de uma lista de lançamentos finalizados
  */
 export function somarHoras(decimais: (number | undefined)[]): number {
-  return decimais.reduce<number>((acc, v) => acc + (v ?? 0), 0)
+  // arredonda o total para 2 casas: cada parcela já tem 2 casas, e a soma em
+  // ponto flutuante acumularia erro (0,1 + 0,2 = 0,30000000000000004)
+  const total = decimais.reduce<number>((acc, v) => acc + (v ?? 0), 0)
+  return Math.round(total * 100) / 100
 }
 
 // Regra de faturabilidade movida para utils/faturamento.ts (fonte única,

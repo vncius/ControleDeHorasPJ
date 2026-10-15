@@ -38,6 +38,16 @@ export function calcularDecorridoDecimal(horaInicio: string, data?: string): num
 }
 
 /**
+ * Soma horas decimais com 2 casas. Mirror de backend/src/utils/tempo.ts::somarHoras:
+ * cada parcela já tem 2 casas, e a soma em ponto flutuante acumularia erro
+ * (0,1 + 0,2 = 0,30000000000000004 — um saldo "maior que zero" que não existe).
+ */
+export function somarHoras(decimais: (number | undefined)[]): number {
+  const total = decimais.reduce<number>((acc, v) => acc + (v ?? 0), 0)
+  return Math.round(total * 100) / 100
+}
+
+/**
  * Período de apuração fixo: do dia 16 de um mês ao dia 15 do mês seguinte.
  * Mirror de backend/src/utils/tempo.ts::periodoApuracao (sem runtime
  * compartilhado entre front e back) — dia 16 pertence ao período que

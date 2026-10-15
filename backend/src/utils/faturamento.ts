@@ -3,6 +3,12 @@ import { Projeto, StatusProjeto, StatusPagamentoProjeto } from '../types'
 // Status que encerram um projeto — horas não são mais faturáveis
 export const STATUS_ENCERRADO = new Set<StatusProjeto>(['Finalizado', 'Cancelado'])
 
+// Horas em decimal têm 2 casas (minutosParaDecimal), mas somas em ponto
+// flutuante acumulam erro (0,1 + 0,2 = 0,30000000000000004) — o que faria
+// um pagamento de exatamente 0,3h parecer não cobrir 0,1h + 0,2h. Toda
+// comparação de horas desta regra é feita em centésimos inteiros.
+const centesimos = (horas: number) => Math.round(horas * 100)
+
 /**
  * Status de pagamento do projeto a partir da soma de Pagamento.horasCobertas
  * comparada ao total de horas já trabalhadas (lançadas). Fonte única desta
@@ -17,8 +23,8 @@ export function calcularStatusPagamento(
   totalTrabalhado: number
 ): StatusPagamentoProjeto {
   if (projeto.consideradoPago) return 'Pago'
-  if (totalHorasCobertas <= 0) return 'Não pago'
-  if (totalHorasCobertas >= totalTrabalhado) return 'Pago'
+  if (centesimos(totalHorasCobertas) <= 0) return 'Não pago'
+  if (centesimos(totalHorasCobertas) >= centesimos(totalTrabalhado)) return 'Pago'
   return 'Parcial'
 }
 
@@ -62,13 +68,15 @@ export function marcarLancamentosFaturaveis<
     (a, b) => a.data.localeCompare(b.data) || a.horaInicio.localeCompare(b.horaInicio)
   )
 
+  // acumulado em centésimos inteiros (ver `centesimos` no topo)
+  const cobertas = centesimos(totalHorasCobertas)
   let acumulado = 0
   for (const l of ordenados) {
-    acumulado += l.totalDecimal ?? 0
-    resultado.set(l.id, acumulado > totalHorasCobertas)
+    acumulado += centesimos(l.totalDecimal ?? 0)
+    resultado.set(l.id, acumulado > cobertas)
   }
 
-  const saldoRestante = projetoTemSaldoAFaturar(projeto, totalHorasCobertas, acumulado)
+  const saldoRestante = projetoTemSaldoAFaturar(projeto, totalHorasCobertas, acumulado / 100)
   emAberto.forEach((l) => resultado.set(l.id, saldoRestante))
 
   return resultado

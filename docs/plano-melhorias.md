@@ -17,8 +17,8 @@
 
 ### Definição de pronto
 
-- [ ] `cd backend && npx tsc --noEmit && npm test && npm run build` verde.
-- [ ] Se tocou no frontend: `cd frontend && npx tsc --noEmit && npm run build` verde; textos novos nos três idiomas (`frontend/src/i18n/{pt,en,es}.ts`).
+- [ ] `cd backend && npm run typecheck && npm test && npm run build` verde (é o que o CI roda; `npm run test:integracao` se mexer em repository).
+- [ ] Se tocou no frontend: `cd frontend && npm run typecheck && npm run build` verde; textos novos nos três idiomas (`frontend/src/i18n/{pt,en,es}.ts`).
 - [ ] Variável de ambiente nova documentada em `backend/.env.example` e no `README.md`.
 - [ ] Nenhum fluxo existente quebrado: login Google, controle de ponto (iniciar/trocar/finalizar), importação, pagamentos/regularização, relatórios (CSV/PDF), proxy `/api` do Cloudflare.
 - [ ] Regras do `.claude/CLAUDE.md` respeitadas (fonte única de regras, checagem de tenant só via `*ForTenant`, nada de dado real em docs/commits).
@@ -139,7 +139,7 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 | M6 | `app.ts`/`server.ts` + log de requisições | — | P | ✅ | 2026-10-15 | fdba622 |
 | M7 | Erros padronizados + cliente HTTP robusto | M6 | M | ✅ | 2026-10-15 | 5ae84e5 |
 | M8 | Validação com Zod | M7 | M | ✅ | 2026-10-15 | 1af33e3 |
-| M9 | Testes + CI | M1–M8 | M | ⬜ | | |
+| M9 | Testes + CI | M1–M8 | M | ✅ | 2026-10-15 | (este commit) |
 | M10 | Migrações idempotentes no boot | — | P | ⬜ | | |
 | M11 | CSV seguro + i18n tipado | — | P | ⬜ | | |
 | M12 | Acessibilidade de modais e toasts | — | M | ⬜ | | |
@@ -263,3 +263,28 @@ Ordem sugerida: M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M
   - troca de projeto no ponto: finalizar e iniciar.
 - `schemas.test.ts` tem 15 casos: o que o frontend envia passa; `tenantId`, `geradoPorRegularizacao`, enum inválido, data/hora fora do formato, descrição vazia, número como texto, linha adulterada, excesso de linhas, `$ne` e `__proto__` são recusados.
 - **Instabilidade observada:** uma execução de `npm test` terminou com 67/74, e os 7 que faltaram batem com o total do `app.test.ts`. O detalhe da falha não foi capturado. Não reproduziu em 8 rodadas seguidas. Na M9, investigar se a subida do app na porta efêmera do `beforeAll` dispara timeout em máquina lenta, e considerar `supertest` ou um `testTimeout` maior.
+
+### D8 (commit f781061)
+- O parser marca descrição vazia como erro e o `confirmar` também descarta essas linhas. `importacaoService.test.ts` cobre o parser (datas, horas, tolerância de 0,02, virada de meia-noite) e o confirmar (recalcula totais no servidor, descarta linha inválida ou adulterada, projeto de outro tenant).
+
+### M9
+- Testes novos:
+  - `utils/faturamento.test.ts`: status de pagamento, saldo, FIFO, cobertura parcial, projeto encerrado ou regularizado, lançamento em andamento;
+  - `errors/codigos.i18n.test.ts`: todo código de erro emitido pelo backend tem tradução em pt/en/es, e os três dicionários têm exatamente as mesmas chaves. Importa os arquivos do frontend, o que é proposital: é a rede de segurança entre os pacotes;
+  - `repositories/mongoRepository.integracao.test.ts`: isolamento real por tenant no MongoDB (find, exists, update e delete de outro tenant; `$unset`). É opcional (`npm run test:integracao`, `--mode integracao` no `vitest.config.ts`), roda no banco de teste e remove a coleção ao final. Passou contra o Atlas.
+- **Bug real encontrado e corrigido:** `faturamento.ts` comparava horas somadas em ponto flutuante.
+  - Com lançamentos de 0,1h e 0,2h (6 e 12 minutos) cobertos por um pagamento de 0,3h, o projeto aparecia "Parcial" e o segundo lançamento aparecia faturável, porque 0,1 + 0,2 = 0,30000000000000004.
+  - Agora a regra compara em centésimos inteiros, e `somarHoras` (backend e frontend) arredonda o total para 2 casas.
+  - As 7 somas de horas com `reduce` cru em `Relatorios.tsx` e `TabelaLancamentos.tsx` passaram a usar `somarHoras`, inclusive o saldo a faturar por período.
+- `vitest.config.ts` aumenta `testTimeout` para 15s e `hookTimeout` para 30s, como mitigação da falha intermitente da M8. Ela não voltou a ocorrer em mais de 10 rodadas.
+- Scripts `typecheck` nos dois pacotes e `test:integracao` no backend.
+- CI:
+  - `.github/workflows/ci.yml`: Node 22 (o 20 saiu de suporte em 2026-04), `npm ci`, typecheck, test, build e `npm audit --omit=dev --audit-level=high` nos dois pacotes;
+  - `security.yml`: Gitleaks no histórico (o histórico local foi conferido antes, sem segredo versionado);
+  - `dependabot.yml`: semanal, minor e patch agrupados, mais GitHub Actions mensal;
+  - todos os passos foram simulados localmente com `npm ci` e passaram;
+  - Semgrep ficou de fora por simplicidade e pode entrar depois.
+- Dependências:
+  - `npm audit fix` (compatível) no frontend corrigiu o dompurify (via jspdf);
+  - sobra o react-router < 7.18 (moderado: open redirect com URL do usuário em `<Link>`/`useNavigate` e hidratação SSR; o app não usa nenhum dos dois). A correção exige o react-router 7, versão major, e fica como item futuro;
+  - no backend, `uuid` moderado (o app só usa v4, que não é afetado) e as dev deps (vitest, esbuild) também exigem versão major.

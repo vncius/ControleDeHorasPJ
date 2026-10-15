@@ -1,0 +1,28 @@
+# Varredura de segredos (M9 de docs/plano-melhorias.md): Gitleaks no histórico
+# inteiro, em push/PR para main e toda segunda-feira. Cobre o que o
+# .gitignore protege por convenção (backend/.env, client_secret*.json, dados
+# reais em backend/src/data/*.json) caso algo escape por engano.
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -8,7 +8,9 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "vitest run",
-    "seed:demo": "tsx src/scripts/seed-demo.ts"
+    "seed:demo": "tsx src/scripts/seed-demo.ts",
+    "typecheck": "tsc --noEmit",
+    "test:integracao": "vitest run --mode integracao"
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",

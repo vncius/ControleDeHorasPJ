@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { lancamentosApi } from '../services/api'
-import { hojeLocal } from '../utils/tempo'
+import { hojeLocal, somarHoras } from '../utils/tempo'
 import { useFormatarData } from '../contexts/PreferenciasContext'
 import DatePicker from './DatePicker'
 import Button from './Button'
@@ -294,7 +294,7 @@ export default function TabelaLancamentos({ projetoId, lancamentos, escopos, toa
   const [modalManual, setModalManual] = useState(false)
   const [editando, setEditando] = useState<LancamentoHoras | null>(null)
 
-  const totalDecimal = lancamentos.reduce((acc, l) => acc + (l.totalDecimal ?? 0), 0)
+  const totalDecimal = somarHoras(lancamentos.map(l => l.totalDecimal))
   const totalHoras = Math.floor(totalDecimal)
   const totalMinutos = Math.round((totalDecimal - totalHoras) * 60)
   const totalHHMM = `${String(totalHoras).padStart(2, '0')}:${String(totalMinutos).padStart(2, '0')}`

@@ -1,0 +1,54 @@
+# CI (M9 de docs/plano-melhorias.md): typecheck, testes, build e auditoria de
+# dependências de produção em todo push/PR para main.
+#
+# Os testes de integração com MongoDB (npm run test:integracao) não rodam aqui:
+# exigem MONGODB_URI e rede; o `npm test` os pula sozinho.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      # inclui codigos.i18n.test.ts, que lê os dicionários do frontend
+      - run: npm test
+      - run: npm run build
+      # Só dependências de produção e só alta/crítica: aviso de ferramenta de
+      # build não deve travar o merge.
+      - run: npm audit --omit=dev --audit-level=high
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high

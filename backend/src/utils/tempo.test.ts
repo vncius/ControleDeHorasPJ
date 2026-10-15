@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { periodoApuracao } from './tempo'
+import { periodoApuracao, somarHoras } from './tempo'
 
 describe('periodoApuracao', () => {
   it('data no meio do período (27/08/2026) devolve 16/08 a 15/09', () => {
@@ -32,5 +32,12 @@ describe('periodoApuracao', () => {
 
   it('dia 15 de janeiro exatamente (fim do período que começou em dezembro anterior)', () => {
     expect(periodoApuracao('2026-01-15')).toEqual({ inicio: '2025-12-16', fim: '2026-01-15' })
+  })
+})
+
+describe('somarHoras', () => {
+  it('soma com 2 casas, sem erro de ponto flutuante', () => {
+    expect(somarHoras([0.1, 0.2])).toBe(0.3)
+    expect(somarHoras([1.25, undefined, 0.33, 0.67])).toBe(2.25)
   })
 })

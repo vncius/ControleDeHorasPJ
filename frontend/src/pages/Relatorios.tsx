@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { clientesApi, projetosApi, lancamentosApi, escoposApi, pagamentosApi } from '../services/api'
-import { dataLocalISO, hojeLocal, periodoApuracao } from '../utils/tempo'
+import { dataLocalISO, hojeLocal, periodoApuracao, somarHoras } from '../utils/tempo'
 import { useFormatarData } from '../contexts/PreferenciasContext'
 import DatePicker from '../components/DatePicker'
 import type { Cliente, Projeto, LancamentoHoras, Pagamento } from '../types'
@@ -83,7 +83,7 @@ async function exportarPDF(
     import('jspdf-autotable'),
   ])
 
-  const totalDecimal = lancamentos.reduce((a, l) => a + (l.totalDecimal ?? 0), 0)
+  const totalDecimal = somarHoras(lancamentos.map(l => l.totalDecimal))
   const doc = new jsPDF()
 
   doc.setFontSize(16)
@@ -291,20 +291,24 @@ export default function Relatorios() {
         const cliente = clientes.find(c => c.id === p.clienteId)
         if (!cliente) return null
         const lancamentosProjeto = todosLancamentos.filter(l => l.projeto.id === p.id)
-        const totalHistorico = lancamentosProjeto.reduce((a, l) => a + (l.totalDecimal ?? 0), 0)
-        const totalNoPeriodo = lancamentosProjeto
-          .filter(l => l.data >= periodoRelInicio && l.data <= periodoRelFim)
-          .reduce((a, l) => a + (l.totalDecimal ?? 0), 0)
+        const totalHistorico = somarHoras(lancamentosProjeto.map(l => l.totalDecimal))
+        const totalNoPeriodo = somarHoras(
+          lancamentosProjeto
+            .filter(l => l.data >= periodoRelInicio && l.data <= periodoRelFim)
+            .map(l => l.totalDecimal)
+        )
         // pagamentos de períodos de apuração anteriores ao selecionado, mais os
         // de regularização — estes não representam um período real, e sim todo
         // o histórico do projeto, então contam independentemente da data.
-        const totalJaPago = pagamentos
-          .filter(pg => pg.projetoId === p.id &&
-            (pg.geradoPorRegularizacao || pg.periodoApuracaoFim < periodoRelInicio))
-          .reduce((a, pg) => a + pg.horasCobertas, 0)
+        const totalJaPago = somarHoras(
+          pagamentos
+            .filter(pg => pg.projetoId === p.id &&
+              (pg.geradoPorRegularizacao || pg.periodoApuracaoFim < periodoRelInicio))
+            .map(pg => pg.horasCobertas)
+        )
         // projeto considerado pago não tem saldo a faturar, mesmo que horas
         // novas tenham sido lançadas depois da regularização
-        const saldoAFaturar = p.consideradoPago ? 0 : Math.max(0, totalHistorico - totalJaPago)
+        const saldoAFaturar = p.consideradoPago ? 0 : Math.max(0, somarHoras([totalHistorico, -totalJaPago]))
         return { projeto: p, cliente, totalHistorico, totalJaPago, totalNoPeriodo, saldoAFaturar }
       })
       .filter((l): l is LinhaPeriodoApuracao => l !== null && l.totalHistorico > 0)
@@ -316,15 +320,15 @@ export default function Relatorios() {
   const clienteParaPDF = projetoParaPDF ? clientes.find(c => c.id === projetoParaPDF.clienteId) : undefined
 
   const totalDecimal = useMemo(
-    () => lancamentosFiltrados.reduce((a, l) => a + (l.totalDecimal ?? 0), 0),
+    () => somarHoras(lancamentosFiltrados.map(l => l.totalDecimal)),
     [lancamentosFiltrados]
   )
   const totalDecimalFat = useMemo(
-    () => lancamentosFat.reduce((a, l) => a + (l.totalDecimal ?? 0), 0),
+    () => somarHoras(lancamentosFat.map(l => l.totalDecimal)),
     [lancamentosFat]
   )
   const totalDecimalNaoFat = useMemo(
-    () => lancamentosNaoFat.reduce((a, l) => a + (l.totalDecimal ?? 0), 0),
+    () => somarHoras(lancamentosNaoFat.map(l => l.totalDecimal)),
     [lancamentosNaoFat]
   )
   const totalValor = useMemo(
