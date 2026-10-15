@@ -1,4 +1,4 @@
-import { v4 as uuid } from 'uuid'
+import { randomUUID as uuid } from 'node:crypto'
 import { projetosRepo, clientesRepo, escoposRepo, lancamentosRepo, pagamentosRepo, preferenciasRepo } from '../repositories'
 import { withTransaction } from '../repositories/mongoClient'
 import {

@@ -13,6 +13,11 @@ updates:
     groups:
       backend-minor-patch:
         update-types: [minor, patch]
+    # @types/node acompanha o runtime (Node 22 no CI e em `engines`), não a
+    # última major: tipos de Node 24+ deixariam usar API que não existe em produção.
+    ignore:
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: npm
     directory: /frontend
