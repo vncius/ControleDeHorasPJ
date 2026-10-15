@@ -10,13 +10,14 @@ import {
   authController,
 } from '../controllers'
 import { requireAuth } from '../middleware/auth'
+import { limiteLogin, limiteImportacao } from '../middleware/rateLimit'
 
 const router = Router()
 
 // ----------------------------------------------------------------
 // Autenticação (públicas — precisam vir antes do requireAuth)
 // ----------------------------------------------------------------
-router.post('/auth/google', authController.loginGoogle)
+router.post('/auth/google', limiteLogin, authController.loginGoogle)
 router.post('/auth/logout', authController.logout)
 router.get('/auth/me', requireAuth, authController.me)
 
@@ -108,10 +109,12 @@ router.post('/lancamentos/:id/duplicar', lancamentosController.duplicar.bind(lan
 // ----------------------------------------------------------------
 router.post(
   '/projetos/:projetoId/lancamentos/importar-preview',
+  limiteImportacao,
   importacaoController.preview.bind(importacaoController)
 )
 router.post(
   '/projetos/:projetoId/lancamentos/importar-confirmar',
+  limiteImportacao,
   importacaoController.confirmar.bind(importacaoController)
 )
 

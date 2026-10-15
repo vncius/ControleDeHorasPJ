@@ -13,6 +13,8 @@ import routes from './routes'
 import { conectarMongo } from './repositories/mongoClient'
 import { validarAmbiente } from './utils/ambiente'
 import { exigirCabecalhoCsrf } from './middleware/csrf'
+import { limiteGeral } from './middleware/rateLimit'
+import { parsersJson, errosDeCorpo } from './middleware/corpo'
 
 const app = express()
 const PORT = process.env.PORT ?? 3001
@@ -47,13 +49,16 @@ app.use(
   })
 )
 app.use(cors({ origin: origensPermitidas, credentials: true }))
-app.use(express.json())
+// Depois do cors: um 429 sem cabeçalhos CORS chegaria ao frontend como erro de rede.
+app.use('/api', limiteGeral)
+app.use(parsersJson())
 app.use(cookieParser())
 
 // ----------------------------------------------------------------
 // Rotas
 // ----------------------------------------------------------------
 app.use('/api', exigirCabecalhoCsrf, routes)
+app.use(errosDeCorpo)
 
 // Rota de saúde
 app.get('/health', (_req, res) => {

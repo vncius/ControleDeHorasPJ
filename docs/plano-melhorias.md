@@ -46,7 +46,7 @@ Um schema por DTO em `backend/src/schemas/<entidade>.ts`, `.strict()` (rejeita c
 Produção já usa o proxy same-origin (`frontend/functions/api/[[path]].ts`), então o cookie vira `SameSite=Lax` (configurável por `COOKIE_SAME_SITE`). Toda requisição que altera estado exige `X-Requested-With: XMLHttpRequest`.
 
 ### D5 — Limites
-Em memória (processo único, sem dependência nova). Por IP: login 20/min, geral 600/min. Por tenant: importação 10 a cada 10 min. Corpo JSON 100 KB por padrão, 2 MB na importação.
+Em memória (processo único, sem dependência nova). Por IP: login 20/min, geral 600/min. Por tenant: importação 30 a cada 10 min (pré-visualizar e confirmar contam as duas). Corpo JSON 100 KB por padrão, 2 MB na importação.
 
 ### D6 — Sessão e identidade — *a confirmar com o usuário*
 Proposta: coleção `usuarios` com `tenantId` gerado (UUID) e `googleSub`; sessão de 24h com `versaoSessao` (revogação + "sair de todos os dispositivos"). Exige migração de todos os documentos (`tenantId` = e-mail → UUID).
@@ -131,8 +131,8 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 | M1 | Bugs de isolamento (`escopoId`) e cascata (preferências) | — | P | ✅ | 2026-10-15 | cdca188 |
 | M2 | Segredos validados no boot | — | P | ✅ | 2026-10-15 | 9b3bd04 |
 | M3 | CSRF (SameSite=Lax + cabeçalho) | — | P | ✅ | 2026-10-15 | e659629 |
-| M4 | Cabeçalhos de segurança (helmet + `_headers`) | — | P | ✅ | 2026-10-15 | (este commit) |
-| M5 | Rate limit e limite de corpo | — | P | ⬜ | | |
+| M4 | Cabeçalhos de segurança (helmet + `_headers`) | — | P | ✅ | 2026-10-15 | 6e1e205 |
+| M5 | Rate limit e limite de corpo | — | P | ✅ | 2026-10-15 | (este commit) |
 | M6 | `app.ts`/`server.ts` + log de requisições | — | P | ⬜ | | |
 | M7 | Erros padronizados + cliente HTTP robusto | M6 | M | ⬜ | | |
 | M8 | Validação com Zod | M7 | M | ⬜ | | |
@@ -186,3 +186,16 @@ Ordem sugerida: M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M
 - `vite preview` (porta 4173, configuração `frontend-preview` do `launch.json`) aplica o `_headers` e faz proxy de `/api` como o Cloudflare, para testar a CSP localmente: `VITE_API_URL= npm run build`.
 - Verificado no preview com o backend de demo: login (script e iframe do Google, fontes, tema), dashboard, projetos e relatórios sem nenhuma violação de CSP no console. A exportação de PDF não foi exercitada (geraria download).
 - **Ação de deploy (mesma da M3):** a CSP tem `connect-src 'self'`. Se o Cloudflare Pages definir `VITE_API_URL` apontando para o Render, inclua essa URL em `connect-src` no `_headers`, senão todas as chamadas à API serão bloqueadas.
+
+### M5
+- `npm audit fix` no backend atualizou dependências do Express: body-parser 1.20.8 (limite de corpo ignorado com valor inválido), proxy-addr 2.0.8 (spoofing de IP via IPv6 mapeado) e qs 6.16.1.
+  - Sobra, em produção, um alerta moderado do `uuid` < 11.1.1. Ele afeta só v3/v5/v6 com `buf`, e o projeto usa só `v4`; atualizar exige versão major.
+  - Em dev sobram vitest, esbuild e tinypool, que também exigem `--force` e versão major. Ficam para a M9, junto do CI.
+- `middleware/rateLimit.ts` (`criarLimitador`, janela fixa em memória, limpeza periódica com `unref`):
+  - geral: 600/min por IP em `/api`, depois do CORS (assim o 429 leva os cabeçalhos CORS);
+  - login: 20/min por IP em `/auth/google`;
+  - importação: 30 a cada 10 min por tenant;
+  - toda resposta 429 traz `Retry-After`.
+- **Limitação conhecida:** atrás do proxy do Cloudflare, `req.ip` (com `trust proxy` 1) é o IP de saída do Cloudflare, compartilhado entre usuários. Por isso os limites por IP são folgados e o de importação é por tenant. O IP real do cliente exige o esquema `X-Client-IP` com segredo compartilhado da referência e fica como item futuro.
+- `middleware/corpo.ts`: corpo de 100 KB por padrão e de 2 MB nas duas rotas de importação (o parser específico roda antes do global). `errosDeCorpo` converte 413 e JSON inválido em respostas JSON (antes saía HTML do Express).
+- Verificado no servidor real: 20 logins inválidos recebem 401 e o 21º recebe 429 com `Retry-After` e `Access-Control-Allow-Origin`; um POST de 150 KB recebe 413 em JSON.

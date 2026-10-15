@@ -4,7 +4,7 @@ Base: `/api`. Todas as respostas são JSON. Exceto as rotas de autenticação ma
 
 Toda requisição que altera estado (POST, PUT, PATCH, DELETE), inclusive o login, precisa do cabeçalho `X-Requested-With: XMLHttpRequest`. Sem ele a resposta é `403`.
 
-Erros hoje respondem `400 { erro: string }` (401 quando não há sessão). A padronização de status e códigos de erro está planejada em [`plano-melhorias.md`](plano-melhorias.md) (M7).
+Erros hoje respondem `400 { erro: string }` (401 quando não há sessão). Excesso de requisições responde `429` com `Retry-After` (login: 20/min por IP; API: 600/min por IP; importação: 30 a cada 10 min por usuário). Corpo acima de 100 KB, ou 2 MB na importação, responde `413`. A padronização de status e códigos de erro está planejada em [`plano-melhorias.md`](plano-melhorias.md) (M7).
 
 ## Autenticação
 
