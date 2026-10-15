@@ -66,6 +66,7 @@ ControleDeHorasPJ/
 │           └── *.example.json           ← versões fictícias versionadas (referência de shape)
 │
 └── frontend/
+    ├── public/favicon.svg           ← ícone do app (relógio + cursor "_" do logo)
     └── src/
         ├── App.tsx
         ├── index.css                    ← design system completo

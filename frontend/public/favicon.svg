@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <title>Horas PJ</title>
+  <rect width="32" height="32" rx="7" fill="#07070d"/>
+  <circle cx="16" cy="14.5" r="8.5" fill="none" stroke="#a8ff3e" stroke-width="2.5"/>
+  <path d="M16 9.5v5h4" fill="none" stroke="#e8e8f0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="11" y="26" width="10" height="2.2" rx="1.1" fill="#a8ff3e"/>
+</svg>
