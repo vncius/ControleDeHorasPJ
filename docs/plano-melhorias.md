@@ -302,4 +302,20 @@ Os 8 PRs major (#7–#14) foram avaliados um a um: changelog, `npm ci`/typecheck
   - React 19 (#16, substitui #9): o PR do Dependabot subia `react` sem `react-dom` e `@types/react-dom`, e o `npm ci` falhava. Os quatro sobem juntos; o código já usava `createRoot` e não usa API removida.
   - Vite 8 + `@vitejs/plugin-react` 6 (#17, substitui #11): o plugin 6 exige Vite 8. `vite.config.ts` não mudou, o build não gera script inline (CSP intacta) e o Cloudflare Pages builda. Build cai de ~2s para ~0,2s, e o `npm audit` completo do frontend zera.
 - Ao rebasear PRs que mexem no `package-lock.json`, o merge textual pode perder marcações `"dev": true`; regenerar com `npm install` em vez de resolver à mão.
-- Ficaram para avaliação própria os PRs que o Dependabot abriu durante o trabalho: zod 4 (#22), express 5 (#21), TypeScript 7 no backend (#19) e `@cloudflare/workers-types` 5 (#18).
+- Ficaram para a rodada seguinte (abaixo) os PRs que o Dependabot abriu durante o trabalho: zod 4 (#22), express 5 (#21), TypeScript 7 no backend (#19) e `@cloudflare/workers-types` 5 (#18).
+
+### Segunda rodada de majors do Dependabot (#18, #19, #21, #22 — 2026-10-15)
+Cada PR testado num worktree com o branch mesclado sobre a main: `npm ci`, typecheck, `npm test` e build. Merges aguardam autorização; ordem sugerida abaixo.
+- **`@cloudflare/workers-types` 5 (#18), pronto para merge.** Os tipos só servem à Pages Function do proxy (`frontend/functions`), que tem `tsconfig` próprio e **fica fora do typecheck do CI**. `tsc -p functions --noEmit` passa com a v4 e a v5. A v5 só removeu os entrypoints datados (`/2022-11-30` etc.), e o import raiz continua. Não há efeito no runtime.
+- **TypeScript 7 no backend (#19), pronto para merge.** O JS emitido pelo tsc 7.0.2 é idêntico byte a byte ao do 5.9.3 (diff vazio nos 29 arquivos de `dist`, CommonJS). vitest e tsx transpilam com esbuild, não com o tsc.
+- **Zod 4 (#22), pronto para merge sem ajuste de código.**
+  - Os 15 schemas foram rodados contra 55 corpos (825 combinações) no Zod 3 e no 4, com o mesmo resultado: sucesso ou erro, `data` (trim, coerce de `ano`, `null`), `unrecognized_keys` com `keys` e path do primeiro issue.
+  - Mudaram só códigos internos de issue (`invalid_string` → `invalid_format`, `invalid_enum_value` → `invalid_value`). O `errorHandler` só distingue `unrecognized_keys` do resto, então os códigos da API (`validacao.campoDesconhecido`/`campoInvalido`) e as traduções não mudam.
+  - Diferença de comportamento: `1e400` no JSON (= `Infinity`) passava no `.positive()` do Zod 3 (ex.: `horasContratadas`) e o Zod 4 recusa, o que é uma melhoria. `.strict()` e `ZodTypeAny` seguem disponíveis no v4; migrar para `z.strictObject` é opcional.
+- **Express 5 (#21 fechado e substituído por #24).** O PR do Dependabot falhava no typecheck. Ajustes:
+  - `req.params` tipado nos controllers (`Request<{ id: string }>` / `Request<{ projetoId: string }>`), porque no `@types/express` 5 o padrão é `string | string[]`;
+  - `limites.test.ts`: a rota curinga `'*'` vira `'/{*caminho}'` (path-to-regexp 8).
+  - Itens conferidos sem mudança: nenhuma rota usa `?`, `*`, `(` ou `+`, e a regex do `parsersJson` continua suportada; `req.body` fica `undefined` sem parser, o que `validarCorpo` e `bloquearChavesProibidas` já tratam; `req.query` nunca é atribuído; o body-parser 2 mantém os mesmos `type` de erro; helmet, cors e cookie-parser seguem iguais.
+  - Smoke HTTP da API real no banco demo (54 requisições, de todos os grupos de rota e de todos os caminhos de erro), comparando Express 4 e 5 por status, código e formato do corpo: idêntico, exceto `?clienteId[$ne]=x`. O Express 5 usa o parser de query `simple`, a chave não vira objeto e o filtro é ignorado. Como o filtro roda em JS dentro do tenant, não há impacto. Banco demo restaurado com `seed:demo` ao final.
+- Ordem de merge sugerida: #18 (frontend, independente); depois #19, #22 e #24, um por vez, porque os três mexem no `package-lock.json` do backend. O Dependabot rebaseia os próprios PRs; o #24 precisa de rebase manual, regenerando o lock com `npm install`.
+- Item futuro: incluir `tsc -p functions --noEmit` no `typecheck` do frontend, para o CI cobrir a Pages Function.
