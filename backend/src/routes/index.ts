@@ -8,10 +8,12 @@ import {
   dashboardController,
   importacaoController,
   authController,
+  auditoriaController,
 } from '../controllers'
 import { requireAuth } from '../middleware/auth'
 import { limiteLogin, limiteImportacao } from '../middleware/rateLimit'
 import { validarCorpo } from '../middleware/validacao'
+import { auditar, auditarExclusoes, auditarRegularizacao } from '../middleware/auditoria'
 import {
   loginGoogleSchema,
   criarClienteSchema,
@@ -38,12 +40,19 @@ const router = Router()
 router.post('/auth/google', limiteLogin, validarCorpo(loginGoogleSchema), authController.loginGoogle)
 router.post('/auth/logout', authController.logout)
 router.get('/auth/me', requireAuth, authController.me)
-router.post('/auth/logout-todos', requireAuth, authController.logoutTodos)
+router.post('/auth/logout-todos', requireAuth, auditar('logout_todos'), authController.logoutTodos)
 
 // ----------------------------------------------------------------
 // A partir daqui, todas as rotas exigem sessão válida
 // ----------------------------------------------------------------
 router.use(requireAuth)
+// toda exclusão bem-sucedida entra na trilha de auditoria (M14)
+router.use(auditarExclusoes)
+
+// ----------------------------------------------------------------
+// Auditoria — eventos do próprio usuário (mais recentes primeiro)
+// ----------------------------------------------------------------
+router.get('/auditoria', auditoriaController.listar)
 
 // ----------------------------------------------------------------
 // Dashboard
@@ -66,7 +75,7 @@ router.get('/projetos', projetosController.listar.bind(projetosController))
 router.get('/projetos/:id', projetosController.buscar.bind(projetosController))
 router.get('/projetos/:id/resumo', projetosController.resumo.bind(projetosController))
 router.post('/projetos', validarCorpo(criarProjetoSchema), projetosController.criar.bind(projetosController))
-router.put('/projetos/:id', validarCorpo(atualizarProjetoSchema), projetosController.atualizar.bind(projetosController))
+router.put('/projetos/:id', validarCorpo(atualizarProjetoSchema), auditarRegularizacao, projetosController.atualizar.bind(projetosController))
 router.delete('/projetos/:id', projetosController.excluir.bind(projetosController))
 
 // ----------------------------------------------------------------
@@ -139,6 +148,7 @@ router.post(
   '/projetos/:projetoId/lancamentos/importar-confirmar',
   limiteImportacao,
   validarCorpo(confirmarImportacaoSchema),
+  auditar('importacao'),
   importacaoController.confirmar.bind(importacaoController)
 )
 

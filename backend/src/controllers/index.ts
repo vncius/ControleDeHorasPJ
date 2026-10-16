@@ -8,7 +8,10 @@ import { dashboardService } from '../services/dashboardService'
 import { importacaoService } from '../services/importacaoService'
 import { authService } from '../services/authService'
 import { usuariosService } from '../services/usuariosService'
-import { assinarSessao, NOME_COOKIE_SESSAO, OPCOES_COOKIE_SESSAO } from '../middleware/auth'
+import { assinarSessao, verificarSessao, NOME_COOKIE_SESSAO, OPCOES_COOKIE_SESSAO } from '../middleware/auth'
+import { auditoriaService } from '../services/auditoriaService'
+import { contextoDaRequisicao } from '../middleware/auditoria'
+import { AppError } from '../errors/AppError'
 
 // Parâmetros de rota tipados: no @types/express 5 o padrão é string | string[]
 // (por causa dos curingas `*nome`). As rotas daqui só têm parâmetros nomeados.
@@ -227,13 +230,24 @@ export const authController = {
       const usuario = await usuariosService.entrarComGoogle(identidade)
       const token = assinarSessao({ uid: usuario.id, v: usuario.versaoSessao })
       res.cookie(NOME_COOKIE_SESSAO, token, OPCOES_COOKIE_SESSAO)
+      auditoriaService.registrar({ tenantId: usuario.tenantId, usuarioId: usuario.id, acao: 'login', ...contextoDaRequisicao(req) })
       res.json({ email: usuario.email, nome: usuario.nome })
     } catch (err: unknown) {
+      // token do Google recusado: fica o registro (sem identidade, só IP/rota)
+      if (err instanceof AppError && err.status === 401) {
+        auditoriaService.registrar({ tenantId: null, usuarioId: null, acao: 'login_falhou', ...contextoDaRequisicao(req) })
+      }
       next(err)
     }
   },
 
-  logout(_req: Request, res: Response) {
+  logout(req: Request, res: Response) {
+    // rota pública: identifica pelo cookie, se ainda válido (uid = tenantId,
+    // ver usuariosService — conta nova e migrada usam o próprio id)
+    const sessao = req.cookies?.[NOME_COOKIE_SESSAO] ? verificarSessao(req.cookies[NOME_COOKIE_SESSAO]) : null
+    if (sessao) {
+      auditoriaService.registrar({ tenantId: sessao.uid, usuarioId: sessao.uid, acao: 'logout', ...contextoDaRequisicao(req) })
+    }
     limparCookieSessao(res)
     res.json({ mensagem: 'Logout realizado' })
   },
@@ -252,6 +266,15 @@ export const authController = {
 
   me(req: Request, res: Response) {
     res.json({ email: req.usuario!.email, nome: req.usuario!.nome })
+  },
+}
+
+// ----------------------------------------------------------------
+// AUDITORIA
+// ----------------------------------------------------------------
+export const auditoriaController = {
+  listar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => auditoriaService.listar(req.usuario!.tenantId))
   },
 }
 

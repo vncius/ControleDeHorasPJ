@@ -143,8 +143,8 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 | M10 | Migrações idempotentes no boot | — | P | ✅ | 2026-10-15 | 64fa371 (PR #26) |
 | M11 | CSV seguro + i18n tipado | — | P | ✅ | 2026-10-16 | a61d878 |
 | M12 | Acessibilidade de modais e toasts | — | M | ✅ | 2026-10-16 | c20bc0c |
-| M13 | Identidade (`usuarios`) e sessão revogável | M10, D6 | M | ✅ | 2026-10-16 | (este commit) |
-| M14 | Auditoria | M6, M13 | M | ⬜ | | |
+| M13 | Identidade (`usuarios`) e sessão revogável | M10, D6 | M | ✅ | 2026-10-16 | 8a0faf2 |
+| M14 | Auditoria | M6, M13 | M | ✅ | 2026-10-16 | (este commit) |
 | M15 | LGPD | M13, M14, D7 | G | ⬜ | | |
 | M16 | Deploy e ADRs | — | P | ⬜ | | |
 
@@ -379,3 +379,20 @@ Cada PR testado num worktree com o branch mesclado sobre a main: `npm ci`, typec
 - Testes: `middleware/sessao.test.ts` (9 casos: formato e prazo do token, token antigo e com outro segredo recusados, `req.usuario` com tenantId, 401, revogação na hora, `/auth/me`, conta nova, vínculo por e-mail, identificação pelo `sub`) e integração da migração 002 no banco de teste (cria usuários, regrava as coleções, reaproveita usuário existente, idempotente). `npm run test:integracao` passou com 127/127.
 - Verificado ponta a ponta no banco de demo: a migração rodou no boot (o banco tinha dados antigos com e-mail), o dashboard abriu com a sessão nova, o diálogo de saída apareceu, `logout-todos` respondeu 200 e redirecionou para o login, o token v=0 passou a dar 401 e o v=1 deu 200.
 - **Ação de deploy (importante):** no primeiro boot com esta versão apontando para o banco real (deploy no Render ou `npm run dev` local), a migração 002 regrava o `tenantId` de **todos** os documentos reais. Antes, faça um export do banco `horas-pj` (Atlas → Collections → Export, ou `mongodump`), porque o Atlas M0 não tem backup automático. Depois do deploy, todos entram de novo uma vez.
+
+### M14
+- Coleção `auditoria` (índice `{ tenantId, data: -1 }`), gravada por `services/auditoriaService.ts`:
+  - a gravação é "fire and forget": nunca atrasa nem derruba a requisição, e se o Mongo falhar fica só uma linha no log, com o tipo do erro;
+  - o registro é `{ tenantId, usuarioId, acao, ip, userAgent (até 300 caracteres), detalhes: { metodo, caminho sem query, consideradoPago? }, data }`, sem e-mail, corpo nem dado de negócio.
+- Ações gravadas:
+  - `login` e `login_falhou`, no controller; a falha não tem identidade, só IP e rota;
+  - `logout`, que identifica pelo cookie ainda válido (`uid` = `tenantId`) porque a rota é pública;
+  - `logout_todos`;
+  - `exclusao`: middleware global depois do `requireAuth`, para todo DELETE 2xx;
+  - `importacao`, no confirmar;
+  - `regularizacao`, em `PUT /projetos/:id` com `consideradoPago` booleano, gravando o novo valor.
+- Só grava em 2xx: uma tentativa recusada (validação, 404, 409) não apagou nada.
+- `GET /api/auditoria` devolve os 100 eventos mais recentes do próprio usuário, sem `tenantId` nem `usuarioId`. Fica pronto para um futuro "histórico de acessos" na interface, que não entrou nesta entrega.
+- **Limitação:** o IP gravado é o `req.ip`, que atrás do proxy do Cloudflare é o IP de saída do Cloudflare (ver M5). O IP real do cliente segue como item futuro.
+- **Retenção:** sem expiração por enquanto. A M15 anonimiza a trilha do usuário que excluir a conta; um TTL (por exemplo, 1 ano) pode ser decidido na M15.
+- Testes: `middleware/auditoria.test.ts` (5 casos: exclusão grava rota sem query; 404 não grava; importação sem o corpo; regularização grava e edição comum não; login e login_falhou sem e-mail) e `services/auditoriaService.integracao.test.ts` (grava de fato e lista só o próprio tenant, mais recente primeiro). `npm run test:integracao` passou com 134/134.

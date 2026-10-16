@@ -17,6 +17,14 @@ POST /api/auth/logout-todos                    ← invalida todas as sessões do
 GET  /api/auth/me                              → { email, nome }
 ```
 
+## Auditoria
+
+```
+GET /api/auditoria   → os 100 eventos mais recentes do próprio usuário: { id, acao, ip, userAgent, detalhes: { metodo, caminho, consideradoPago? }, data }
+```
+
+Ações gravadas: `login`, `login_falhou` (sem identidade), `logout`, `logout_todos`, `exclusao` (todo DELETE bem-sucedido), `importacao`, `regularizacao` ("considerado pago" ligado ou desligado). Nunca o corpo da requisição.
+
 ## Dashboard
 
 ```

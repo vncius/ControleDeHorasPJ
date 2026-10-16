@@ -36,6 +36,8 @@ npm run build      # build de produção real (já pegou bugs que o dev server n
 
 ## Entrada e erros da API
 
+- Auditoria (M14): todo DELETE bem-sucedido já entra na trilha (`auditarExclusoes`). Uma rota nova que importe em massa, apague por outro método ou mude situação de pagamento deve usar `auditar(acao)` (`backend/src/middleware/auditoria.ts`). A trilha nunca grava corpo, e-mail nem dado de negócio.
+
 - Toda rota com corpo passa por `validarCorpo(schema)` com um schema `.strict()` de `backend/src/schemas/index.ts`. Campo novo num DTO entra **no schema**, porque os tipos `*DTO` são gerados dele (`z.infer`). Um campo que o cliente não pode enviar (ex.: `geradoPorRegularizacao`) fica fora do schema, só no tipo interno.
 - O schema valida formato; a regra de negócio continua no service.
 
