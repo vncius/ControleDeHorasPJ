@@ -5,6 +5,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ## [Unreleased]
 
 ### Adicionado
+- Acessibilidade: componente `Modal` único (diálogo rotulado, Esc, foco preso e devolvido a quem abriu), aplicado aos 11 modais. Toasts anunciados por leitores de tela e botões de ícone com nome acessível (M12).
 - Relatórios (página, CSV e PDFs) traduzidos em pt/en/es, com números, moeda e datas no formato do idioma ativo. Dicionários `en`/`es` tipados contra `pt`. Testes no frontend com Vitest, também no CI (M11).
 - `npm run seed:demo` (backend): recria um tenant fictício num banco separado (recusa banco sem `demo` no nome) para demonstração e prints.
 - Configuração `backend-demo` em `.claude/launch.json`.

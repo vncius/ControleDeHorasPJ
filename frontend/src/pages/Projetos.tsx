@@ -13,6 +13,7 @@ import InputMoeda from '../components/InputMoeda'
 import InputDecimal from '../components/InputDecimal'
 import ProjetoDetalhe from './ProjetoDetalhe'
 import Button from '../components/Button'
+import Modal from '../components/Modal'
 
 interface Props { toast: ToastFns }
 
@@ -92,11 +93,10 @@ export function ProjetoForm({
 }) {
   const { t } = useTranslation()
   return (
-    <div className="modal-overlay" onClick={onFechar}>
-      <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
+    <Modal onFechar={onFechar} className="modal modal-lg">
         <div className="modal-header">
           <h2 className="modal-title">{titulo}</h2>
-          <button className="btn btn-ghost btn-icon" onClick={onFechar}>✕</button>
+          <button className="btn btn-ghost btn-icon" onClick={onFechar} aria-label={t('comum.fechar')}>✕</button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -190,8 +190,7 @@ export function ProjetoForm({
             {t('comum.salvar')}
           </Button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 

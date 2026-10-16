@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { importacaoApi } from '../services/api'
 import Button from './Button'
+import Modal from './Modal'
 import { useFormatarData } from '../contexts/PreferenciasContext'
 import type { LinhaImportacao, StatusLinhaImportacao } from '../types'
 import type { ToastFns } from '../App'
@@ -86,12 +87,7 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
   }
 
   return (
-    <div className="modal-overlay" onClick={onFechar}>
-      <div
-        className="modal"
-        style={{ maxWidth: etapa === 'preview' ? 900 : 560, width: '100%' }}
-        onClick={e => e.stopPropagation()}
-      >
+    <Modal onFechar={onFechar} style={{ maxWidth: etapa === 'preview' ? 900 : 560, width: '100%' }}>
         {/* Header */}
         <div className="modal-header">
           <div>
@@ -100,7 +96,7 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
               {etapa === 'colar' ? t('importacao.subtituloColar') : t('importacao.subtituloPreview', { count: linhas.length, validas: validas.length })}
             </div>
           </div>
-          <button className="btn btn-ghost btn-icon" onClick={onFechar}>✕</button>
+          <button className="btn btn-ghost btn-icon" onClick={onFechar} aria-label={t('comum.fechar')}>✕</button>
         </div>
 
         {/* ── Etapa 1: colar ── */}
@@ -256,7 +252,6 @@ export default function ModalImportacao({ projetoId, toast, onImportado, onFecha
             </div>
           </>
         )}
-      </div>
-    </div>
+    </Modal>
   )
 }

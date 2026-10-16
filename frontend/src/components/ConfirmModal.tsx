@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import Button from './Button'
+import Modal from './Modal'
 
 interface Props {
   titulo: string
@@ -14,8 +15,7 @@ interface Props {
 export default function ConfirmModal({ titulo, mensagem, confirmarLabel, perigo, confirmando, onConfirmar, onFechar }: Props) {
   const { t } = useTranslation()
   return (
-    <div className="modal-overlay" onClick={onFechar}>
-      <div className="modal" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}>
+    <Modal onFechar={onFechar} style={{ maxWidth: 380 }}>
         <div className="modal-header">
           <h2 className="modal-title">{titulo}</h2>
         </div>
@@ -26,7 +26,6 @@ export default function ConfirmModal({ titulo, mensagem, confirmarLabel, perigo,
             {confirmarLabel ?? t('comum.confirmar')}
           </Button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

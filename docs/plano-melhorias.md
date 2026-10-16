@@ -141,8 +141,8 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 | M8 | Validação com Zod | M7 | M | ✅ | 2026-10-15 | 1af33e3 |
 | M9 | Testes + CI | M1–M8 | M | ✅ | 2026-10-15 | 5695954 |
 | M10 | Migrações idempotentes no boot | — | P | ✅ | 2026-10-15 | 64fa371 (PR #26) |
-| M11 | CSV seguro + i18n tipado | — | P | ✅ | 2026-10-16 | (este commit) |
-| M12 | Acessibilidade de modais e toasts | — | M | ⬜ | | |
+| M11 | CSV seguro + i18n tipado | — | P | ✅ | 2026-10-16 | a61d878 |
+| M12 | Acessibilidade de modais e toasts | — | M | ✅ | 2026-10-16 | (este commit) |
 | M13 | Identidade (`usuarios`) e sessão revogável | M10, D6 | M | ⬜ | | |
 | M14 | Auditoria | M6, M13 | M | ⬜ | | |
 | M15 | LGPD | M13, M14, D7 | G | ⬜ | | |
@@ -342,3 +342,17 @@ Cada PR testado num worktree com o branch mesclado sobre a main: `npm ci`, typec
 - Verificado no preview com o backend de demo em en, es e pt: textos, números, moeda e as duas abas, sem erros no console. A geração de arquivos (CSV e PDF) foi coberta pelos testes unitários, sem download no navegador.
 - **Bug que já existia, encontrado e não corrigido:** na tabela agrupada de Relatórios, a coluna "Faturável" mostra o status do último lançamento processado do grupo (`naoFaturavel: !l.faturavel` sobrescrito a cada lançamento), não do grupo inteiro. Por isso um projeto com lançamentos faturáveis pode aparecer "Não". Corrigir mostrando "Sim", "Não" ou "Parcial".
 - Durante a M11, a sessão "Avaliar os 8 PRs major do Dependabot" foi interrompida a pedido do usuário, por estar implementando a M13 em paralelo. Ela tinha registrado D6 e D7 como aprovadas pelo usuário em 2026-10-16, e o trabalho da M13 ficou sem commit no worktree `.claude/worktrees/ecstatic-wright-89250b` (`usuariosRepository.ts`, tipos, índices). Retomar a partir dali na M13.
+
+### M12
+- `frontend/src/components/Modal.tsx` passa a ser o único jeito de abrir diálogo:
+  - `role="dialog"`, `aria-modal` e `aria-labelledby` apontando para o `.modal-title` que cada modal já renderiza;
+  - Esc e clique fora fecham;
+  - o foco vai para dentro ao abrir (respeitando `autoFocus`), Tab e Shift+Tab ficam presos no painel e o foco volta para quem abriu;
+  - numa pilha de modais, só o do topo reage.
+- Os 11 modais (`ConfirmModal`, `ControlePonto` ×2, `ModalImportacao`, `TabelaLancamentos` ×2, Clientes, Dashboard, `ProjetoDetalhe` ×2 e Projetos) foram migrados de `div.modal-overlay` + `div.modal` para `<Modal>`, por script com contagem (o `ModalImportacao` foi à mão) e sem mudar o conteúdo.
+- Os botões "✕" de fechar dos modais ganharam `aria-label` ("Fechar"), e os "✕" de excluir escopo e pagamento ganharam "Excluir". Os botões de linha de Clientes já tinham `title`.
+- Toasts: o contêiner é `role="status"` com `aria-live="polite"`, o erro usa `role="alert"` e os ícones ✓/✕ são `aria-hidden`.
+- **Bug achado no teste no navegador e corrigido:** com `autoFocus` no conteúdo (ex.: "Nome do cliente"), o foco não voltava ao botão que abriu, porque o React aplica o `autoFocus` antes do efeito do Modal, que guardava o próprio input como "anterior". Agora o elemento anterior é capturado no primeiro render, e há um teste para o caso.
+- Ajuste de comportamento: na confirmação de excluir ou duplicar lançamento (`TabelaLancamentos`), Esc e clique fora agora equivalem a **Cancelar** e voltam para a edição. Antes, clicar fora fechava tudo.
+- Testes: `Modal.test.tsx` (jsdom + @testing-library/react 16.3.3 + jsdom 29.1.1, instalados com `--legacy-peer-deps`), com 8 casos: papel e rótulo, foco inicial, autoFocus, Esc e clique fora, foco preso, foco devolvido, foco devolvido com autoFocus, pilha. O frontend tem 23 testes.
+- Verificado no preview com o backend de demo, só com teclado: abrir "Novo cliente" (diálogo rotulado, foco no campo), Tab ×6 sem sair do modal, Esc fecha e devolve o foco ao botão. Na edição de lançamento, "Excluir", Esc volta para a edição e o segundo Esc fecha, sem nada excluído.

@@ -30,6 +30,7 @@ npm run build      # build de produção real (já pegou bugs que o dev server n
 - **Faturabilidade** (projeto e lançamento): `backend/src/utils/faturamento.ts` é a única fonte. O campo `faturavel` em `LancamentoHoras` é computado por `lancamentosService.listarPorProjeto` e devolvido pela API — o frontend consome esse campo (`Relatorios.tsx`), nunca reimplementa a regra.
 - **Cálculos de tempo** (hora atual, tempo decorrido, soma de horas): `backend/src/utils/tempo.ts` e, no frontend, `frontend/src/utils/tempo.ts`. São dois arquivos (backend/frontend não compartilham runtime), mas dentro de cada lado é a única implementação.
 - **Cores/labels de status de projeto**: `frontend/src/constants/statusProjeto.ts`.
+- **Diálogos**: sempre `frontend/src/components/Modal.tsx` (ou `ConfirmModal`, que o usa). Ele cuida de `role="dialog"`, Esc, foco preso e devolvido. Nunca monte `div.modal-overlay` à mão.
 - **Checagem de posse por tenant**: centralizada em `backend/src/repositories/mongoRepository.ts` (`findAllByTenant`, `findByIdAndTenant`, `updateForTenant`, `deleteForTenant`, `existsForTenant`). Nunca reimplemente `item.tenantId === tenantId` manualmente num service — use esses métodos, inclusive para validar referências entre entidades (ex.: `clienteId` de um `Projeto` precisa existir *no mesmo tenant*, não só existir).
 - Antes de adicionar uma regra de cálculo/validação nova, verifique se ela já existe em um desses arquivos.
 

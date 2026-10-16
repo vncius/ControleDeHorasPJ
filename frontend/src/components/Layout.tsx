@@ -136,11 +136,13 @@ export default function Layout({ toasts }: Props) {
         </main>
       </div>
 
-      {/* Toasts */}
-      <div className="toast-container">
+      {/* Toasts — região viva: o leitor de tela anuncia cada aviso sem tirar o
+          foco de onde o usuário está. Erro usa role="alert" (anúncio imediato);
+          sucesso entra pela região polite. Os ícones ✓/✕ são decorativos. */}
+      <div className="toast-container" role="status" aria-live="polite">
         {toasts.map((t) => (
-          <div key={t.id} className={`toast toast-${t.type}`}>
-            {t.type === 'success' ? '✓ ' : '✕ '}{t.message}
+          <div key={t.id} className={`toast toast-${t.type}`} role={t.type === 'error' ? 'alert' : undefined}>
+            <span aria-hidden="true">{t.type === 'success' ? '✓ ' : '✕ '}</span>{t.message}
           </div>
         ))}
       </div>

@@ -8,6 +8,7 @@ import { useAgoraTick } from '../hooks/useAgoraTick'
 import { useTituloDecorrido } from '../hooks/useTituloDecorrido'
 import ConfirmModal from './ConfirmModal'
 import Button from './Button'
+import Modal from './Modal'
 
 interface Props {
   projetoId: string
@@ -160,8 +161,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
 
   // ── Modal compartilhado ──
   const modalJSX = modalFinalizar && lancamentoParaFinalizar && (
-    <div className="modal-overlay" onClick={fecharModal}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+    <Modal onFechar={fecharModal}>
         <div className="modal-header">
           <div>
             <h2 className="modal-title">
@@ -173,7 +173,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
               </div>
             )}
           </div>
-          <button className="btn btn-ghost btn-icon" onClick={fecharModal}>✕</button>
+          <button className="btn btn-ghost btn-icon" onClick={fecharModal} aria-label={t('comum.fechar')}>✕</button>
         </div>
 
         {/* resumo do lançamento que será encerrado */}
@@ -237,17 +237,15 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
             {iniciarAposFechar ? t('ponto.encerrarEIniciar') : t('dashboard.finalizarESalvar')}
           </Button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 
   // ── Modal de escolha de descrição ao iniciar ──
   const modalDescricaoJSX = modalDescricao && (
-    <div className="modal-overlay" onClick={fecharModalDescricao}>
-      <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+    <Modal onFechar={fecharModalDescricao} style={{ maxWidth: 420 }}>
         <div className="modal-header">
           <h2 className="modal-title">{t('ponto.modalDescricaoTitulo')}</h2>
-          <button className="btn btn-ghost btn-icon" onClick={fecharModalDescricao}>✕</button>
+          <button className="btn btn-ghost btn-icon" onClick={fecharModalDescricao} aria-label={t('comum.fechar')}>✕</button>
         </div>
 
         {!escrevendoNovaDescricao ? (
@@ -295,8 +293,7 @@ export default function ControlePonto({ projetoId, lancamentoAberto, escopos, to
             </div>
           </>
         )}
-      </div>
-    </div>
+    </Modal>
   )
 
   // ── Em andamento neste projeto ──

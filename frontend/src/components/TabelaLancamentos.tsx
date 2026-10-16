@@ -7,6 +7,7 @@ import DatePicker from './DatePicker'
 import Button from './Button'
 import type { LancamentoHoras, TipoLancamento, AlteracaoEscopo } from '../types'
 import type { ToastFns } from '../App'
+import Modal from './Modal'
 
 interface Props {
   projetoId: string
@@ -149,8 +150,8 @@ function ModalLancamento({ projetoId, editando, escopos, toast, onSalvar, onFech
 
   if (confirmando) {
     return (
-      <div className="modal-overlay" onClick={onFechar}>
-        <div className="modal" style={{ maxWidth: 380 }} onClick={e => e.stopPropagation()}>
+      // Esc / clique fora = Cancelar: volta para a edição (antes fechava tudo)
+      <Modal onFechar={() => !processandoAcao && setConfirmando(null)} style={{ maxWidth: 380 }}>
           <div className="modal-header">
             <h2 className="modal-title">{confirmando === 'excluir' ? t('comum.excluir') : t('comum.duplicar')}</h2>
           </div>
@@ -163,17 +164,15 @@ function ModalLancamento({ projetoId, editando, escopos, toast, onSalvar, onFech
               {t('comum.confirmar')}
             </Button>
           </div>
-        </div>
-      </div>
+      </Modal>
     )
   }
 
   return (
-    <div className="modal-overlay" onClick={onFechar}>
-      <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
+    <Modal onFechar={onFechar} className="modal modal-lg">
         <div className="modal-header">
           <h2 className="modal-title">{editando ? t('lanc.modalTituloEditar') : t('lanc.modalTitulo')}</h2>
-          <button className="btn btn-ghost btn-icon" onClick={onFechar}>✕</button>
+          <button className="btn btn-ghost btn-icon" onClick={onFechar} aria-label={t('comum.fechar')}>✕</button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="form-row">
@@ -238,8 +237,7 @@ function ModalLancamento({ projetoId, editando, escopos, toast, onSalvar, onFech
             </Button>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 

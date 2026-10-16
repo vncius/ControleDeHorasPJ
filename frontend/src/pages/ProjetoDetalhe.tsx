@@ -16,6 +16,7 @@ import { calcularDecorridoDecimal, periodoApuracao, hojeLocal } from '../utils/t
 import { useAgoraTick } from '../hooks/useAgoraTick'
 import { useFormatarData } from '../contexts/PreferenciasContext'
 import DatePicker from '../components/DatePicker'
+import Modal from '../components/Modal'
 
 interface Props { toast: ToastFns }
 
@@ -126,11 +127,10 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
   }
 
   return (
-    <div className="modal-overlay" onClick={onFechar}>
-      <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
+    <Modal onFechar={onFechar} className="modal modal-lg">
         <div className="modal-header">
           <h2 className="modal-title">{editando ? t('escopo.modalEditar') : t('escopo.modalNovo')}</h2>
-          <button className="btn btn-ghost btn-icon" onClick={onFechar}>✕</button>
+          <button className="btn btn-ghost btn-icon" onClick={onFechar} aria-label={t('comum.fechar')}>✕</button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="form-group">
@@ -184,8 +184,7 @@ function ModalEscopo({ projetoId, editando, toast, onSalvar, onFechar }: ModalEs
             {editando ? t('comum.salvar') : t('escopo.criarBtn')}
           </Button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -252,11 +251,10 @@ function ModalPagamento({ projetoId, editando, toast, onSalvar, onFechar }: Moda
   }
 
   return (
-    <div className="modal-overlay" onClick={onFechar}>
-      <div className="modal modal-lg" onClick={e => e.stopPropagation()}>
+    <Modal onFechar={onFechar} className="modal modal-lg">
         <div className="modal-header">
           <h2 className="modal-title">{editando ? t('pagamento.modalEditar') : t('pagamento.modalNovo')}</h2>
-          <button className="btn btn-ghost btn-icon" onClick={onFechar}>✕</button>
+          <button className="btn btn-ghost btn-icon" onClick={onFechar} aria-label={t('comum.fechar')}>✕</button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="form-row">
@@ -316,8 +314,7 @@ function ModalPagamento({ projetoId, editando, toast, onSalvar, onFechar }: Moda
             {editando ? t('comum.salvar') : t('pagamento.criarBtn')}
           </Button>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -704,7 +701,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
                         <td onClick={ev => ev.stopPropagation()}>
                           <div className="flex-center gap-4">
                             <button className="btn btn-ghost btn-sm btn-icon" onClick={() => { setEscopoEditando(e); setModalEscopo(true) }}>✎</button>
-                            <button className="btn btn-ghost btn-sm btn-icon" style={{ color: 'var(--danger)' }} onClick={() => setConfirmarExcluirEscopo(e)}>✕</button>
+                            <button className="btn btn-ghost btn-sm btn-icon" style={{ color: 'var(--danger)' }} onClick={() => setConfirmarExcluirEscopo(e)} aria-label={t('comum.excluir')}>✕</button>
                           </div>
                         </td>
                       </tr>
@@ -806,7 +803,7 @@ export default function ProjetoDetalhe({ toast }: Props) {
                         <td onClick={ev => ev.stopPropagation()}>
                           <div className="flex-center gap-4">
                             <button className="btn btn-ghost btn-sm btn-icon" onClick={() => { setPagamentoEditando(p); setModalPagamento(true) }}>✎</button>
-                            <button className="btn btn-ghost btn-sm btn-icon" style={{ color: 'var(--danger)' }} onClick={() => setConfirmarExcluirPagamento(p)}>✕</button>
+                            <button className="btn btn-ghost btn-sm btn-icon" style={{ color: 'var(--danger)' }} onClick={() => setConfirmarExcluirPagamento(p)} aria-label={t('comum.excluir')}>✕</button>
                           </div>
                         </td>
                       </tr>

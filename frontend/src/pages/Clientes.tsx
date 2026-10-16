@@ -5,6 +5,7 @@ import type { Cliente } from '../types'
 import type { ToastFns } from '../App'
 import ConfirmModal from '../components/ConfirmModal'
 import Button from '../components/Button'
+import Modal from '../components/Modal'
 
 interface Props { toast: ToastFns }
 
@@ -179,13 +180,12 @@ export default function Clientes({ toast }: Props) {
 
       {/* Modal Criar/Editar */}
       {modal && (
-        <div className="modal-overlay" onClick={fecharModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <Modal onFechar={fecharModal}>
             <div className="modal-header">
               <h2 className="modal-title">
                 {modal === 'novo' ? t('clientes.novoTitulo') : t('clientes.editarTitulo')}
               </h2>
-              <button className="btn btn-ghost btn-icon" onClick={fecharModal}>✕</button>
+              <button className="btn btn-ghost btn-icon" onClick={fecharModal} aria-label={t('comum.fechar')}>✕</button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -219,8 +219,7 @@ export default function Clientes({ toast }: Props) {
                 {modal === 'novo' ? t('clientes.criarBtn') : t('comum.salvar')}
               </Button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal confirmar exclusão */}

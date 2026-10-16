@@ -10,6 +10,7 @@ import { useTituloDecorrido } from '../hooks/useTituloDecorrido'
 import { useFormatarData } from '../contexts/PreferenciasContext'
 import { STATUS_PAGAMENTO_COR, STATUS_PAGAMENTO_I18N_KEY } from '../constants/statusProjeto'
 import Button from '../components/Button'
+import Modal from '../components/Modal'
 
 // Fonte única da regra é o backend (utils/faturamento.ts); esta conta só
 // decide em qual bucket (faturável/pago) somar o tempo ao vivo entre um
@@ -311,11 +312,10 @@ export default function Dashboard({ toast }: Props) {
       )}
 
       {modalFinalizar && emAndamento && (
-        <div className="modal-overlay" onClick={fecharModalFinalizar}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+        <Modal onFechar={fecharModalFinalizar}>
             <div className="modal-header">
               <h2 className="modal-title">{t('dashboard.finalizarTrabalho')}</h2>
-              <button className="btn btn-ghost btn-icon" onClick={fecharModalFinalizar}>✕</button>
+              <button className="btn btn-ghost btn-icon" onClick={fecharModalFinalizar} aria-label={t('comum.fechar')}>✕</button>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16, fontFamily: 'var(--font-mono)' }}>
               {emAndamento.projeto.nome} · {emAndamento.cliente.nome}
@@ -346,8 +346,7 @@ export default function Dashboard({ toast }: Props) {
                 {t('dashboard.finalizarESalvar')}
               </Button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── Cards faturáveis ── */}
