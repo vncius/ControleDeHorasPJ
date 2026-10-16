@@ -53,7 +53,7 @@ Os dados **reais** de clientes, projetos e faturamento do usuário vivem hoje no
 
 ## Dívida técnica conhecida
 
-- Um projeto real (banco Mongo) tem `status: "Pausado"` — valor legado que não existe mais no tipo `StatusProjeto` atual. Não normaliza sozinho porque a chave não é "encerrado"; se for tocar em migração de dados, considerar isso.
+- Migrações de dados ficam em `backend/src/migrations/index.ts` e rodam em todo boot (`server.ts`), por isso precisam ser **idempotentes**. A `001-status-pausado` converte o status legado `"Pausado"` (fora de `StatusProjeto`) em `"Com impedimento"`, conforme decisão do usuário.
 - Sessão sem refresh/rotação: o cookie JWT dura 7 dias fixos, sem renovação automática nem revogação individual.
 - Acesso não usa allowlist própria — qualquer login Google com `email_verified` é aceito e vira tenant. Quem pode logar de fato é controlado no Google Cloud Console (OAuth consent screen: test users em modo "Testing", ou restrição de domínio em modo "Internal").
 - `findAll`/`findBy`/`findOneBy` em `mongoRepository.ts` fazem fetch completo da coleção (predicado em JS, não query nativa) — trade-off consciente documentado no topo do arquivo e no README.

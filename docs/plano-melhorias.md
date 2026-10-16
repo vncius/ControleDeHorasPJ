@@ -101,7 +101,7 @@ Testes (Vitest + supertest): `utils/faturamento.ts`, parser de importação, `*F
 **Depende:** M1–M8 (os testes HTTP cobrem o que elas criarem).
 
 ### M10 — Migrações idempotentes no boot
-`migrations/` executadas em `server.ts` após conectar; primeira: normalizar `status: "Pausado"` legado (valor alvo *a confirmar*: provavelmente `Com impedimento`).
+`migrations/` executadas em `server.ts` após conectar; primeira: normalizar `status: "Pausado"` legado para `Com impedimento` (decidido pelo usuário em 2026-10-15).
 
 ### M11 — Exportações e i18n
 CSV com campos entre aspas, escape de `"` e neutralização de fórmula (`= + - @`). `en.ts`/`es.ts` tipados contra `pt.ts` (chave faltando = erro de compilação). Datas/números dos relatórios e cabeçalho do CSV pelo idioma ativo.
@@ -139,8 +139,8 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 | M6 | `app.ts`/`server.ts` + log de requisições | — | P | ✅ | 2026-10-15 | fdba622 |
 | M7 | Erros padronizados + cliente HTTP robusto | M6 | M | ✅ | 2026-10-15 | 5ae84e5 |
 | M8 | Validação com Zod | M7 | M | ✅ | 2026-10-15 | 1af33e3 |
-| M9 | Testes + CI | M1–M8 | M | ✅ | 2026-10-15 | (este commit) |
-| M10 | Migrações idempotentes no boot | — | P | ⬜ | | |
+| M9 | Testes + CI | M1–M8 | M | ✅ | 2026-10-15 | 5695954 |
+| M10 | Migrações idempotentes no boot | — | P | ✅ | 2026-10-15 | cd79f58 |
 | M11 | CSV seguro + i18n tipado | — | P | ⬜ | | |
 | M12 | Acessibilidade de modais e toasts | — | M | ⬜ | | |
 | M13 | Identidade (`usuarios`) e sessão revogável | M10, D6 | M | ⬜ | | |
@@ -319,3 +319,10 @@ Cada PR testado num worktree com o branch mesclado sobre a main: `npm ci`, typec
   - Smoke HTTP da API real no banco demo (54 requisições, de todos os grupos de rota e de todos os caminhos de erro), comparando Express 4 e 5 por status, código e formato do corpo: idêntico, exceto `?clienteId[$ne]=x`. O Express 5 usa o parser de query `simple`, a chave não vira objeto e o filtro é ignorado. Como o filtro roda em JS dentro do tenant, não há impacto. Banco demo restaurado com `seed:demo` ao final.
 - Ordem de merge sugerida: #18 (frontend, independente); depois #19, #22 e #24, um por vez, porque os três mexem no `package-lock.json` do backend. O Dependabot rebaseia os próprios PRs; o #24 precisa de rebase manual, regenerando o lock com `npm install`.
 - Item futuro: incluir `tsc -p functions --noEmit` no `typecheck` do frontend, para o CI cobrir a Pages Function.
+
+### M10
+- `backend/src/migrations/index.ts` traz uma lista `MIGRACOES` com `{ id, descricao, executar(db) }` e `executarMigracoes(db)`, chamado em `server.ts` logo após `conectarMongo()` e antes do `listen`. Segue o modelo da referência e a D1: sem tabela de controle. Cada migração é idempotente e roda em todo boot, e o log traz só a contagem de documentos alterados.
+- `001-status-pausado` faz `updateMany({ status: "Pausado" }, { $set: { status: "Com impedimento" } })` na coleção `projetos`, atravessando todos os tenants porque é correção de formato. O alvo foi decidido pelo usuário.
+- **Quando roda nos dados reais:** no próximo boot do backend apontando para o banco de produção, seja o `npm run dev` local (o `backend/.env` usa o banco real) ou o próximo deploy no Render. O log mostra `[migracao] 001-status-pausado: 1 documento(s) alterado(s)` na primeira vez e nada nas seguintes.
+- Testes: `migrations.test.ts`, com o runner (ordem, log só com contagem, ids únicos) e a integração opt-in (converte, não mexe nos demais, idempotente).
+- Integração verificada contra o banco de teste no Atlas: `npm run test:integracao` passou com 117/117. Durante a sessão, o Atlas recusou a conexão por alguns minutos (TLS alert 80, sintoma de acesso de rede ou instabilidade) e depois voltou sozinho. Se reaparecer, conferir a Network Access List.
