@@ -14,6 +14,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ### Alterado
 - README reescrito para portfólio: print principal, galeria, funcionalidades, decisões técnicas, stack e como rodar. Corrigidas informações desatualizadas: a seção de API não trazia Pagamentos, a regra de faturabilidade estava antiga e o CORS era descrito com uma origem só.
 - Dependências major atualizadas: react-router-dom 7 (resolve 2 alertas moderados), React 19, Vite 8 com `@vitejs/plugin-react` 6 e TypeScript 7 no frontend; google-auth-library 11 e dotenv 18 no backend. O backend trocou o pacote `uuid` por `crypto.randomUUID` e passa a declarar Node >= 22.12 em `engines`; `@types/node` acompanha o runtime (22).
+- Backend: Express 5 (tipos de `req.params` e rota curinga ajustados; respostas da API idênticas às do Express 4), Zod 4 (schemas e códigos de erro da API inalterados; `Infinity` passa a ser recusado em campos numéricos) e TypeScript 7 (saída CommonJS idêntica à do 5.9). Frontend: `@cloudflare/workers-types` 5 (só tipos da Pages Function).
 
 ### Segurança
 - O servidor não sobe sem `JWT_SECRET` e `GOOGLE_CLIENT_ID`. Em produção também recusa `JWT_SECRET` com menos de 32 bytes e os valores de exemplo (M2).
