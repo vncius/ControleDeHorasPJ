@@ -64,7 +64,7 @@ let base: string
 beforeAll(async () => {
   const app = express()
   app.use(parsersJson())
-  app.post('*', (req, res) => res.json({ bytes: JSON.stringify(req.body).length }))
+  app.post('/{*caminho}', (req, res) => res.json({ bytes: JSON.stringify(req.body).length }))
   app.use(errorHandler)
   servidor = app.listen(0)
   await new Promise((r) => servidor.once('listening', r))
