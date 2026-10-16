@@ -30,3 +30,6 @@ backend/src/data/*.json
 
 # Backup pontual gerado pela migração de tenantId (nunca deve ser commitado)
 backend/src/data/backup-pre-tenant/
+
+# Backups locais do banco (npm run backup) — dados reais, nunca commitar
+backend/backups/

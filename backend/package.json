@@ -10,7 +10,8 @@
     "test": "vitest run",
     "seed:demo": "tsx src/scripts/seed-demo.ts",
     "typecheck": "tsc --noEmit",
-    "test:integracao": "vitest run --mode integracao"
+    "test:integracao": "vitest run --mode integracao",
+    "backup": "tsx src/scripts/backup.ts"
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",
