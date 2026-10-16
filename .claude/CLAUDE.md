@@ -12,7 +12,7 @@ cd frontend && npm run dev    # :5173 (proxy /api -> :3001)
 Antes de considerar qualquer tarefa concluída, rode em cada pacote (é o que o CI roda):
 ```bash
 npm run typecheck  # backend e frontend têm builds separados, tipos não compartilhados
-npm test           # só backend; inclui a cobertura das traduções de erro do frontend
+npm test           # backend (inclui a cobertura das traduções de erro) e frontend (utils)
 npm run build      # build de produção real (já pegou bugs que o dev server não pega)
 ```
 `npm run test:integracao` (backend) roda também os testes com MongoDB real, no banco de teste. É opcional e precisa de rede.

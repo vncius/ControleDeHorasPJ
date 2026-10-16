@@ -140,8 +140,8 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 | M7 | Erros padronizados + cliente HTTP robusto | M6 | M | ✅ | 2026-10-15 | 5ae84e5 |
 | M8 | Validação com Zod | M7 | M | ✅ | 2026-10-15 | 1af33e3 |
 | M9 | Testes + CI | M1–M8 | M | ✅ | 2026-10-15 | 5695954 |
-| M10 | Migrações idempotentes no boot | — | P | ✅ | 2026-10-15 | cd79f58 |
-| M11 | CSV seguro + i18n tipado | — | P | ⬜ | | |
+| M10 | Migrações idempotentes no boot | — | P | ✅ | 2026-10-15 | 64fa371 (PR #26) |
+| M11 | CSV seguro + i18n tipado | — | P | ✅ | 2026-10-16 | (este commit) |
 | M12 | Acessibilidade de modais e toasts | — | M | ⬜ | | |
 | M13 | Identidade (`usuarios`) e sessão revogável | M10, D6 | M | ⬜ | | |
 | M14 | Auditoria | M6, M13 | M | ⬜ | | |
@@ -326,3 +326,19 @@ Cada PR testado num worktree com o branch mesclado sobre a main: `npm ci`, typec
 - **Quando roda nos dados reais:** no próximo boot do backend apontando para o banco de produção, seja o `npm run dev` local (o `backend/.env` usa o banco real) ou o próximo deploy no Render. O log mostra `[migracao] 001-status-pausado: 1 documento(s) alterado(s)` na primeira vez e nada nas seguintes.
 - Testes: `migrations.test.ts`, com o runner (ordem, log só com contagem, ids únicos) e a integração opt-in (converte, não mexe nos demais, idempotente).
 - Integração verificada contra o banco de teste no Atlas: `npm run test:integracao` passou com 117/117. Durante a sessão, o Atlas recusou a conexão por alguns minutos (TLS alert 80, sintoma de acesso de rede ou instabilidade) e depois voltou sozinho. Se reaparecer, conferir a Network Access List.
+
+### M11
+- **Escopo maior que o previsto:** a página de Relatórios nunca tinha passado pelo i18n. Eram cerca de 850 linhas de texto fixo em pt, embora as chaves `relatorios.*` existissem nos dicionários sem uso. Agora a página inteira, o CSV e os dois PDFs usam `t()`, com cerca de 30 chaves novas em pt/en/es.
+- `frontend/src/utils/csv.ts`:
+  - todo campo vai entre aspas, com aspas internas dobradas;
+  - textos do usuário (`campoTexto`) têm início de fórmula (`= + - @`, TAB, CR) neutralizado com `'`;
+  - números gerados pelo app (`campoNumero`) não são neutralizados;
+  - BOM UTF-8, separador `;` e CRLF.
+- O cabeçalho do CSV, sim/não e o tipo saem no idioma ativo, e os números no separador do idioma. A data fica em `YYYY-MM-DD`.
+- `frontend/src/utils/formatoNumero.ts` tem `formatarDecimal`/`formatarMoeda` e `useFormatarNumero()`. A moeda é sempre BRL, com `currencyDisplay: "narrowSymbol"` (sem ele o `es` mostrava "BRL" em vez de "R$"). O "Gerado em" dos PDFs usa `toLocaleString` no idioma.
+- Dicionários tipados: `pt.ts` exporta `Dicionario = typeof pt`, e `en.ts`/`es.ts` são `const en: Dicionario = {…}`. Chave faltando ou sobrando vira erro de compilação, e já estavam em paridade.
+- Testes no frontend: Vitest 4.1.11 (compatível com o Vite 8; a 5.0.5 tinha um dia de lançamento), script `npm test` e passo no CI. `csv.test.ts` e `formatoNumero.test.ts` somam 15 testes.
+  - **Dica:** neste ambiente, `npm install <pacote>` no frontend quebra com `Cannot read properties of null (reading "edgesOut")` (bug do arborist do npm 10.9 com peers opcionais do Vitest). `npm install -D <pacote> --legacy-peer-deps` funciona, e o `npm ci` do CI a partir do lockfile não é afetado.
+- Verificado no preview com o backend de demo em en, es e pt: textos, números, moeda e as duas abas, sem erros no console. A geração de arquivos (CSV e PDF) foi coberta pelos testes unitários, sem download no navegador.
+- **Bug que já existia, encontrado e não corrigido:** na tabela agrupada de Relatórios, a coluna "Faturável" mostra o status do último lançamento processado do grupo (`naoFaturavel: !l.faturavel` sobrescrito a cada lançamento), não do grupo inteiro. Por isso um projeto com lançamentos faturáveis pode aparecer "Não". Corrigir mostrando "Sim", "Não" ou "Parcial".
+- Durante a M11, a sessão "Avaliar os 8 PRs major do Dependabot" foi interrompida a pedido do usuário, por estar implementando a M13 em paralelo. Ela tinha registrado D6 e D7 como aprovadas pelo usuário em 2026-10-16, e o trabalho da M13 ficou sem commit no worktree `.claude/worktrees/ecstatic-wright-89250b` (`usuariosRepository.ts`, tipos, índices). Retomar a partir dali na M13.

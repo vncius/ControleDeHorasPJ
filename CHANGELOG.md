@@ -5,6 +5,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ## [Unreleased]
 
 ### Adicionado
+- Relatórios (página, CSV e PDFs) traduzidos em pt/en/es, com números, moeda e datas no formato do idioma ativo. Dicionários `en`/`es` tipados contra `pt`. Testes no frontend com Vitest, também no CI (M11).
 - `npm run seed:demo` (backend): recria um tenant fictício num banco separado (recusa banco sem `demo` no nome) para demonstração e prints.
 - Configuração `backend-demo` em `.claude/launch.json`.
 - `docs/plano-melhorias.md`: plano de evolução em entregas (M0–M16), com decisões, status e definição de pronto.
@@ -17,6 +18,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Backend: Express 5 (tipos de `req.params` e rota curinga ajustados; respostas da API idênticas às do Express 4), Zod 4 (schemas e códigos de erro da API inalterados; `Infinity` passa a ser recusado em campos numéricos) e TypeScript 7 (saída CommonJS idêntica à do 5.9). Frontend: `@cloudflare/workers-types` 5 (só tipos da Pages Function).
 
 ### Segurança
+- CSV exportado com escape completo (aspas, `;`, quebras de linha) e neutralização de fórmulas (`= + - @`) nos textos digitados pelo usuário (M11).
 - O servidor não sobe sem `JWT_SECRET` e `GOOGLE_CLIENT_ID`. Em produção também recusa `JWT_SECRET` com menos de 32 bytes e os valores de exemplo (M2).
 - `app.ts` separado de `server.ts` (app testável sem banco) e log de requisições com método, caminho sem query string, status e duração, sem corpo, cookies nem e-mail (M6).
 - Limites de requisição em memória: login 20/min por IP, API 600/min por IP e importação 30 a cada 10 min por tenant (429 com `Retry-After`). Corpo JSON limitado a 100 KB, ou 2 MB na importação, com 413 e JSON inválido respondidos em JSON (M5).

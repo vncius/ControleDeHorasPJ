@@ -1,6 +1,6 @@
 // Dicionário pt — fonte de referência das chaves. Toda string visível ao
 // usuário vive aqui (es.ts/en.ts espelham as mesmas chaves).
-export default {
+const pt = {
   comum: {
     cancelar: 'Cancelar',
     confirmar: 'Confirmar',
@@ -368,9 +368,26 @@ export default {
     subtitulo_one: '{{count}} lançamento no período',
     subtitulo_other: '{{count}} lançamentos no período',
     exportarCSV: '↓ Exportar CSV',
+    exportarPDF: '↓ Exportar PDF',
+    dicaPDF: 'Selecione um projeto para gerar o PDF de formalização de horas',
     carregandoDados: 'Carregando dados...',
+    abaDetalhado: 'Lançamentos detalhados',
+    abaPeriodo: 'Por período de apuração',
+    inicioPeriodo: 'Início do período',
+    fimPeriodo: 'Fim do período',
+    todosClientes: 'Todos os clientes',
     todosProjetos: 'Todos os projetos',
-    sufixoPago: '✓ pago',
+    atalhos: 'Atalhos:',
+    periodoAtual: 'Período atual ({{inicio}} – {{fim}})',
+    periodoAnterior: 'Período anterior ({{inicio}} – {{fim}})',
+    projetosComHoras_one: '{{count}} projeto com horas no período selecionado',
+    projetosComHoras_other: '{{count}} projetos com horas no período selecionado',
+    nenhumProjetoPeriodo: 'Nenhum projeto com horas lançadas até este período',
+    historico: 'Histórico',
+    jaPago: 'Já pago',
+    noPeriodo: 'No período',
+    saldoAFaturar: 'Saldo a faturar',
+    consideradoPago: 'considerado pago',
     periodo: 'Período:',
     esteMes: 'Este mês',
     ultimoMes: 'Último mês',
@@ -380,17 +397,19 @@ export default {
     agruparPor: 'Agrupar por:',
     porCliente: 'Cliente',
     porProjeto: 'Projeto',
+    porEscopo: 'Escopo',
     porDia: 'Dia',
     nenhumNoPeriodo: 'Nenhum lançamento no período selecionado',
     ajusteFiltros: 'Ajuste os filtros de data ou cliente',
     faturavel: 'Faturável',
     naoFaturavelPagos: 'Não faturável (projetos pagos)',
     valor: 'Valor',
+    custo: 'Custo',
     resumoLancamentos_one: '{{count}} lançamento em {{projetos}} projeto(s)',
     resumoLancamentos_other: '{{count}} lançamentos em {{projetos}} projeto(s)',
     abaTodos: 'Todos ({{count}})',
     abaFaturaveis: 'Faturáveis ({{count}})',
-    abaNaoFaturaveis: 'Em projetos pagos ({{count}})',
+    abaNaoFaturaveis: 'Não faturáveis ({{count}})',
     totalHHMM: 'Total HH:MM',
     totalDecimal: 'Total decimal',
     valorFaturavel: 'Valor faturável',
@@ -398,11 +417,23 @@ export default {
     grupoDia: 'dia',
     grupoCliente: 'cliente',
     grupoProjeto: 'projeto',
+    grupoEscopo: 'escopo',
+    escopo: 'Escopo',
+    semEscopo: 'Sem escopo',
     detalhados: 'Lançamentos detalhados',
     tagPago: 'pago',
+    horas: 'Horas',
     csvNomeArquivo: 'relatorio-horas',
     csvSufixoFat: '-faturavel',
     csvSufixoNaoFat: '-nao-faturavel',
+    pdfTitulo: 'Relatório de Horas Trabalhadas',
+    pdfTituloPeriodo: 'Relatório de Horas por Período de Apuração',
+    pdfProjeto: 'Projeto: {{nome}}',
+    pdfCliente: 'Cliente: {{nome}}',
+    pdfPeriodo: 'Período: {{inicio}} a {{fim}}',
+    pdfRodape: 'Gerado em {{data}} · página {{pagina}}/{{total}}',
+    pdfNomeArquivo: 'relatorio-horas',
+    pdfNomeArquivoPeriodo: 'relatorio-periodo',
   },
   importacao: {
     titulo: 'Importar lançamentos',
@@ -504,3 +535,9 @@ export default {
     },
   },
 }
+
+// en.ts/es.ts são tipados com este tipo: chave faltando ou sobrando
+// vira erro de compilação, não texto em pt aparecendo em outro idioma.
+export type Dicionario = typeof pt
+
+export default pt
