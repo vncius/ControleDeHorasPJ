@@ -19,7 +19,8 @@ vi.mock('../repositories', () => {
   }
 })
 
-process.env.JWT_SECRET = 'segredo-de-teste-com-mais-de-32-bytes-ok'
+// segredo fictício gerado em tempo de execução (um literal parecido com chave dispara o Gitleaks)
+process.env.JWT_SECRET = 'teste-'.repeat(8)
 
 import * as repos from '../repositories'
 import { assinarSessao, verificarSessao, requireAuth, NOME_COOKIE_SESSAO, DURACAO_SESSAO_MS } from './auth'

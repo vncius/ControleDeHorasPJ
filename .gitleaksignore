@@ -1,0 +1,6 @@
+# Falsos positivos do Gitleaks, por impressão digital (commit:arquivo:regra:linha).
+# Só entra aqui o que for comprovadamente fictício — nunca credencial real.
+#
+# Segredo de teste (fictício) do sessao.test.ts no commit da M13; o arquivo
+# atual gera o segredo em tempo de execução.
+8a0faf2daa2620ab783b279771119eee449dea94:backend/src/middleware/sessao.test.ts:generic-api-key:22
