@@ -144,8 +144,8 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 | M11 | CSV seguro + i18n tipado | — | P | ✅ | 2026-10-16 | a61d878 |
 | M12 | Acessibilidade de modais e toasts | — | M | ✅ | 2026-10-16 | c20bc0c |
 | M13 | Identidade (`usuarios`) e sessão revogável | M10, D6 | M | ✅ | 2026-10-16 | 8a0faf2 |
-| M14 | Auditoria | M6, M13 | M | ✅ | 2026-10-16 | (este commit) |
-| M15 | LGPD | M13, M14, D7 | G | ⬜ | | |
+| M14 | Auditoria | M6, M13 | M | ✅ | 2026-10-16 | 653d34b |
+| M15 | LGPD | M13, M14, D7 | G | ✅ | 2026-10-16 | (este commit) |
 | M16 | Deploy e ADRs | — | P | ⬜ | | |
 
 Ordem sugerida: M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9; depois M10–M12; M13–M15 só após decidir D6/D7.
@@ -396,3 +396,31 @@ Cada PR testado num worktree com o branch mesclado sobre a main: `npm ci`, typec
 - **Limitação:** o IP gravado é o `req.ip`, que atrás do proxy do Cloudflare é o IP de saída do Cloudflare (ver M5). O IP real do cliente segue como item futuro.
 - **Retenção:** sem expiração por enquanto. A M15 anonimiza a trilha do usuário que excluir a conta; um TTL (por exemplo, 1 ano) pode ser decidido na M15.
 - Testes: `middleware/auditoria.test.ts` (5 casos: exclusão grava rota sem query; 404 não grava; importação sem o corpo; regularização grava e edição comum não; login e login_falhou sem e-mail) e `services/auditoriaService.integracao.test.ts` (grava de fato e lista só o próprio tenant, mais recente primeiro). `npm run test:integracao` passou com 134/134.
+
+### M15
+- **Consentimento:** `usuarios.versaoConsentimento` e `consentimentoEm`, com versão vigente em `backend/src/utils/consentimento.ts` e em `frontend/src/config/legal.ts`.
+  - `requireAuth` marca `consentimentoPendente`, e o `exigirConsentimento` responde `403 auth.consentimentoPendente` nas rotas de dados.
+  - Ficam antes desse bloqueio: `/auth/*`, `/conta*` e `/auditoria`. Os direitos do titular (ver, exportar, excluir) não dependem de aceitar termos novos.
+  - No frontend, `/auth/me` traz `consentimentoPendente`; o `ProtectedRoute` mostra a `TelaConsentimento` (checkbox "Li e aceito", Aceitar ou Recusar e sair), e um 403 no meio do uso também leva a ela.
+- **Exportação** (`GET /conta/exportar`, art. 18 II e V): JSON com a conta, as 6 coleções do tenant (`id` mantido; `_id`, `tenantId`, `googleSub` e `versaoSessao` removidos) e a trilha de auditoria. O frontend baixa como `horas-pj-meus-dados-AAAA-MM-DD.json`.
+- **Exclusão** (`DELETE /conta` com `{ email }` redigitado, art. 18 VI):
+  - numa transação, apaga as 6 coleções do tenant e o usuário e anonimiza a auditoria (`tenantId`, `usuarioId`, `ip`, `userAgent` e `detalhes` ficam nulos; sobram ação e data);
+  - a rota fica antes do `auditarExclusoes`, e o controller grava `conta_excluida` anônimo;
+  - as sessões em outros aparelhos caem na hora, porque o `requireAuth` não encontra mais o usuário.
+- Exportar e excluir têm limite de 10 por hora por tenant. Aceite e exportação entram na auditoria.
+- **Textos legais** (`legal.*` em pt/en/es): Política (dados tratados, finalidade, base legal art. 7º V e IX, operadores Google/MongoDB Atlas/Render/Cloudflare, transferência internacional, retenção, direitos, segurança, cookies, alterações) e Termos (serviço, conta, uso adequado, disponibilidade, encerramento, lei aplicável). Páginas públicas em `/termos` e `/privacidade`, com links no login, na tela de aceite e em Minha conta. O controlador e o contato vêm de `VITE_LEGAL_CONTROLADOR`/`VITE_LEGAL_CONTATO`.
+  - **Os textos são um modelo fiel ao que o app faz, não parecer jurídico. O controlador deve revisá-los antes de abrir o app a terceiros.**
+- Página **Minha conta** (`/conta`, no menu): dados da conta, data do aceite com links, exportar, sair de todos os dispositivos e excluir conta (modal que só habilita com o e-mail exato).
+- Testes:
+  - `sessao.test.ts`: bloqueio sem aceite e liberado com aceite;
+  - `contaService.integracao.test.ts`: só a versão vigente; exportação só do próprio tenant e sem campos internos; e-mail errado recusado; exclusão completa com anonimização sem tocar no outro tenant;
+  - a cobertura de traduções cobre os 4 códigos novos.
+- Verificado no preview com o banco de demo:
+  - com o aceite pendente, o backend responde 403 nos dados e 200 na exportação, e a tela de aceite bloqueia o app;
+  - aceitar abre o Dashboard;
+  - `/termos` é pública;
+  - Minha conta mostra os dados;
+  - a exportação vem completa e sem campos internos;
+  - excluir com e-mail errado fica desabilitado; com o certo dá 200, leva ao login e deixa 0 dados, 0 usuário e só um registro anônimo de `conta_excluida`. A demo foi recriada depois.
+  - O painel do navegador não estava desenhando, então alguns cliques foram feitos por DOM e os resultados conferidos pela rede e pelo banco.
+- **Ação de deploy:** o usuário real ainda não aceitou os termos. No primeiro acesso depois do deploy aparece a tela de aceite, que é o esperado. Defina `VITE_LEGAL_CONTROLADOR`/`VITE_LEGAL_CONTATO` no Cloudflare Pages para o nome e o contato aparecerem nas políticas.

@@ -19,6 +19,9 @@ export type AcaoAuditoria =
   | 'exclusao'
   | 'importacao'
   | 'regularizacao'
+  | 'consentimento'
+  | 'exportacao'
+  | 'conta_excluida'   // registrado anônimo (tenant/usuário/IP nulos)
 
 export interface EventoAuditoria {
   id: string

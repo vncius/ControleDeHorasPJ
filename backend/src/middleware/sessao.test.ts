@@ -57,7 +57,7 @@ describe('requireAuth', () => {
     const u = await usuariosService.entrarComGoogle({ sub: 'g-1', email: 'a@exemplo.dev', nome: 'Ana' })
     const { req, next } = await autenticar(assinarSessao({ uid: u.id, v: u.versaoSessao }))
     expect(next).toHaveBeenCalledWith()
-    expect(req.usuario).toEqual({ id: u.id, tenantId: u.tenantId, email: 'a@exemplo.dev', nome: 'Ana' })
+    expect(req.usuario).toEqual({ id: u.id, tenantId: u.tenantId, email: 'a@exemplo.dev', nome: 'Ana', consentimentoPendente: true })
     expect(req.usuario!.tenantId).not.toContain('@')
   })
 
@@ -89,7 +89,29 @@ describe('authController', () => {
     const { req } = await autenticar(assinarSessao({ uid: u.id, v: u.versaoSessao }))
     const res = { json: vi.fn() } as unknown as Response
     authController.me(req, res)
-    expect(res.json).toHaveBeenCalledWith({ email: 'me@exemplo.dev', nome: 'Me' })
+    expect(res.json).toHaveBeenCalledWith({ email: 'me@exemplo.dev', nome: 'Me', consentimentoPendente: true })
+  })
+})
+
+describe('consentimento (M15)', () => {
+  it('sem aceite da versão vigente as rotas de dados respondem 403; com o aceite, passam', async () => {
+    const { exigirConsentimento } = await import('./auth')
+    const { VERSAO_CONSENTIMENTO } = await import('../utils/consentimento')
+    const u = await usuariosService.entrarComGoogle({ sub: 'g-c', email: 'c@exemplo.dev' })
+    const token = assinarSessao({ uid: u.id, v: u.versaoSessao })
+
+    const pendente = await autenticar(token)
+    const next1 = vi.fn()
+    exigirConsentimento(pendente.req, {} as Response, next1)
+    expect(next1.mock.calls[0][0]).toMatchObject({ status: 403, codigo: 'auth.consentimentoPendente' })
+
+    await r.update(u.id, { versaoConsentimento: VERSAO_CONSENTIMENTO })
+    const { invalidarCacheUsuario } = await import('./auth')
+    invalidarCacheUsuario(u.id)
+    const aceito = await autenticar(token)
+    const next2 = vi.fn()
+    exigirConsentimento(aceito.req, {} as Response, next2)
+    expect(next2).toHaveBeenCalledWith()
   })
 })
 

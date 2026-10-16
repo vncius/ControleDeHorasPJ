@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
@@ -102,6 +102,11 @@ export default function Login() {
             {erro}
           </div>
         )}
+
+        <p style={{ marginTop: 20, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+          {t('login.aoEntrar')} <Link to="/termos">{t('legal.termosUso')}</Link> {t('login.e')}{' '}
+          <Link to="/privacidade">{t('legal.politicaPrivacidade')}</Link>.
+        </p>
       </div>
     </div>
   )

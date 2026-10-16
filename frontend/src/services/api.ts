@@ -48,6 +48,13 @@ function traduzirErro(codigo: string, fallback: string, params?: Record<string, 
   return i18n.t(`erros.${codigo}`, { defaultValue: fallback, ...params })
 }
 
+// Chamado quando uma rota de dados responde 403 auth.consentimentoPendente
+// (termos novos ou nunca aceitos): o AuthContext mostra a tela de aceite.
+let aoExigirConsentimento: (() => void) | null = null
+export function definirAoExigirConsentimento(fn: (() => void) | null): void {
+  aoExigirConsentimento = fn
+}
+
 // Chamado quando uma rota autenticada responde 401 (sessão expirou ou foi
 // invalidada): o AuthContext limpa o usuário e o ProtectedRoute leva ao /login.
 let aoExpirarSessao: (() => void) | null = null
@@ -84,6 +91,7 @@ async function req<T>(path: string, options?: RequestInit): Promise<T> {
     if (res.status === 401 && !path.startsWith('/auth/')) aoExpirarSessao?.()
     const erro = (corpo ?? {}) as CorpoErro
     const codigo = erro.codigo ?? (corpo ? 'interno' : 'respostaInvalida')
+    if (res.status === 403 && codigo === 'auth.consentimentoPendente') aoExigirConsentimento?.()
     const fallback = erro.erro ?? `Erro inesperado (status ${res.status})`
     throw new ErroApi(res.status, codigo, traduzirErro(codigo, fallback, { status: res.status, ...erro.params }))
   }
@@ -98,7 +106,8 @@ const post = <T>(path: string, body: unknown) =>
   req<T>(path, { method: 'POST', body: JSON.stringify(body) })
 const put = <T>(path: string, body: unknown) =>
   req<T>(path, { method: 'PUT', body: JSON.stringify(body) })
-const del = <T>(path: string) => req<T>(path, { method: 'DELETE' })
+const del = <T>(path: string, body?: unknown) =>
+  req<T>(path, { method: 'DELETE', ...(body !== undefined && { body: JSON.stringify(body) }) })
 
 // ----------------------------------------------------------------
 // Autenticação
@@ -107,7 +116,26 @@ export const authApi = {
   login: (credential: string) => post<{ email: string; nome?: string }>('/auth/google', { credential }),
   logout: () => post<{ mensagem: string }>('/auth/logout', {}),
   logoutTodos: () => post<{ mensagem: string }>('/auth/logout-todos', {}),
-  me: () => get<{ email: string; nome?: string }>('/auth/me'),
+  me: () => get<{ email: string; nome?: string; consentimentoPendente: boolean }>('/auth/me'),
+}
+
+// ----------------------------------------------------------------
+// Conta (M15 — LGPD)
+// ----------------------------------------------------------------
+export interface DadosConta {
+  email: string
+  nome?: string
+  dataCriacao: string
+  versaoConsentimento?: number
+  consentimentoEm?: string
+}
+
+export const contaApi = {
+  obter: () => get<DadosConta>('/conta'),
+  aceitarConsentimento: (versao: number) =>
+    post<{ versaoConsentimento: number; consentimentoEm: string }>('/conta/consentimento', { versao }),
+  exportar: () => get<unknown>('/conta/exportar'),
+  excluir: (email: string) => del<{ mensagem: string }>('/conta', { email }),
 }
 
 // ----------------------------------------------------------------

@@ -9,9 +9,10 @@ import {
   importacaoController,
   authController,
   auditoriaController,
+  contaController,
 } from '../controllers'
-import { requireAuth } from '../middleware/auth'
-import { limiteLogin, limiteImportacao } from '../middleware/rateLimit'
+import { requireAuth, exigirConsentimento } from '../middleware/auth'
+import { limiteLogin, limiteImportacao, limiteConta } from '../middleware/rateLimit'
 import { validarCorpo } from '../middleware/validacao'
 import { auditar, auditarExclusoes, auditarRegularizacao } from '../middleware/auditoria'
 import {
@@ -30,6 +31,8 @@ import {
   finalizarLancamentoSchema,
   previewImportacaoSchema,
   confirmarImportacaoSchema,
+  consentimentoSchema,
+  excluirContaSchema,
 } from '../schemas'
 
 const router = Router()
@@ -46,6 +49,18 @@ router.post('/auth/logout-todos', requireAuth, auditar('logout_todos'), authCont
 // A partir daqui, todas as rotas exigem sessão válida
 // ----------------------------------------------------------------
 router.use(requireAuth)
+
+// ----------------------------------------------------------------
+// Conta (M15 — LGPD). Antes do exigirConsentimento: aceitar os termos,
+// ver/exportar os próprios dados e excluir a conta não dependem do aceite.
+// DELETE /conta vem antes do auditarExclusoes — a exclusão da conta é
+// registrada anônima pelo controller, não com a identidade apagada.
+// ----------------------------------------------------------------
+router.get('/conta', contaController.obter)
+router.post('/conta/consentimento', validarCorpo(consentimentoSchema), auditar('consentimento'), contaController.aceitarConsentimento)
+router.get('/conta/exportar', limiteConta, auditar('exportacao'), contaController.exportar)
+router.delete('/conta', limiteConta, validarCorpo(excluirContaSchema), contaController.excluir)
+
 // toda exclusão bem-sucedida entra na trilha de auditoria (M14)
 router.use(auditarExclusoes)
 
@@ -53,6 +68,9 @@ router.use(auditarExclusoes)
 // Auditoria — eventos do próprio usuário (mais recentes primeiro)
 // ----------------------------------------------------------------
 router.get('/auditoria', auditoriaController.listar)
+
+// daqui em diante, só com aceite da versão vigente dos termos (M15)
+router.use(exigirConsentimento)
 
 // ----------------------------------------------------------------
 // Dashboard

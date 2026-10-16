@@ -17,6 +17,17 @@ POST /api/auth/logout-todos                    ← invalida todas as sessões do
 GET  /api/auth/me                              → { email, nome }
 ```
 
+## Conta (LGPD)
+
+```
+GET    /api/conta                → { email, nome, dataCriacao, versaoConsentimento, consentimentoEm }
+POST   /api/conta/consentimento  { versao }   ← aceite dos Termos + Política (só a versão vigente)
+GET    /api/conta/exportar       → JSON com a conta, todos os dados e a trilha de auditoria (sem campos internos)
+DELETE /api/conta                { email }    ← exclusão definitiva; o e-mail redigitado confirma
+```
+
+Sem o aceite da versão vigente dos termos, as rotas de dados respondem `403 auth.consentimentoPendente`. As rotas acima, `/auth/*` e `/auditoria` continuam liberadas. Exportar e excluir têm limite de 10 por hora.
+
 ## Auditoria
 
 ```

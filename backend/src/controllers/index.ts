@@ -10,6 +10,8 @@ import { authService } from '../services/authService'
 import { usuariosService } from '../services/usuariosService'
 import { assinarSessao, verificarSessao, NOME_COOKIE_SESSAO, OPCOES_COOKIE_SESSAO } from '../middleware/auth'
 import { auditoriaService } from '../services/auditoriaService'
+import { contaService } from '../services/contaService'
+import { usuariosRepo } from '../repositories'
 import { contextoDaRequisicao } from '../middleware/auditoria'
 import { AppError } from '../errors/AppError'
 
@@ -265,7 +267,42 @@ export const authController = {
   },
 
   me(req: Request, res: Response) {
-    res.json({ email: req.usuario!.email, nome: req.usuario!.nome })
+    res.json({ email: req.usuario!.email, nome: req.usuario!.nome, consentimentoPendente: req.usuario!.consentimentoPendente })
+  },
+}
+
+// ----------------------------------------------------------------
+// CONTA (M15 — LGPD): consentimento, dados da conta, exportação e exclusão
+// ----------------------------------------------------------------
+export const contaController = {
+  obter(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, async () => {
+      const u = await usuariosRepo.findById(req.usuario!.id)
+      return {
+        email: u?.email,
+        nome: u?.nome,
+        dataCriacao: u?.dataCriacao,
+        versaoConsentimento: u?.versaoConsentimento,
+        consentimentoEm: u?.consentimentoEm,
+      }
+    })
+  },
+  aceitarConsentimento(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => contaService.aceitarConsentimento(req.usuario!.id, req.body.versao))
+  },
+  exportar(req: Request, res: Response, next: NextFunction) {
+    handle(res, next, () => contaService.exportar(req.usuario!.id, req.usuario!.tenantId))
+  },
+  async excluir(req: Request, res: Response, next: NextFunction) {
+    try {
+      await contaService.excluirConta(req.usuario!.id, req.usuario!.tenantId, req.body.email)
+      limparCookieSessao(res)
+      // registro anônimo: a conta e a identidade já não existem
+      auditoriaService.registrar({ tenantId: null, usuarioId: null, acao: 'conta_excluida', ip: null, userAgent: null, detalhes: null })
+      res.json({ mensagem: 'Conta excluída' })
+    } catch (err: unknown) {
+      next(err)
+    }
   },
 }
 

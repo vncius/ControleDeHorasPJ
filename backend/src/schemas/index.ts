@@ -169,3 +169,8 @@ export type AtualizarPagamentoDTO = z.infer<typeof atualizarPagamentoSchema>
 export type CriarLancamentoDTO = z.infer<typeof criarLancamentoSchema>
 export type AtualizarLancamentoDTO = z.infer<typeof atualizarLancamentoSchema>
 export type FinalizarLancamentoDTO = z.infer<typeof finalizarLancamentoSchema>
+
+// --- Conta (M15) ---
+export const consentimentoSchema = z.object({ versao: z.number().int().positive() }).strict()
+// confirmação da exclusão: o usuário redigita o próprio e-mail
+export const excluirContaSchema = z.object({ email: z.string().trim().min(3).max(320) }).strict()

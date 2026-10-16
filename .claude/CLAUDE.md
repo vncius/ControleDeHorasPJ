@@ -36,6 +36,8 @@ npm run build      # build de produção real (já pegou bugs que o dev server n
 
 ## Entrada e erros da API
 
+- LGPD (M15): mudou o texto de `legal.*` em `frontend/src/i18n/*.ts`? Suba a versão em `frontend/src/config/legal.ts` **e** em `backend/src/utils/consentimento.ts` (as duas precisam bater), e todos aceitam de novo. Dado pessoal novo ou fornecedor novo precisa entrar no texto da Política. Coleção nova com `tenantId` entra em `COLECOES_COM_TENANT`, que alimenta exportação e exclusão de conta.
+
 - Auditoria (M14): todo DELETE bem-sucedido já entra na trilha (`auditarExclusoes`). Uma rota nova que importe em massa, apague por outro método ou mude situação de pagamento deve usar `auditar(acao)` (`backend/src/middleware/auditoria.ts`). A trilha nunca grava corpo, e-mail nem dado de negócio.
 
 - Toda rota com corpo passa por `validarCorpo(schema)` com um schema `.strict()` de `backend/src/schemas/index.ts`. Campo novo num DTO entra **no schema**, porque os tipos `*DTO` são gerados dele (`z.infer`). Um campo que o cliente não pode enviar (ex.: `geradoPorRegularizacao`) fica fora do schema, só no tipo interno.

@@ -15,6 +15,7 @@
 - **Pagamentos por período de apuração (16 a 15).** São parciais, com número de NF. As horas mais antigas são cobertas primeiro, e cada lançamento sai marcado como faturável ou não. Projetos antigos podem ser **regularizados** com um clique.
 - **Importação de planilha.** Basta colar do Excel ou do Google Sheets. Antes de gravar, uma pré-visualização marca cada linha como válida, com aviso ou com erro.
 - **Relatórios.** Filtros por período, cliente e projeto, agrupamento por cliente, projeto, escopo ou dia, uma visão por período de apuração e exportação em **CSV e PDF**.
+- **Seus dados (LGPD).** Termos de Uso e Política de Privacidade com aceite versionado, exportação completa em JSON, "sair de todos os dispositivos" e exclusão definitiva da conta, em **Minha conta**.
 - **pt · en · es**, tema claro e escuro, formato de data configurável e layout para celular.
 
 ## Galeria
@@ -102,6 +103,8 @@ O script apaga e recria, só nesse banco, cerca de 3 meses de trabalho fictício
 | `JWT_SECRET` | — (obrigatória) | Segredo que assina o cookie de sessão. Em produção precisa ter 32 bytes ou mais e ser diferente do exemplo (`openssl rand -base64 48`), senão o servidor não sobe |
 | `CORS_ORIGIN` | `http://localhost:5173` | Uma ou mais origens do frontend, separadas por vírgula |
 | `COOKIE_SAME_SITE` | `lax` | `SameSite` do cookie de sessão (`lax`, `strict` ou `none`). Só use `none` em deploy cross-site sem o proxy `/api`. `none` força `secure` |
+
+**`frontend/.env` / Cloudflare Pages (build)**: `VITE_LEGAL_CONTROLADOR` e `VITE_LEGAL_CONTATO` são o responsável pelos dados e o canal de contato exibidos nos Termos e na Política de Privacidade. Sem eles, os textos usam uma descrição genérica. Defina em produção.
 
 **Cloudflare Pages**: `API_ORIGIN` é a URL pública do backend, usada pelo proxy `frontend/functions/api/[[path]].ts`.
 

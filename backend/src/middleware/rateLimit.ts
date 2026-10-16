@@ -67,6 +67,9 @@ export const limiteGeral = criarLimitador({ janelaMs: UM_MINUTO, max: 600, chave
 /** Login com Google: 20 tentativas por minuto por IP. */
 export const limiteLogin = criarLimitador({ janelaMs: UM_MINUTO, max: 20, chave: porIp })
 
+/** Exportar / excluir conta: 10 por hora por tenant. Depois do requireAuth. */
+export const limiteConta = criarLimitador({ janelaMs: 60 * UM_MINUTO, max: 10, chave: (req) => req.usuario?.tenantId })
+
 /** Importação (pré-visualizar + confirmar): 30 a cada 10 minutos por tenant. Depois do requireAuth. */
 export const limiteImportacao = criarLimitador({
   janelaMs: 10 * UM_MINUTO,

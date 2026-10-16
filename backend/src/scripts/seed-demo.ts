@@ -16,6 +16,7 @@ import { randomUUID as uuid } from 'node:crypto'
 import { conectarMongo, getDb, resolverNomeBanco } from '../repositories/mongoClient'
 import { preferenciasRepo } from '../repositories'
 import { COLECOES_COM_TENANT } from '../migrations'
+import { VERSAO_CONSENTIMENTO } from '../utils/consentimento'
 import { clientesService } from '../services/clientesService'
 import { projetosService } from '../services/projetosService'
 import { escoposService } from '../services/escoposService'
@@ -83,6 +84,8 @@ async function main() {
   await db.collection('usuarios').deleteMany({ $or: [{ _id: TENANT as never }, { email: EMAIL }] })
   await db.collection('usuarios').insertOne({
     _id: TENANT as never, tenantId: TENANT, email: EMAIL, nome: 'Demonstração', versaoSessao: 0, dataCriacao: agora(),
+    // termos já aceitos: a demo abre direto no app (M15)
+    versaoConsentimento: VERSAO_CONSENTIMENTO, consentimentoEm: agora(),
   })
 
   // --- clientes ---

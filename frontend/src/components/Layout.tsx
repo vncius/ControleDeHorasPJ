@@ -20,6 +20,7 @@ export default function Layout({ toasts }: Props) {
     { to: '/clientes', label: t('nav.clientes'), icon: '◉' },
     { to: '/projetos', label: t('nav.projetos'), icon: '◫' },
     { to: '/relatorios', label: t('nav.relatorios'), icon: '◧' },
+    { to: '/conta', label: t('nav.conta'), icon: '◎' },
   ]
 
   // fecha o menu mobile ao trocar de rota

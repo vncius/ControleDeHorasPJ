@@ -10,6 +10,8 @@ declare global {
         tenantId: string
         email: string
         nome?: string
+        // true enquanto não houver aceite da versão vigente dos termos (M15)
+        consentimentoPendente: boolean
       }
     }
   }

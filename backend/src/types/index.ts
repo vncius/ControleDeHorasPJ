@@ -127,6 +127,11 @@ export interface Usuario {
   versaoSessao: number
   dataCriacao: string
   ultimoAcesso?: string
+  // Aceite dos Termos de Uso + Política de Privacidade (M15 — D7). Sem o
+  // aceite da versão vigente (utils/consentimento.ts), as rotas de dados
+  // respondem 403 auth.consentimentoPendente.
+  versaoConsentimento?: number
+  consentimentoEm?: string      // ISO 8601
 }
 
 // ============================================================

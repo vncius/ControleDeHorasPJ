@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { usuariosRepo } from '../repositories'
 import type { Usuario } from '../types'
+import { temConsentimentoVigente } from '../utils/consentimento'
+import { proibido } from '../errors/AppError'
 
 // ----------------------------------------------------------------
 // Constantes de sessão (cookie)
@@ -100,9 +102,27 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       return
     }
 
-    req.usuario = { id: usuario.id, tenantId: usuario.tenantId, email: usuario.email, nome: usuario.nome }
+    req.usuario = {
+      id: usuario.id,
+      tenantId: usuario.tenantId,
+      email: usuario.email,
+      nome: usuario.nome,
+      consentimentoPendente: !temConsentimentoVigente(usuario),
+    }
     next()
   } catch (err) {
     next(err)
   }
+}
+
+/**
+ * Depois do requireAuth: sem aceite da versão vigente dos termos, as rotas de
+ * dados respondem 403 (o frontend mostra a tela de aceite). Rotas de conta
+ * (aceitar, exportar, excluir) e de sessão ficam ANTES deste middleware.
+ */
+export function exigirConsentimento(req: Request, _res: Response, next: NextFunction): void {
+  if (req.usuario?.consentimentoPendente) {
+    return next(proibido('auth.consentimentoPendente', 'Aceite os Termos de Uso e a Política de Privacidade para continuar'))
+  }
+  next()
 }

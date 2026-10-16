@@ -30,6 +30,9 @@ export const invalido = (codigo: string, mensagem: string, params?: ParamsErro) 
 /** 401 — sem sessão ou credencial inválida. */
 export const naoAutorizado = (codigo: string, mensagem: string) => new AppError(401, codigo, mensagem)
 
+/** 403 — autenticado, mas sem permissão para esta ação agora (ex.: termos pendentes). */
+export const proibido = (codigo: string, mensagem: string) => new AppError(403, codigo, mensagem)
+
 /** 404 — recurso inexistente (ou de outro tenant: não revelamos a diferença). */
 export const naoEncontrado = (codigo: string, mensagem: string) => new AppError(404, codigo, mensagem)
 
