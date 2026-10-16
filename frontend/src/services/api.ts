@@ -106,6 +106,7 @@ const del = <T>(path: string) => req<T>(path, { method: 'DELETE' })
 export const authApi = {
   login: (credential: string) => post<{ email: string; nome?: string }>('/auth/google', { credential }),
   logout: () => post<{ mensagem: string }>('/auth/logout', {}),
+  logoutTodos: () => post<{ mensagem: string }>('/auth/logout-todos', {}),
   me: () => get<{ email: string; nome?: string }>('/auth/me'),
 }
 

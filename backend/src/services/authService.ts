@@ -8,7 +8,7 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 // ao Workspace), não mais por uma allowlist própria aqui: um ID token válido
 // e com e-mail verificado já implica que o Google autorizou o login.
 export const authService = {
-  async loginComGoogle(idToken: string): Promise<{ email: string; nome?: string }> {
+  async loginComGoogle(idToken: string): Promise<{ sub: string; email: string; nome?: string }> {
     let payload
     try {
       const ticket = await client.verifyIdToken({
@@ -20,11 +20,11 @@ export const authService = {
       throw naoAutorizado('auth.tokenInvalido', 'Token do Google inválido')
     }
 
-    if (!payload?.email_verified) {
+    if (!payload?.email_verified || !payload.sub || !payload.email) {
       throw naoAutorizado('auth.tokenInvalido', 'Token do Google inválido')
     }
 
-    const email = payload.email!.trim().toLowerCase()
-    return { email, nome: payload.name }
+    const email = payload.email.trim().toLowerCase()
+    return { sub: payload.sub, email, nome: payload.name }
   },
 }

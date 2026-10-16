@@ -110,6 +110,26 @@ export interface PreferenciasProjeto {
 }
 
 // ============================================================
+// USUÁRIOS (M13 — D6 de docs/plano-melhorias.md)
+// ============================================================
+
+// Uma conta por login Google. `tenantId` é o próprio `id` (UUID): é o valor
+// gravado em `tenantId` de todas as outras entidades. Até a M13 o tenantId
+// era o e-mail; a migração 002 converteu os dados antigos.
+export interface Usuario {
+  id: string
+  tenantId: string
+  email: string
+  googleSub?: string            // `sub` do ID token; ausente até o 1º login de um usuário migrado
+  nome?: string
+  // Sessões guardam a versão do momento do login; "sair de todos os
+  // dispositivos" incrementa e invalida todas as anteriores.
+  versaoSessao: number
+  dataCriacao: string
+  ultimoAcesso?: string
+}
+
+// ============================================================
 // IMPORTAÇÃO DE LANÇAMENTOS
 // ============================================================
 

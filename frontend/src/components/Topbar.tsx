@@ -8,6 +8,7 @@ import type { FormatoData } from '../utils/formatoData'
 import { IDIOMAS, definirIdioma } from '../i18n'
 import type { Idioma } from '../i18n'
 import Button from './Button'
+import Modal from './Modal'
 
 const BANDEIRA: Record<Idioma, string> = { pt: '🇧🇷', es: '🇪🇸', en: '🇺🇸' }
 
@@ -51,18 +52,21 @@ export default function Topbar({ onAbrirMenu }: Props) {
   const { t, i18n } = useTranslation()
   const { tema, alternar } = useTheme()
   const { formatoData, definirFormatoData } = usePreferencias()
-  const { logout } = useAuth()
+  const { logout, logoutTodos } = useAuth()
   const navigate = useNavigate()
-  const [saindo, setSaindo] = useState(false)
+  const [perguntandoSaida, setPerguntandoSaida] = useState(false)
+  const [saindo, setSaindo] = useState<'este' | 'todos' | null>(null)
 
-  async function handleLogout() {
+  // Sair só deste navegador ou de todos os dispositivos (invalida toda
+  // sessão aberta — útil se esqueceu logado num computador de terceiros)
+  async function sair(escopo: 'este' | 'todos') {
     if (saindo) return
-    setSaindo(true)
+    setSaindo(escopo)
     try {
-      await logout()
+      await (escopo === 'todos' ? logoutTodos() : logout())
       navigate('/login', { replace: true })
     } finally {
-      setSaindo(false)
+      setSaindo(null)
     }
   }
 
@@ -128,8 +132,7 @@ export default function Topbar({ onAbrirMenu }: Props) {
         </button>
 
         <Button
-          onClick={handleLogout}
-          loading={saindo}
+          onClick={() => setPerguntandoSaida(true)}
           className="btn btn-ghost btn-icon"
           aria-label={t('nav.sair')}
           title={t('nav.sair')}
@@ -138,6 +141,26 @@ export default function Topbar({ onAbrirMenu }: Props) {
           ⏻
         </Button>
       </div>
+
+      {perguntandoSaida && (
+        <Modal onFechar={() => !saindo && setPerguntandoSaida(false)} style={{ maxWidth: 400 }}>
+          <div className="modal-header">
+            <h2 className="modal-title">{t('sair.titulo')}</h2>
+          </div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>{t('sair.explicacao')}</p>
+          <div className="form-actions" style={{ flexWrap: 'wrap' }}>
+            <button className="btn btn-secondary" onClick={() => setPerguntandoSaida(false)} disabled={!!saindo}>
+              {t('comum.cancelar')}
+            </button>
+            <Button className="btn btn-secondary" onClick={() => sair('todos')} loading={saindo === 'todos'} disabled={!!saindo}>
+              {t('sair.todos')}
+            </Button>
+            <Button className="btn btn-primary" onClick={() => sair('este')} loading={saindo === 'este'} disabled={!!saindo}>
+              {t('sair.este')}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </header>
   )
 }

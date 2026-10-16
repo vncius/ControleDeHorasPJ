@@ -71,5 +71,5 @@ export const limiteLogin = criarLimitador({ janelaMs: UM_MINUTO, max: 20, chave:
 export const limiteImportacao = criarLimitador({
   janelaMs: 10 * UM_MINUTO,
   max: 30,
-  chave: (req) => req.usuario?.email,
+  chave: (req) => req.usuario?.tenantId,
 })

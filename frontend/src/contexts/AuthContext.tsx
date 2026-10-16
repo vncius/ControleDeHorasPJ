@@ -12,6 +12,7 @@ interface AuthContextValue {
   carregando: boolean
   login: (credential: string) => Promise<void>
   logout: () => Promise<void>
+  logoutTodos: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -52,8 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(null)
   }, [])
 
+  // invalida as sessões de todos os dispositivos (inclusive a deste navegador)
+  const logoutTodos = useCallback(async () => {
+    await authApi.logoutTodos()
+    setUsuario(null)
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ usuario, carregando, login, logout }}>
+    <AuthContext.Provider value={{ usuario, carregando, login, logout, logoutTodos }}>
       {children}
     </AuthContext.Provider>
   )

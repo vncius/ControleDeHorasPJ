@@ -13,7 +13,8 @@ Erros respondem `{ erro, codigo, params? }`. `erro` é a mensagem em pt (fallbac
 ```
 POST /api/auth/google        { credential }   ← pública: valida o ID token do Google e emite o cookie de sessão
 POST /api/auth/logout                          ← pública: limpa o cookie
-GET  /api/auth/me                              → { email }
+POST /api/auth/logout-todos                    ← invalida todas as sessões do usuário (todos os dispositivos)
+GET  /api/auth/me                              → { email, nome }
 ```
 
 ## Dashboard

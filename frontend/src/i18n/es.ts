@@ -51,6 +51,12 @@ const es: Dicionario = {
     relatorios: 'Informes',
     sair: 'Salir',
   },
+  sair: {
+    titulo: 'Salir',
+    explicacao: '¿Salir solo de este navegador o cerrar la sesión en todos los dispositivos donde iniciaste sesión?',
+    este: 'Salir de este dispositivo',
+    todos: 'Salir de todos los dispositivos',
+  },
   topbar: {
     idioma: 'Idioma',
     temaClaro: 'Cambiar a tema claro',

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { Db } from 'mongodb'
 
 // ============================================================
@@ -15,6 +16,17 @@ import { Db } from 'mongodb'
 // (produção, demo, teste) tiver rodado com ela.
 // ============================================================
 
+// Coleções de dados do usuário (toda entidade com tenantId, exceto `usuarios`).
+// Entidade nova com tenantId entra aqui também.
+export const COLECOES_COM_TENANT = [
+  'clientes',
+  'projetos',
+  'alteracoesEscopo',
+  'lancamentosHoras',
+  'preferenciasProjeto',
+  'pagamentos',
+] as const
+
 export interface Migracao {
   id: string
   descricao: string
@@ -31,6 +43,34 @@ export const MIGRACOES: Migracao[] = [
         .collection('projetos')
         .updateMany({ status: 'Pausado' }, { $set: { status: 'Com impedimento' } })
       return r.modifiedCount
+    },
+  },
+  {
+    id: '002-tenant-email-para-uuid',
+    descricao:
+      'tenantId deixa de ser o e-mail (M13 — D6): cada e-mail ganha um usuário com tenantId UUID, regravado nas coleções de dados',
+    async executar(db) {
+      // e-mails ainda usados como tenantId em qualquer coleção
+      const emails = new Set<string>()
+      for (const colecao of COLECOES_COM_TENANT) {
+        for (const email of await db.collection(colecao).distinct('tenantId', { tenantId: /@/ })) emails.add(email)
+      }
+
+      let alterados = 0
+      for (const email of emails) {
+        // usuário existente (rodada anterior interrompida ou login já feito) ou novo
+        let usuario = await db.collection('usuarios').findOne({ email })
+        if (!usuario) {
+          const id = randomUUID()
+          usuario = { _id: id as never, tenantId: id, email, versaoSessao: 0, dataCriacao: new Date().toISOString() }
+          await db.collection('usuarios').insertOne(usuario)
+        }
+        for (const colecao of COLECOES_COM_TENANT) {
+          const r = await db.collection(colecao).updateMany({ tenantId: email }, { $set: { tenantId: usuario.tenantId } })
+          alterados += r.modifiedCount
+        }
+      }
+      return alterados
     },
   },
 ]

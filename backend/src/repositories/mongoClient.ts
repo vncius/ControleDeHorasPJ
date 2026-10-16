@@ -106,5 +106,12 @@ async function criarIndices(database: Db): Promise<void> {
     database.collection('lancamentosHoras').createIndex({ tenantId: 1, data: 1 }),
 
     database.collection('preferenciasProjeto').createIndex({ tenantId: 1, projetoId: 1 }, { unique: true }),
+
+    database.collection('usuarios').createIndex({ email: 1 }, { unique: true }),
+    // googleSub só existe depois do 1º login de um usuário migrado
+    database.collection('usuarios').createIndex(
+      { googleSub: 1 },
+      { unique: true, partialFilterExpression: { googleSub: { $type: 'string' } } }
+    ),
   ])
 }

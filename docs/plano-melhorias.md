@@ -51,11 +51,11 @@ Produção já usa o proxy same-origin (`frontend/functions/api/[[path]].ts`), e
 ### D5 — Limites
 Em memória (processo único, sem dependência nova). Por IP: login 20/min, geral 600/min. Por tenant: importação 30 a cada 10 min (pré-visualizar e confirmar contam as duas). Corpo JSON 100 KB por padrão, 2 MB na importação.
 
-### D6 — Sessão e identidade — *a confirmar com o usuário*
-Proposta: coleção `usuarios` com `tenantId` gerado (UUID) e `googleSub`; sessão de 24h com `versaoSessao` (revogação + "sair de todos os dispositivos"). Exige migração de todos os documentos (`tenantId` = e-mail → UUID).
+### D6 — Sessão e identidade (aprovada pelo usuário em 2026-10-16)
+Coleção `usuarios` com `tenantId` gerado (UUID) e `googleSub`; sessão de 24h com `versaoSessao` (revogação + "sair de todos os dispositivos"). Exige migração de todos os documentos (`tenantId` = e-mail → UUID).
 
-### D7 — LGPD — *a confirmar com o usuário*
-Proposta: termos/política com aceite versionado no primeiro acesso, exportação completa dos dados (JSON) e exclusão da conta. Relevante porque já existem usuários além do dono (test users do OAuth).
+### D7 — LGPD (aprovada pelo usuário em 2026-10-16, para implementar já)
+Termos/política com aceite versionado no primeiro acesso, exportação completa dos dados (JSON) e exclusão da conta. Relevante porque já existem usuários além do dono (test users do OAuth).
 
 ---
 
@@ -142,8 +142,8 @@ Termos/política com aceite versionado; "Meus dados": exportar tudo (JSON) e exc
 | M9 | Testes + CI | M1–M8 | M | ✅ | 2026-10-15 | 5695954 |
 | M10 | Migrações idempotentes no boot | — | P | ✅ | 2026-10-15 | 64fa371 (PR #26) |
 | M11 | CSV seguro + i18n tipado | — | P | ✅ | 2026-10-16 | a61d878 |
-| M12 | Acessibilidade de modais e toasts | — | M | ✅ | 2026-10-16 | (este commit) |
-| M13 | Identidade (`usuarios`) e sessão revogável | M10, D6 | M | ⬜ | | |
+| M12 | Acessibilidade de modais e toasts | — | M | ✅ | 2026-10-16 | c20bc0c |
+| M13 | Identidade (`usuarios`) e sessão revogável | M10, D6 | M | ✅ | 2026-10-16 | (este commit) |
 | M14 | Auditoria | M6, M13 | M | ⬜ | | |
 | M15 | LGPD | M13, M14, D7 | G | ⬜ | | |
 | M16 | Deploy e ADRs | — | P | ⬜ | | |
@@ -356,3 +356,26 @@ Cada PR testado num worktree com o branch mesclado sobre a main: `npm ci`, typec
 - Ajuste de comportamento: na confirmação de excluir ou duplicar lançamento (`TabelaLancamentos`), Esc e clique fora agora equivalem a **Cancelar** e voltam para a edição. Antes, clicar fora fechava tudo.
 - Testes: `Modal.test.tsx` (jsdom + @testing-library/react 16.3.3 + jsdom 29.1.1, instalados com `--legacy-peer-deps`), com 8 casos: papel e rótulo, foco inicial, autoFocus, Esc e clique fora, foco preso, foco devolvido, foco devolvido com autoFocus, pilha. O frontend tem 23 testes.
 - Verificado no preview com o backend de demo, só com teclado: abrir "Novo cliente" (diálogo rotulado, foco no campo), Tab ×6 sem sair do modal, Esc fecha e devolve o foco ao botão. Na edição de lançamento, "Excluir", Esc volta para a edição e o segundo Esc fecha, sem nada excluído.
+
+### M13
+- Retomada a partir do trabalho que a sessão interrompida deixou sem commit no worktree `ecstatic-wright-89250b`: tipo `Usuario`, `usuariosRepository.ts` (buscas por `googleSub`/e-mail e `incrementarVersaoSessao`), índices únicos (`email`; `googleSub` parcial) e `req.usuario` com `id`/`tenantId`/`email`/`nome`. Aplicado aqui por patch.
+- Sessão (`middleware/auth.ts`):
+  - JWT `{ uid, v }` de 24h (`DURACAO_SESSAO_MS`, que também é o `maxAge` do cookie);
+  - `requireAuth` carrega o usuário (cache de 60s por `uid`) e recusa se `versaoSessao` não bate;
+  - tokens do formato antigo (`{ email }`) são recusados, então **todo mundo logado precisa entrar de novo uma vez**.
+- Login (`services/usuariosService.ts`) identifica nesta ordem:
+  1. pelo `sub` do Google, que se mantém mesmo se o e-mail mudar;
+  2. pelo e-mail, no caso de usuário criado pela migração e ainda sem `sub`, que é vinculado nesse login;
+  3. senão, cria conta nova com `tenantId` = id (UUID).
+  - `authService` agora exige `sub` e `email` no ID token.
+- "Sair de todos os dispositivos": `POST /auth/logout-todos` (com `requireAuth`) incrementa `versaoSessao`, invalida o cache e limpa o cookie. No frontend, o ⏻ abre um diálogo com Cancelar, "Sair de todos os dispositivos" e "Sair deste dispositivo" (pt/en/es).
+- Controllers passam `req.usuario.tenantId` aos services (36 chamadas), e os services não mudaram. O rate limit de importação usa `tenantId` como chave.
+- Migração `002-tenant-email-para-uuid`:
+  - para cada `tenantId` com `@` em qualquer coleção de `COLECOES_COM_TENANT`, cria (ou reaproveita, pelo e-mail) um usuário com UUID e faz `updateMany` do `tenantId` nas 6 coleções;
+  - é idempotente, e se for interrompida no meio, o boot seguinte completa com o mesmo UUID;
+  - não é transacional entre coleções; por isso a convergência foi preferida à transação.
+- `seed:demo` cria o usuário de demonstração com `tenantId` fixo `00000000-0000-4000-8000-0000000000de` e apaga também os dados antigos com e-mail.
+- **Bug achado no teste e corrigido:** o `sed` que trocou `req.usuario!.email` por `tenantId` nos controllers também pegou `/auth/me`, que passou a devolver o UUID no campo `email`. Foi corrigido e coberto por teste.
+- Testes: `middleware/sessao.test.ts` (9 casos: formato e prazo do token, token antigo e com outro segredo recusados, `req.usuario` com tenantId, 401, revogação na hora, `/auth/me`, conta nova, vínculo por e-mail, identificação pelo `sub`) e integração da migração 002 no banco de teste (cria usuários, regrava as coleções, reaproveita usuário existente, idempotente). `npm run test:integracao` passou com 127/127.
+- Verificado ponta a ponta no banco de demo: a migração rodou no boot (o banco tinha dados antigos com e-mail), o dashboard abriu com a sessão nova, o diálogo de saída apareceu, `logout-todos` respondeu 200 e redirecionou para o login, o token v=0 passou a dar 401 e o v=1 deu 200.
+- **Ação de deploy (importante):** no primeiro boot com esta versão apontando para o banco real (deploy no Render ou `npm run dev` local), a migração 002 regrava o `tenantId` de **todos** os documentos reais. Antes, faça um export do banco `horas-pj` (Atlas → Collections → Export, ou `mongodump`), porque o Atlas M0 não tem backup automático. Depois do deploy, todos entram de novo uma vez.

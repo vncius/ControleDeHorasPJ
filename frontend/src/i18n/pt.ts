@@ -50,6 +50,12 @@ const pt = {
     relatorios: 'Relatórios',
     sair: 'Sair',
   },
+  sair: {
+    titulo: 'Sair',
+    explicacao: 'Sair só deste navegador ou encerrar a sessão em todos os dispositivos em que você entrou?',
+    este: 'Sair deste dispositivo',
+    todos: 'Sair de todos os dispositivos',
+  },
   topbar: {
     idioma: 'Idioma',
     temaClaro: 'Mudar para tema claro',

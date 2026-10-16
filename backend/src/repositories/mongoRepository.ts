@@ -46,7 +46,7 @@ export class MongoRepository<T extends ComId> {
     this.nomeColecao = nomeColecao
   }
 
-  private collection(): Collection<any> {
+  protected collection(): Collection<any> {
     return getDb().collection(this.nomeColecao)
   }
 
@@ -57,7 +57,7 @@ export class MongoRepository<T extends ComId> {
     return { _id: id, ...resto }
   }
 
-  private paraEntidade(doc: any): T {
+  protected paraEntidade(doc: any): T {
     if (!doc) return doc
     const { _id, ...resto } = doc
     return { id: _id, ...resto } as T

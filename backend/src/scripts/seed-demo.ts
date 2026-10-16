@@ -3,8 +3,8 @@
 // Uso (sempre num banco separado, nunca o de produção):
 //   MONGODB_DB_NAME=horas-pj-demo npm run seed:demo
 //
-// APAGA tudo do tenant de demonstração (DEMO_TENANT, padrão demo@horaspj.dev)
-// nesse banco e recria ~3 meses de trabalho verossímil relativos à data de
+// APAGA tudo do usuário de demonstração (DEMO_EMAIL, padrão demo@horaspj.dev;
+// tenantId fixo 00000000-0000-4000-8000-0000000000de) nesse banco e recria ~3 meses de trabalho verossímil relativos à data de
 // hoje: clientes, projetos com horas contratadas e abertas, escopos, pagamentos
 // por período de apuração, um projeto regularizado e um lançamento em andamento.
 // Os lançamentos são gerados de forma determinística (mesma data = mesmos dados).
@@ -15,6 +15,7 @@ import 'dotenv/config'
 import { randomUUID as uuid } from 'node:crypto'
 import { conectarMongo, getDb, resolverNomeBanco } from '../repositories/mongoClient'
 import { preferenciasRepo } from '../repositories'
+import { COLECOES_COM_TENANT } from '../migrations'
 import { clientesService } from '../services/clientesService'
 import { projetosService } from '../services/projetosService'
 import { escoposService } from '../services/escoposService'
@@ -22,8 +23,10 @@ import { pagamentosService } from '../services/pagamentosService'
 import { LancamentoHoras, Projeto } from '../types'
 import { agora, calcularDiferenca, dataLocalISO, hoje, periodoApuracao, somarHoras } from '../utils/tempo'
 
-const TENANT = process.env.DEMO_TENANT ?? 'demo@horaspj.dev'
-const COLECOES = ['clientes', 'projetos', 'alteracoesEscopo', 'lancamentosHoras', 'preferenciasProjeto', 'pagamentos']
+const EMAIL = process.env.DEMO_EMAIL ?? 'demo@horaspj.dev'
+// Usuário de demonstração (M13): id = tenantId, fixo para scripts de teste
+// local poderem gerar uma sessão sem login Google.
+const TENANT = '00000000-0000-4000-8000-0000000000de'
 
 // --- utilitários de data e aleatoriedade determinística ---
 
@@ -73,7 +76,14 @@ async function main() {
 
   await conectarMongo()
   const db = getDb()
-  for (const colecao of COLECOES) await db.collection(colecao).deleteMany({ tenantId: TENANT })
+  // limpa o tenant atual e o do formato antigo (tenantId = e-mail, antes da M13)
+  for (const colecao of COLECOES_COM_TENANT) {
+    await db.collection(colecao).deleteMany({ tenantId: { $in: [TENANT, EMAIL] } })
+  }
+  await db.collection('usuarios').deleteMany({ $or: [{ _id: TENANT as never }, { email: EMAIL }] })
+  await db.collection('usuarios').insertOne({
+    _id: TENANT as never, tenantId: TENANT, email: EMAIL, nome: 'Demonstração', versaoSessao: 0, dataCriacao: agora(),
+  })
 
   // --- clientes ---
   const atlas = await clientesService.criar(TENANT, { nome: 'Atlas Logística', observacoes: 'Contrato anual, NF até o dia 20.' })

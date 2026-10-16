@@ -46,7 +46,7 @@
 - **Multi-tenant por construção.** Toda entidade carrega `tenantId`, e a checagem de posse fica centralizada no repositório (`findByIdAndTenant`, `updateForTenant`…), nunca espalhada pelos services. O `tenantId` vem sempre da sessão, nunca da requisição.
 - **Exclusão em cascata transacional.** Apagar um projeto remove escopos, lançamentos, pagamentos e preferências numa transação MongoDB.
 - **Fuso fixo.** O servidor roda em `America/Sao_Paulo`, então "hoje" e "agora" não mudam conforme a hospedagem.
-- **Login Google com sessão própria.** O ID token é validado no backend (assinatura, audience e `email_verified`), e a sessão é um JWT em cookie httpOnly. Em produção, um proxy same-origin no Cloudflare Pages deixa o cookie first-party e faz funcionar no Safari/iOS.
+- **Login Google com sessão própria.** O ID token é validado no backend (assinatura, audience e `email_verified`), e a sessão é um JWT de 24h em cookie httpOnly, revogável ("sair de todos os dispositivos"). Cada conta tem um `tenantId` UUID; o e-mail não é chave de dado. Em produção, um proxy same-origin no Cloudflare Pages deixa o cookie first-party e faz funcionar no Safari/iOS.
 - **Proteção contra CSRF sem depender de cookie de terceiro.** O cookie usa `SameSite=Lax`, e toda requisição que altera estado exige o cabeçalho `X-Requested-With`, que um site de terceiro não consegue enviar sem passar pelo CORS.
 
 ## Stack
@@ -75,7 +75,7 @@ cd backend && npm run dev     # API em http://localhost:3001
 cd frontend && npm run dev    # app em http://localhost:5173 (proxy /api → :3001)
 ```
 
-O login usa o Google. Quem pode entrar é definido no **Google Cloud Console**, na OAuth consent screen: test users no modo "Testing" ou domínio no modo "Internal". Cada e-mail que entra vira um workspace isolado.
+O login usa o Google. Quem pode entrar é definido no **Google Cloud Console**, na OAuth consent screen: test users no modo "Testing" ou domínio no modo "Internal". Cada conta Google que entra vira um workspace isolado.
 
 ### Dados de demonstração
 

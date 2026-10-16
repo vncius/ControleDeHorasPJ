@@ -19,6 +19,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Backend: Express 5 (tipos de `req.params` e rota curinga ajustados; respostas da API idênticas às do Express 4), Zod 4 (schemas e códigos de erro da API inalterados; `Infinity` passa a ser recusado em campos numéricos) e TypeScript 7 (saída CommonJS idêntica à do 5.9). Frontend: `@cloudflare/workers-types` 5 (só tipos da Pages Function).
 
 ### Segurança
+- Identidade e sessão (M13): contas na coleção `usuarios` com `tenantId` UUID (o e-mail deixa de ser chave de dado), vínculo pelo `sub` do Google, sessão de 24h revogável e "Sair de todos os dispositivos". A migração 002 converte os dados existentes no primeiro boot, e quem estiver logado precisa entrar de novo uma vez.
 - CSV exportado com escape completo (aspas, `;`, quebras de linha) e neutralização de fórmulas (`= + - @`) nos textos digitados pelo usuário (M11).
 - O servidor não sobe sem `JWT_SECRET` e `GOOGLE_CLIENT_ID`. Em produção também recusa `JWT_SECRET` com menos de 32 bytes e os valores de exemplo (M2).
 - `app.ts` separado de `server.ts` (app testável sem banco) e log de requisições com método, caminho sem query string, status e duração, sem corpo, cookies nem e-mail (M6).

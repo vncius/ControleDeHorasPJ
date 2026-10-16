@@ -23,7 +23,7 @@ npm run build      # build de produção real (já pegou bugs que o dev server n
 - Datas de projeto/lançamento: string `YYYY-MM-DD`. Datas de auditoria (`dataCriacao` etc.): ISO 8601 completo. Horas: string `HH:MM`.
 - `horasContratadas` ausente = "horas abertas" (projeto sem limite contratado) — é um estado de negócio válido, não um bug.
 - `Projeto.consideradoPago` = regularização de projeto histórico: o projeto conta como pago independentemente dos pagamentos registrados. Marcar via `PUT /api/projetos/:id` gera um pagamento cobrindo o saldo em aberto, com período de apuração do primeiro ao último lançamento (`gerarPagamentoDeRegularizacao` em `projetosService`); desmarcar remove os pagamentos com `geradoPorRegularizacao: true` (os registrados manualmente ficam intactos).
-- `tenantId` (= e-mail do usuário autenticado) existe em toda entidade persistida. Nunca aceite `tenantId` vindo do corpo da requisição/query string — sempre de `req.usuario.email` (preenchido pelo `requireAuth`).
+- `tenantId` (UUID do usuário, coleção `usuarios`; até a M13 era o e-mail) existe em toda entidade persistida. Nunca aceite `tenantId` vindo do corpo da requisição ou da query string: use sempre `req.usuario.tenantId` (preenchido pelo `requireAuth`). O e-mail não é chave de dado. Coleção nova com `tenantId` entra em `COLECOES_COM_TENANT` (`backend/src/migrations/index.ts`).
 
 ## Onde estão as regras de negócio (não duplicar)
 
@@ -55,7 +55,7 @@ Os dados **reais** de clientes, projetos e faturamento do usuário vivem hoje no
 ## Dívida técnica conhecida
 
 - Migrações de dados ficam em `backend/src/migrations/index.ts` e rodam em todo boot (`server.ts`), por isso precisam ser **idempotentes**. A `001-status-pausado` converte o status legado `"Pausado"` (fora de `StatusProjeto`) em `"Com impedimento"`, conforme decisão do usuário.
-- Sessão sem refresh/rotação: o cookie JWT dura 7 dias fixos, sem renovação automática nem revogação individual.
+- Sessão: JWT `{ uid, v }` de 24h fixas, sem renovação deslizante. A revogação é por usuário (`versaoSessao`, "sair de todos os dispositivos"), não por sessão individual. O cache de 60s em `requireAuth` faz uma sessão revogada sobreviver até 60s em outra instância, se um dia houver mais de uma.
 - Acesso não usa allowlist própria — qualquer login Google com `email_verified` é aceito e vira tenant. Quem pode logar de fato é controlado no Google Cloud Console (OAuth consent screen: test users em modo "Testing", ou restrição de domínio em modo "Internal").
 - `findAll`/`findBy`/`findOneBy` em `mongoRepository.ts` fazem fetch completo da coleção (predicado em JS, não query nativa) — trade-off consciente documentado no topo do arquivo e no README.
 

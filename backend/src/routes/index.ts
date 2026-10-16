@@ -38,6 +38,7 @@ const router = Router()
 router.post('/auth/google', limiteLogin, validarCorpo(loginGoogleSchema), authController.loginGoogle)
 router.post('/auth/logout', authController.logout)
 router.get('/auth/me', requireAuth, authController.me)
+router.post('/auth/logout-todos', requireAuth, authController.logoutTodos)
 
 // ----------------------------------------------------------------
 // A partir daqui, todas as rotas exigem sessão válida

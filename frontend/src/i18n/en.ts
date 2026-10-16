@@ -51,6 +51,12 @@ const en: Dicionario = {
     relatorios: 'Reports',
     sair: 'Sign out',
   },
+  sair: {
+    titulo: 'Sign out',
+    explicacao: 'Sign out of this browser only, or end your session on every device you signed in on?',
+    este: 'Sign out of this device',
+    todos: 'Sign out of all devices',
+  },
   topbar: {
     idioma: 'Language',
     temaClaro: 'Switch to light theme',

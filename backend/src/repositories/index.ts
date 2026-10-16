@@ -1,4 +1,5 @@
 import { MongoRepository } from './mongoRepository'
+import { UsuariosRepository } from './usuariosRepository'
 import {
   Cliente,
   Projeto,
@@ -22,3 +23,5 @@ export const lancamentosRepo = new MongoRepository<LancamentoHoras>('lancamentos
 export const preferenciasRepo = new MongoRepository<PreferenciasProjeto>('preferenciasProjeto')
 
 export const pagamentosRepo = new MongoRepository<Pagamento>('pagamentos')
+
+export const usuariosRepo = new UsuariosRepository()

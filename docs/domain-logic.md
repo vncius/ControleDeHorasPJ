@@ -4,7 +4,7 @@ Regras de negócio do Horas PJ e onde cada uma está implementada. Antes de cria
 
 ## Entidades
 
-Todas têm `id` (UUID, usado também como `_id` no Mongo) e `tenantId` (e-mail do usuário logado). Datas de negócio são `YYYY-MM-DD`, horas são `HH:MM`, datas de auditoria (`dataCriacao`, `dataAtualizacao`) são ISO 8601.
+Todas têm `id` (UUID, usado também como `_id` no Mongo) e `tenantId` (UUID do usuário logado, da coleção `usuarios`; até a M13 era o e-mail). Datas de negócio são `YYYY-MM-DD`, horas são `HH:MM`, datas de auditoria (`dataCriacao`, `dataAtualizacao`) são ISO 8601.
 
 | Entidade | Coleção | Campos principais |
 |---|---|---|
