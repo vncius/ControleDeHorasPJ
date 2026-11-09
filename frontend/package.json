@@ -11,24 +11,24 @@
   },
   "dependencies": {
     "@react-oauth/google": "^0.13.5",
-    "i18next": "^26.4.4",
+    "i18next": "^26.7.2",
     "jspdf": "^4.2.1",
-    "jspdf-autotable": "^5.0.8",
+    "jspdf-autotable": "^5.0.9",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-i18next": "^17.0.16",
-    "react-router-dom": "^7.18.4"
+    "react-i18next": "^17.1.13",
+    "react-router-dom": "^7.18.5"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20261012.1",
+    "@cloudflare/workers-types": "^5.20261106.1",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.2",
+    "@vitejs/plugin-react": "^6.2.1",
     "jsdom": "^29.1.1",
     "typescript": "^7.0.2",
-    "vite": "^8.3.4",
+    "vite": "^8.3.6",
     "vitest": "^4.1.11"
   }
 }
