@@ -20,6 +20,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Backend: Express 5 (tipos de `req.params` e rota curinga ajustados; respostas da API idênticas às do Express 4), Zod 4 (schemas e códigos de erro da API inalterados; `Infinity` passa a ser recusado em campos numéricos) e TypeScript 7 (saída CommonJS idêntica à do 5.9). Frontend: `@cloudflare/workers-types` 5 (só tipos da Pages Function).
 
 ### Segurança
+- Node do backend fixado na linha 22 a partir da 22.23.4 (`engines.node: "^22.23.4"`, que o Render usa para escolher a versão): corrige as falhas de outubro/2026 na checagem de hostname do TLS e na descompressão Brotli e remove a confiança nos certificados intermediários comprometidos da eMudhra. Antes, `>=22.12` deixava o Render escolher qualquer major.
 - Trilha de auditoria (M14): login, falha de login, logout, "sair de todos", exclusões, importações e regularização de pagamento, com usuário, data, IP e rota (nunca o corpo da requisição). `GET /api/auditoria` lista os eventos do próprio usuário.
 - Identidade e sessão (M13): contas na coleção `usuarios` com `tenantId` UUID (o e-mail deixa de ser chave de dado), vínculo pelo `sub` do Google, sessão de 24h revogável e "Sair de todos os dispositivos". A migração 002 converte os dados existentes no primeiro boot, e quem estiver logado precisa entrar de novo uma vez.
 - CSV exportado com escape completo (aspas, `;`, quebras de linha) e neutralização de fórmulas (`= + - @`) nos textos digitados pelo usuário (M11).

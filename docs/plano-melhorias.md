@@ -293,7 +293,7 @@ Ordem sugerida: M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M
 Os 8 PRs major (#7–#14) foram avaliados um a um: changelog, `npm ci`/typecheck/test/build e, no frontend, `vite preview` (CSP de `_headers`) com o backend de demo, percorrendo login, dashboard, projetos (lista, detalhe por clique e por link direto, voltar), clientes e relatórios. Merge squash um por vez, com o CI da main conferido entre eles.
 - **Backend:**
   - `uuid` → `crypto.randomUUID` nativo (#15, substitui #10). O uuid 14 virou ESM-only e o backend é CommonJS; o app só usava v4. Some a dependência e o alerta.
-  - `engines.node: ">=22.12"` (#15): o google-auth-library 11 exige Node 22 e o Render escolhe a versão por esse campo. Só depois disso entrou o google-auth-library 11.3 (#20, que o Dependabot abriu no lugar de #8).
+  - `engines.node: ">=22.12"` (#15): o google-auth-library 11 exige Node 22 e o Render escolhe a versão por esse campo. Só depois disso entrou o google-auth-library 11.3 (#20, que o Dependabot abriu no lugar de #8). Em 2026-11-11 passou a `^22.23.4` (aviso de segurança do Render: TLS, Brotli e certificados eMudhra), que mantém produção na major 22 dos tipos e do CI.
   - `@types/node` ^22 em vez da 26 (#15, substitui #14): os tipos acompanham o runtime. O `dependabot.yml` ignora majors de `@types/node`; ao trocar a versão do Node no CI e no `engines`, subir os tipos junto.
   - dotenv 18 (#12): sem mudança de API para o app. O parser novo interpreta o `.env` real igual ao 17 (comparado por chave e igualdade, sem expor valores).
 - **Frontend:**
