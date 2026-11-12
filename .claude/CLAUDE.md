@@ -59,7 +59,7 @@ Os dados **reais** de clientes, projetos e faturamento do usuário vivem hoje no
 ## Dívida técnica conhecida
 
 - Migrações de dados ficam em `backend/src/migrations/index.ts` e rodam em todo boot (`server.ts`), por isso precisam ser **idempotentes**. A `001-status-pausado` converte o status legado `"Pausado"` (fora de `StatusProjeto`) em `"Com impedimento"`, conforme decisão do usuário.
-- Sessão: JWT `{ uid, v }` de 24h fixas, sem renovação deslizante. A revogação é por usuário (`versaoSessao`, "sair de todos os dispositivos"), não por sessão individual. O cache de 60s em `requireAuth` faz uma sessão revogada sobreviver até 60s em outra instância, se um dia houver mais de uma.
+- Sessão: JWT `{ uid, v }` de 30 dias fixos, sem renovação deslizante. A revogação é por usuário (`versaoSessao`, "sair de todos os dispositivos"), não por sessão individual. O cache de 60s em `requireAuth` faz uma sessão revogada sobreviver até 60s em outra instância, se um dia houver mais de uma.
 - Acesso não usa allowlist própria — qualquer login Google com `email_verified` é aceito e vira tenant. Quem pode logar de fato é controlado no Google Cloud Console (OAuth consent screen: test users em modo "Testing", ou restrição de domínio em modo "Internal").
 - `findAll`/`findBy`/`findOneBy` em `mongoRepository.ts` fazem fetch completo da coleção (predicado em JS, não query nativa) — trade-off consciente documentado no topo do arquivo e no README.
 

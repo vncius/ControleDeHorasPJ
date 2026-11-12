@@ -360,7 +360,7 @@ Cada PR testado num worktree com o branch mesclado sobre a main: `npm ci`, typec
 ### M13
 - Retomada a partir do trabalho que a sessão interrompida deixou sem commit no worktree `ecstatic-wright-89250b`: tipo `Usuario`, `usuariosRepository.ts` (buscas por `googleSub`/e-mail e `incrementarVersaoSessao`), índices únicos (`email`; `googleSub` parcial) e `req.usuario` com `id`/`tenantId`/`email`/`nome`. Aplicado aqui por patch.
 - Sessão (`middleware/auth.ts`):
-  - JWT `{ uid, v }` de 24h (`DURACAO_SESSAO_MS`, que também é o `maxAge` do cookie);
+  - JWT `{ uid, v }` de 30 dias (`DURACAO_SESSAO_MS`, que também é o `maxAge` do cookie);
   - `requireAuth` carrega o usuário (cache de 60s por `uid`) e recusa se `versaoSessao` não bate;
   - tokens do formato antigo (`{ email }`) são recusados, então **todo mundo logado precisa entrar de novo uma vez**.
 - Login (`services/usuariosService.ts`) identifica nesta ordem:

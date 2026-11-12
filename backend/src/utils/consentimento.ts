@@ -6,7 +6,7 @@ import type { Usuario } from '../types'
 // volta a ver a tela de aceite, e as rotas de dados ficam bloqueadas até o
 // novo aceite. Exportar e excluir a conta continuam liberados (direitos do
 // titular não dependem de aceitar termos novos).
-export const VERSAO_CONSENTIMENTO = 1
+export const VERSAO_CONSENTIMENTO = 2
 
 export function temConsentimentoVigente(usuario: Pick<Usuario, 'versaoConsentimento'>): boolean {
   return usuario.versaoConsentimento === VERSAO_CONSENTIMENTO

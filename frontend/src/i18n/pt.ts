@@ -500,7 +500,7 @@ const pt = {
       direitosTitulo: 'Seus direitos',
       direitos: 'Você pode confirmar e acessar seus dados, corrigi-los, obter uma cópia (portabilidade) e excluir a conta a qualquer momento, em "Minha conta": exportação completa em JSON e exclusão definitiva. Para outros pedidos, fale com o controlador {{contato}}.',
       segurancaTitulo: 'Segurança',
-      seguranca: 'Conexão criptografada (HTTPS), sessão em cookie protegido com validade de 24 horas e possibilidade de encerrar todas as sessões, isolamento dos dados de cada usuário e registro de ações sensíveis.',
+      seguranca: 'Conexão criptografada (HTTPS), sessão em cookie protegido com validade de 30 dias e possibilidade de encerrar todas as sessões, isolamento dos dados de cada usuário e registro de ações sensíveis.',
       cookiesTitulo: 'Cookies e armazenamento local',
       cookies: 'Usamos um único cookie essencial, que mantém sua sessão. No navegador ficam só preferências (idioma, tema e formato de data). Não há cookies de publicidade nem de rastreamento.',
       alteracoesTitulo: 'Alterações',

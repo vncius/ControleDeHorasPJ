@@ -501,7 +501,7 @@ const es: Dicionario = {
       direitosTitulo: 'Tus derechos',
       direitos: 'Puedes confirmar y acceder a tus datos, corregirlos, obtener una copia (portabilidad) y eliminar la cuenta en cualquier momento en "Mi cuenta": exportación completa en JSON y eliminación definitiva. Para otras solicitudes, contacta al responsable {{contato}}.',
       segurancaTitulo: 'Seguridad',
-      seguranca: 'Conexión cifrada (HTTPS), sesión en cookie protegida con validez de 24 horas y opción de cerrar todas las sesiones, aislamiento de los datos de cada usuario y registro de acciones sensibles.',
+      seguranca: 'Conexión cifrada (HTTPS), sesión en cookie protegida con validez de 30 días y opción de cerrar todas las sesiones, aislamiento de los datos de cada usuario y registro de acciones sensibles.',
       cookiesTitulo: 'Cookies y almacenamiento local',
       cookies: 'Usamos una única cookie esencial, que mantiene tu sesión. En el navegador solo quedan preferencias (idioma, tema y formato de fecha). No hay cookies de publicidad ni de seguimiento.',
       alteracoesTitulo: 'Cambios',

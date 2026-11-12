@@ -2,8 +2,8 @@
 // Mudou o texto das chaves `legal.*` em i18n/*.ts? Incremente aqui E em
 // backend/src/utils/consentimento.ts (os dois precisam bater): todo usuário
 // volta a ver a tela de aceite.
-export const VERSAO_TERMOS = 1
-export const TERMOS_VIGENTES_DESDE = '2026-10-16'
+export const VERSAO_TERMOS = 2
+export const TERMOS_VIGENTES_DESDE = '2026-11-12'
 
 // Controlador dos dados e canal de contato, exibidos nas políticas. Em
 // produção, defina no Cloudflare Pages (VITE_LEGAL_CONTROLADOR / VITE_LEGAL_CONTATO);

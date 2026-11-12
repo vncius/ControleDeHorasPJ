@@ -39,7 +39,7 @@ async function autenticar(token?: string) {
 beforeEach(() => r._reset())
 
 describe('token de sessão', () => {
-  it('carrega uid e versão, e vale 24h', () => {
+  it('carrega uid e versão, e vale 30 dias', () => {
     const token = assinarSessao({ uid: 'u1', v: 3 })
     expect(verificarSessao(token)).toEqual({ uid: 'u1', v: 3 })
     const { exp, iat } = jwt.decode(token) as { exp: number; iat: number }

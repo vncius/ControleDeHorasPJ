@@ -10,8 +10,8 @@ import { proibido } from '../errors/AppError'
 // ----------------------------------------------------------------
 export const NOME_COOKIE_SESSAO = 'sessao'
 
-// Sessão de 24h, absoluta (sem renovação deslizante) — D6 do plano.
-export const DURACAO_SESSAO_MS = 24 * 60 * 60 * 1000
+// Sessão de 30 dias, absoluta (sem renovação deslizante), ou até o logout.
+export const DURACAO_SESSAO_MS = 30 * 24 * 60 * 60 * 1000
 
 export type SameSite = 'lax' | 'strict' | 'none'
 export const VALORES_SAME_SITE: readonly SameSite[] = ['lax', 'strict', 'none']

@@ -501,7 +501,7 @@ const en: Dicionario = {
       direitosTitulo: 'Your rights',
       direitos: 'You can confirm and access your data, correct it, get a copy (portability) and delete the account at any time in "My account": full JSON export and permanent deletion. For other requests, contact the controller {{contato}}.',
       segurancaTitulo: 'Security',
-      seguranca: 'Encrypted connection (HTTPS), session in a protected cookie valid for 24 hours with the option to end all sessions, isolation of each user\'s data and logging of sensitive actions.',
+      seguranca: 'Encrypted connection (HTTPS), session in a protected cookie valid for 30 days with the option to end all sessions, isolation of each user\'s data and logging of sensitive actions.',
       cookiesTitulo: 'Cookies and local storage',
       cookies: 'We use a single essential cookie that keeps your session. The browser only stores preferences (language, theme and date format). There are no advertising or tracking cookies.',
       alteracoesTitulo: 'Changes',
