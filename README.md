@@ -108,6 +108,18 @@ O script apaga e recria, só nesse banco, cerca de 3 meses de trabalho fictício
 
 **Cloudflare Pages**: `API_ORIGIN` é a URL pública do backend, usada pelo proxy `frontend/functions/api/[[path]].ts`.
 
+### Rodando em Docker
+
+Alternativa ao Render + Cloudflare Pages: o app inteiro em containers, apontando para o banco de produção. O nginx do frontend serve o build e faz o papel do proxy `/api` (mesmos cabeçalhos de `public/_headers`, sem HSTS). Só ele fica exposto, e só em `127.0.0.1`.
+
+1. Copie `.env.docker.example` para `.env.docker` (fora do git) e preencha com os valores de produção. `JWT_SECRET` precisa ser o mesmo do Render, senão todos precisam logar de novo.
+2. Adicione `http://localhost:8081` (ou a porta de `APP_PORT`) em "Origens JavaScript autorizadas" do Client ID no Google Cloud Console.
+3. Suba:
+
+```bash
+docker compose --env-file .env.docker up -d --build
+```
+
 ### Testes e build
 
 ```bash

@@ -9,6 +9,7 @@ build/
 .env
 .env.*
 !.env.example
+!.env.docker.example
 
 # Credenciais do Google Cloud Console (ex.: client_secret_xxx.apps.googleusercontent.com.json)
 client_secret*.json
