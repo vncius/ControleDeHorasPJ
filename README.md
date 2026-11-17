@@ -112,12 +112,29 @@ O script apaga e recria, só nesse banco, cerca de 3 meses de trabalho fictício
 
 Alternativa ao Render + Cloudflare Pages: o app inteiro em containers, apontando para o banco de produção. O nginx do frontend serve o build e faz o papel do proxy `/api` (mesmos cabeçalhos de `public/_headers`, sem HSTS). Só ele fica exposto, e só em `127.0.0.1`.
 
-1. Copie `.env.docker.example` para `.env.docker` (fora do git) e preencha com os valores de produção. `JWT_SECRET` precisa ser o mesmo do Render, senão todos precisam logar de novo.
+1. Crie um arquivo de variáveis **fora do projeto** (ex.: `D:/iCloudDrive/Apps Pessoais - ENV/ControleDeHorasPj.env`, sincronizado pelo iCloud), para nenhum segredo de produção ficar dentro do repositório:
+
+   | Variável | Padrão | Uso |
+   |---|---|---|
+   | `MONGODB_URI` | — (obrigatória) | Connection string do banco de produção |
+   | `MONGODB_DB_NAME` | `horas-pj` | Nome do banco |
+   | `JWT_SECRET` | — (obrigatória) | O mesmo do Render, senão todos precisam logar de novo. 32+ bytes (`openssl rand -base64 48`) |
+   | `GOOGLE_CLIENT_ID` | — (obrigatória) | Usado pelo backend e embutido no build do frontend |
+   | `APP_PORT` | `8081` | Porta local do app (a `8080` fica livre para outro projeto) |
+   | `VITE_LEGAL_CONTROLADOR`, `VITE_LEGAL_CONTATO` | vazio | Exibidos nos Termos e na Política de Privacidade |
+
+   O compose para com erro se faltar uma obrigatória. `NODE_ENV`, `PORT` e `CORS_ORIGIN` são fixados por ele.
 2. Adicione `http://localhost:8081` (ou a porta de `APP_PORT`) em "Origens JavaScript autorizadas" do Client ID no Google Cloud Console.
-3. Suba:
+3. Suba (o mesmo comando reconstrói as imagens depois de um `git pull`):
 
 ```bash
-docker compose --env-file .env.docker up -d --build
+docker compose --env-file "D:/iCloudDrive/Apps Pessoais - ENV/ControleDeHorasPj.env" up -d --build
+```
+
+O app fica em <http://localhost:8081>; o frontend só sobe depois do healthcheck do backend. Para parar:
+
+```bash
+docker compose --env-file "D:/iCloudDrive/Apps Pessoais - ENV/ControleDeHorasPj.env" down
 ```
 
 ### Testes e build

@@ -5,7 +5,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ## [Unreleased]
 
 ### Adicionado
-- App completo em Docker (`docker-compose.yml`): backend em modo produção e frontend servido pelo nginx, que faz o papel do proxy `/api`, exposto só em `127.0.0.1:8081`. Valores de produção vêm de `.env.docker` (fora do git; modelo em `.env.docker.example`).
+- App completo em Docker (`docker-compose.yml`): backend em modo produção e frontend servido pelo nginx, que faz o papel do proxy `/api`, exposto só em `127.0.0.1:8081`. Valores de produção vêm de um arquivo de variáveis fora do projeto, passado em `docker compose --env-file` (variáveis documentadas no README).
 - LGPD (M15): Termos de Uso e Política de Privacidade (pt/en/es) com aceite versionado no primeiro acesso, página "Minha conta" com exportação completa dos dados em JSON e exclusão definitiva da conta (dados apagados e trilha de auditoria anonimizada).
 - Acessibilidade: componente `Modal` único (diálogo rotulado, Esc, foco preso e devolvido a quem abriu), aplicado aos 11 modais. Toasts anunciados por leitores de tela e botões de ícone com nome acessível (M12).
 - Relatórios (página, CSV e PDFs) traduzidos em pt/en/es, com números, moeda e datas no formato do idioma ativo. Dicionários `en`/`es` tipados contra `pt`. Testes no frontend com Vitest, também no CI (M11).

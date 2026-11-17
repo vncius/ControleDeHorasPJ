@@ -1,10 +1,15 @@
 # App completo em containers, apontando para o banco de produção (Atlas).
 #
-#   1. Preencha um arquivo de variáveis com os valores de produção (modelo em
-#      .env.docker.example). Pode ficar fora do projeto.
-#   2. docker compose --env-file CAMINHO/DO/ARQUIVO up -d --build
+#   1. Crie um arquivo de variáveis FORA do projeto (ex.: na pasta do iCloud,
+#      D:/iCloudDrive/Apps Pessoais - ENV/ControleDeHorasPj.env)
+#      com os valores de produção. As variáveis estão no README, seção
+#      "Rodando em Docker".
+#   2. docker compose --env-file "D:/iCloudDrive/Apps Pessoais - ENV/ControleDeHorasPj.env" up -d --build
 #      (ou exporte as variáveis no shell antes de `docker compose up`).
 #   3. Abra http://localhost:8081 (ou a porta de APP_PORT).
+#
+# Depois de um git pull, o mesmo comando do passo 2 reconstrói as imagens.
+# Parar: docker compose --env-file "D:/iCloudDrive/Apps Pessoais - ENV/ControleDeHorasPj.env" down
 #
 # Todas as variáveis chegam por interpolação (${...}), então qualquer arquivo
 # passado em --env-file ou variável do shell vale; as obrigatórias param o
